@@ -1,18 +1,26 @@
-class FileFormatError(Exception):
+from traceback import format_exc
+
+
+def exception_format():
+    return [l.replace('"', "'") for l in format_exc().split('\n') if l]
+
+
+class AgentError(Exception):
     pass
 
 
-class FileSchemeError(Exception):
+class FileError(Exception):
     pass
 
 
-class MissingInputFilesError(Exception):
+class JobExecutionError(Exception):
     pass
 
 
-class MissingOutputFilesError(Exception):
+class CWLSpecificationError(Exception):
     pass
 
 
-class InvalidBaseCommand(Exception):
+class JobSpecificationError(Exception):
     pass
+

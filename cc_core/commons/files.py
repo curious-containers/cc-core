@@ -4,39 +4,46 @@ import json
 from ruamel.yaml import YAML
 from urllib.parse import urlparse
 
-from cc_core.commons.exceptions import FileFormatError, FileSchemeError
+from cc_core.commons.exceptions import AgentError
 
 
 yaml = YAML(typ='safe')
 
 
-def loads(s):
-    try:
-        return json.loads(s)
-    except:
-        try:
-            return yaml.load(s)
-        except:
-            raise FileFormatError('Unsupported file format.')
-
-
-def read_file(location):
+def load_and_read(location, var_name):
     scheme = urlparse(location).scheme
     if scheme == 'path':
-        return _local(location[5:])
-    if scheme == '':
-        return _local(location)
-    if scheme == 'http' or scheme == 'https':
-        return _http(location)
-    raise FileSchemeError('Unsupported URL scheme.')
+        raw_data = _local(location[5:], var_name)
+    elif scheme == '':
+        raw_data = _local(location, var_name)
+    elif scheme == 'http' or scheme == 'https':
+        raw_data = _http(location, var_name)
+    else:
+        raise AgentError('argument "{}" has unknown url scheme'.format(location))
+
+    try:
+        data = json.loads(raw_data)
+    except:
+        try:
+            data = yaml.load(raw_data)
+        except:
+            raise AgentError('data for argument "{}" is neither json nor yaml formatted'.format(var_name))
+
+    return data
 
 
-def _http(location):
-    r = requests.get(location)
-    r.raise_for_status()
+def _http(location, var_name):
+    try:
+        r = requests.get(location)
+        r.raise_for_status()
+    except:
+        raise AgentError('file for argument "{}" could not be loaded via http'.format(var_name))
     return r.text
 
 
-def _local(location):
-    with open(os.path.expanduser(location)) as f:
-        return f.read()
+def _local(location, var_name):
+    try:
+        with open(os.path.expanduser(location)) as f:
+            return f.read()
+    except:
+        raise AgentError('file for argument "{}" could not be loaded from file system'.format(var_name))

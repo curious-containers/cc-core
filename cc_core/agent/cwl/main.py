@@ -1,11 +1,12 @@
 import os
-from pprint import pprint
+import json
 from argparse import ArgumentParser
 
-from cc_core.commons.files import read_file, loads
+from cc_core.commons.files import load_and_read
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute
+from cc_core.commons.exceptions import exception_format
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE. Refer to the CWL ' \
@@ -31,40 +32,49 @@ def main():
     parser = ArgumentParser(description=DESCRIPTION)
     attach_args(parser)
     args = parser.parse_args()
-    return run(**args.__dict__)
+
+    result = run(**args.__dict__)
+    print(json.dumps(result, indent=4))
+
+    if result['debug_info']:
+        return 1
+
+    return 0
 
 
 def run(cwl_file, job_file, outdir):
-    cwl_raw = read_file(cwl_file)
-    job_raw = read_file(job_file)
+    result = {
+        'command': None,
+        'input_files': None,
+        'process_data': None,
+        'output_files': None,
+        'debug_info': None
+    }
 
-    cwl_data = loads(cwl_raw)
-    job_data = loads(job_raw)
+    try:
+        cwl_data = load_and_read(cwl_file, 'CWL_FILE')
+        job_data = load_and_read(job_file, 'JOB_FILE')
 
-    cwl_validation(cwl_data, job_data)
+        cwl_validation(cwl_data, job_data)
 
-    input_dir = os.path.split(os.path.expanduser(job_file))[0]
+        input_dir = os.path.split(os.path.expanduser(job_file))[0]
 
-    command = cwl_to_command(cwl_data, job_data, input_dir)
-    print('COMMAND:')
-    print(command)
+        command = cwl_to_command(cwl_data, job_data, input_dir)
+        result['command'] = command
 
-    input_files = cwl_input_files(cwl_data, job_data, input_dir=input_dir)
-    print()
-    print('INPUT FILES:')
-    pprint(input_files)
+        input_files = cwl_input_files(cwl_data, job_data, input_dir=input_dir)
+        result['input_files'] = input_files
 
-    cwl_input_file_check(input_files)
+        cwl_input_file_check(input_files)
 
-    process_data = execute(command)
-    print()
-    print('PROCESS:')
-    pprint(process_data)
+        process_data = execute(command)
+        result['process_data'] = process_data
 
-    output_files = cwl_output_files(cwl_data, output_dir=outdir)
-    print()
-    print('OUTPUT FILES:')
-    pprint(output_files)
-    cwl_output_file_check(output_files)
+        output_files = cwl_output_files(cwl_data, output_dir=outdir)
+        result['output_files'] = output_files
 
-    return 0
+        cwl_output_file_check(output_files)
+    except:
+        result['debug_info'] = exception_format()
+
+    return result

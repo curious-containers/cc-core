@@ -21,8 +21,8 @@ def execute(command):
     monitoring_data = monitor.result()
 
     return {
-        'std_out': std_out.decode('utf-8'),
-        'std_err': std_err.decode('utf-8'),
+        'std_out': [l for l in std_out.decode('utf-8').split('\n') if l],
+        'std_err': [l for l in std_err.decode('utf-8').split('\n') if l],
         'return_code': return_code,
         'monitoring': monitoring_data
     }

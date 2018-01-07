@@ -5,48 +5,59 @@ from traceback import format_exc
 from glob import glob
 from shutil import which
 
-from cc_core.commons.exceptions import MissingInputFilesError, MissingOutputFilesError, InvalidBaseCommand
+from cc_core.commons.exceptions import exception_format
+from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError
 from cc_core.commons.schemas.cwl import cwl_schema, job_schema
 
 
-def _assert_type(cwl_type, arg):
-    if cwl_type == 'string':
-        assert type(arg) == str
-    elif cwl_type == 'integer' or cwl_type == 'long':
-        assert type(arg) == int
-    elif cwl_type == 'float' or cwl_type == 'double':
-        assert type(arg) == float
-    elif cwl_type == 'boolean':
-        assert type(arg) == bool
-    elif cwl_type == 'File':
-        assert type(arg) == dict
+ARGUMENT_TYPE_MAPPING = (
+    ('string', str),
+    ('int', int),
+    ('long', int),
+    ('float', float),
+    ('double', float),
+    ('boolean', bool),
+    ('File', dict)
+)
 
 
-def _location(arg):
+def _assert_type(key, cwl_type, arg):
+    for t, pyt in ARGUMENT_TYPE_MAPPING:
+        if t == cwl_type:
+            if isinstance(arg, pyt):
+                return
+            raise JobSpecificationError('"{}" argument "{}" has not been parsed to "{}"'.format(t, key, pyt))
+    raise CWLSpecificationError('argument "{}" has unknown type "{}"'.format(key, cwl_type))
+
+
+def _location(key, arg):
     if arg.get('path'):
         return os.path.expanduser(arg['path'])
 
     p = arg['location']
     scheme = urlparse(p).scheme
-    assert scheme == 'path'
+
+    if scheme != 'path':
+        raise JobSpecificationError('argument "{}" uses url scheme "{}" other than "path"'.format(key, scheme))
+
     return os.path.expanduser(p[5:])
 
 
-def _file_check(file_data, exception, error_text):
+def _file_check(file_data, error_text):
     missing_files = []
     for key, val in file_data.items():
         if val['size'] is None and not val['is_optional']:
             missing_files.append(key)
     if missing_files:
-        raise exception(error_text.format(missing_files))
+        raise FileError(error_text.format(missing_files))
 
 
 def cwl_input_file_check(input_files):
-    _file_check(input_files, MissingInputFilesError, 'Missing input files: {}')
+    _file_check(input_files, 'missing input files {}')
 
 
 def cwl_output_file_check(output_files):
-    _file_check(output_files, MissingOutputFilesError, 'Missing output files: {}')
+    _file_check(output_files, 'missing output files {}')
 
 
 def cwl_input_files(cwl_data, job_data, input_dir=None):
@@ -72,19 +83,21 @@ def cwl_input_files(cwl_data, job_data, input_dir=None):
         if key in job_data:
             arg = job_data[key]
             try:
-                file_path = _location(arg)
+                file_path = _location(key, arg)
                 file_path = os.path.expanduser(file_path)
 
                 if input_dir and not os.path.isabs(file_path):
                     file_path = os.path.join(os.path.expanduser(input_dir), file_path)
 
                 result['path'] = file_path
-                assert os.path.exists(file_path)
-                assert os.path.isfile(file_path)
+                if not os.path.exists(file_path):
+                    raise FileError('path does not exist')
+                if not os.path.isfile(file_path):
+                    raise FileError('path is not a file')
 
                 result['size'] = os.path.getsize(file_path) / (1024 * 1024)
             except:
-                result['debug_info'] = format_exc()
+                result['debug_info'] = exception_format()
 
         results[key] = result
 
@@ -117,12 +130,14 @@ def cwl_output_files(cwl_data, output_dir=None):
 
         matches = glob(glob_path)
         try:
-            assert len(matches) == 1
+            if len(matches) != 1:
+                raise FileError('glob path "{}" does not match exactly one file')
+
             file_path = matches[0]
             result['path'] = file_path
 
-            assert os.path.exists(file_path)
-            assert os.path.isfile(file_path)
+            if not os.path.isfile(file_path):
+                raise FileError('path is not a file')
 
             result['size'] = os.path.getsize(file_path) / (1024 * 1024)
         except:
@@ -134,16 +149,24 @@ def cwl_output_files(cwl_data, output_dir=None):
 
 
 def cwl_validation(cwl_data, job_data):
-    validate(cwl_data, cwl_schema)
-    validate(job_data, job_schema)
+    try:
+        validate(cwl_data, cwl_schema)
+    except:
+        raise CWLSpecificationError('cwl does not comply with jsonschema')
+
+    try:
+        validate(job_data, job_schema)
+    except:
+        raise JobSpecificationError('job does not comply with jsonschema')
 
     for key, val in job_data.items():
-        assert key in cwl_data['inputs']
+        if key not in cwl_data['inputs']:
+            raise JobSpecificationError('job argument "{}" is not specified in cwl'.format(key))
 
 
 def _check_base_command(base_command):
     if not which(base_command):
-        raise InvalidBaseCommand('Invalid cwl base command: {}'.format(base_command))
+        raise CWLSpecificationError('invalid baseCommand "{}"'.format(base_command))
 
 
 def cwl_to_command(cwl_data, job_data, inputs_dir=None):
@@ -165,26 +188,32 @@ def cwl_to_command(cwl_data, job_data, inputs_dir=None):
             cwl_type = cwl_type[:-2]
 
         if not is_positional:
-            assert val['inputBinding'].get('prefix') is not None
+            if not val['inputBinding'].get('prefix'):
+                raise CWLSpecificationError('non-positional argument "{}" requires prefix'.format(key))
 
-        try:
-            arg = job_data[key]
-        except KeyError as e:
+        if key not in job_data:
             if is_optional:
                 continue
-            raise e
+            raise JobSpecificationError('required argument "{}" is missing'.format(key))
+
+        arg = job_data[key]
 
         if is_array:
-            assert type(arg) == list
-            assert len(arg) > 0
+            if (not isinstance(arg, list)) or len(arg) == 0:
+                raise JobSpecificationError('array argument "{}" has not been parsed to list'.format(key))
 
-            for e in arg:
-                _assert_type(cwl_type, e)
+            try:
+                for e in arg:
+                    _assert_type(key, cwl_type, e)
+            except:
+                raise JobSpecificationError(
+                    '"{}" array argument "{}" contains elements of wrong type'.format(cwl_type, key)
+                )
         else:
-            _assert_type(cwl_type, arg)
+            _assert_type(key, cwl_type, arg)
 
         if cwl_type == 'File':
-            file_path = _location(arg)
+            file_path = _location(key, arg)
             file_path = os.path.expanduser(file_path)
 
             if inputs_dir and not os.path.isabs(file_path):
@@ -227,7 +256,8 @@ def cwl_to_command(cwl_data, job_data, inputs_dir=None):
             pos = val['inputBinding']['position']
             additional = pos + 1 - len(positional_arguments)
             positional_arguments += [None for _ in range(additional)]
-            assert positional_arguments[pos] is None
+            if positional_arguments[pos] is not None:
+                raise CWLSpecificationError('multiple positional arguments exist for position "{}"'.format(pos))
             positional_arguments[pos] = {'arg': arg, 'is_array': is_array}
         else:
             prefixed_arguments.append(arg)
