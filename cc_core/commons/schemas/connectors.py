@@ -30,4 +30,4 @@ http_schema = {
 }
 
 http_json_send_schema = deepcopy(http_schema)
-http_json_send_schema['properties']['merge_internal_ids'] = {'type': 'boolean'}
+http_json_send_schema['properties']['merge_agency_data'] = {'type': 'boolean'}

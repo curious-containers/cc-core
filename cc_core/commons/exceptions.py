@@ -24,3 +24,14 @@ class CWLSpecificationError(Exception):
 class JobSpecificationError(Exception):
     pass
 
+
+class ConnectorError(Exception):
+    pass
+
+
+class AccessValidationError(Exception):
+    pass
+
+
+class AccessError(Exception):
+    pass

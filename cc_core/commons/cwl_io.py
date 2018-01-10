@@ -1,12 +1,15 @@
 import os
 import inspect
-import tempfile
 import jsonschema
-from uuid import uuid4
-from copy import deepcopy
 
 from cc_core.commons.schemas.cwl import cwl_schema
 from cc_core.commons.schemas.faice import inputs_schema, outputs_schema
+from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError
+
+SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
+SEND_RECEIVE_SPEC_KWARGS = []
+SEND_RECEIVE_VALIDATE_SPEC_ARGS = ['access']
+SEND_RECEIVE_VALIDATE_SPEC_KWARGS = []
 
 
 class ConnectorManager:
@@ -17,46 +20,92 @@ class ConnectorManager:
     def _key(py_module, py_class):
         return '{}.{}'.format(py_module, py_class)
 
-    def import_connector(self, py_module, py_class):
+    @staticmethod
+    def _cdata(connector_data):
+        return connector_data['py_module'], connector_data['py_class'], connector_data['access']
+
+    def _check_func(self, connector_key, funcname, spec_args, spec_kwargs):
+        connector = self._imported_connectors[connector_key]
+        try:
+            func = getattr(connector, funcname)
+            assert callable(func)
+            spec = inspect.getfullargspec(func)
+            assert spec.args == spec_args
+            assert spec.kwonlyargs == spec_kwargs
+        except:
+            raise ConnectorError(
+                'imported connector "{}" does not support "{}" function'.format(connector_key, funcname)
+            )
+
+    def import_connector(self, connector_data):
+        py_module, py_class, _ = self._cdata(connector_data)
         key = ConnectorManager._key(py_module, py_class)
 
         if key in self._imported_connectors:
             return
 
-        mod = __import__(py_module, fromlist=[py_class])
-        connector = getattr(mod, py_class)
-
-        assert inspect.isclass(connector)
+        try:
+            mod = __import__(py_module, fromlist=[py_class])
+            connector = getattr(mod, py_class)
+            assert inspect.isclass(connector)
+        except:
+            raise ConnectorError('invalid connector "{}"'.format(key))
 
         self._imported_connectors[key] = connector
 
-    def receive_validate(self, py_module, py_class, access):
+    def receive_validate(self, connector_data, input_key):
+        py_module, py_class, access = self._cdata(connector_data)
+        c_key = self._key(py_module, py_class)
+
+        try:
+            connector = self._imported_connectors[c_key]
+        except:
+            raise ConnectorError('connector "{}" has not been imported')
+
+        self._check_func(c_key, 'receive', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
+        self._check_func(c_key, 'receive_validate', SEND_RECEIVE_VALIDATE_SPEC_ARGS, SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
+
+        try:
+            connector.receive_validate(access)
+        except:
+            raise AccessValidationError('invalid access data for input file "{}"'.format(input_key))
+
+    def send_validate(self, connector_data, output_key):
+        py_module, py_class, access = self._cdata(connector_data)
+        c_key = ConnectorManager._key(py_module, py_class)
+
+        try:
+            connector = self._imported_connectors[c_key]
+        except:
+            raise ConnectorError('connector "{}" has not been imported')
+
+        self._check_func(c_key, 'send', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
+        self._check_func(c_key, 'send_validate', SEND_RECEIVE_VALIDATE_SPEC_ARGS, SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
+
+        try:
+            connector.send_validate(access)
+        except:
+            raise AccessValidationError('invalid access data for output file "{}"'.format(output_key))
+
+    def receive(self, connector_data, input_key, internal):
+        py_module, py_class, access = self._cdata(connector_data)
         key = ConnectorManager._key(py_module, py_class)
         connector = self._imported_connectors[key]
 
-        connector.receive_validate(access)
+        try:
+            connector.receive(access, internal)
+        except:
+            raise AccessError('could not access input file "{}"'.format(input_key))
 
-    def send_validate(self, py_module, py_class, access):
+    def send(self, connector_data, output_key, internal):
+        py_module, py_class, access = self._cdata(connector_data)
         key = ConnectorManager._key(py_module, py_class)
         connector = self._imported_connectors[key]
 
-        assert callable(connector.send)
-
-        connector.send_validate(access)
-
-    def receive(self, py_module, py_class, access, internal):
-        key = ConnectorManager._key(py_module, py_class)
-        connector = self._imported_connectors[key]
-
-        assert callable(connector.receive)
-
-        connector.receive(access, internal)
-
-    def send(self, py_module, py_class, access, internal):
-        key = ConnectorManager._key(py_module, py_class)
-        connector = self._imported_connectors[key]
-
-        connector.send(access, internal)
+        try:
+            connector.send(access, internal)
+        except:
+            raise AccessError('could not access output file "{}"'.format(output_key))
 
 
 def cwl_io_validation(cwl_data, inputs_data, outputs_data):
@@ -72,25 +121,21 @@ def cwl_io_validation(cwl_data, inputs_data, outputs_data):
 
 
 def import_and_validate_connectors(connector_manager, inputs_data, outputs_data):
-    for key, val in inputs_data.items():
+    for input_key, val in inputs_data.items():
         if not isinstance(val, dict):
             continue
 
-        py_module = val['connector']['py_module']
-        py_class = val['connector']['py_class']
-        access = val['connector']['access']
-        connector_manager.import_connector(py_module, py_class)
-        connector_manager.send_validate(py_module, py_class, access)
+        connector_data = val['connector']
+        connector_manager.import_connector(connector_data)
+        connector_manager.receive_validate(connector_data, input_key)
 
-    for key, val in outputs_data.items():
+    for output_key, val in outputs_data.items():
         if not isinstance(val, dict):
             continue
 
-        py_module = val['connector']['py_module']
-        py_class = val['connector']['py_class']
-        access = val['connector']['access']
-        connector_manager.import_connector(py_module, py_class)
-        connector_manager.receive_validate(py_module, py_class, access)
+        connector_data = val['connector']
+        connector_manager.import_connector(connector_data)
+        connector_manager.send_validate(connector_data, output_key)
 
 
 def inputs_to_job(inputs_data, tmp_dir):
@@ -111,27 +156,23 @@ def inputs_to_job(inputs_data, tmp_dir):
 
 
 def receive(connector_manager, inputs_data, tmp_dir):
-    for key, val in inputs_data.items():
+    for input_key, val in inputs_data.items():
         if not isinstance(val, dict):
             continue
 
-        path = os.path.join(tmp_dir, key)
-        py_module = val['connector']['py_module']
-        py_class = val['connector']['py_class']
-        access = val['connector']['access']
+        path = os.path.join(tmp_dir, input_key)
+        connector_data = val['connector']
         internal = {'path': path}
 
-        connector_manager.receive(py_module, py_class, access, internal)
+        connector_manager.receive(connector_data, input_key, internal)
 
 
-def send(connector_manager, output_files, outputs_data, ids=None):
-    for key, val in outputs_data.items():
-        path = output_files[key]['path']
+def send(connector_manager, output_files, outputs_data, agency_data=None):
+    for output_key, val in outputs_data.items():
+        path = output_files[output_key]['path']
         internal = {
             'path': path,
-            'ids': ids
+            'agency_data': agency_data
         }
-        py_module = val['connector']['py_module']
-        py_class = val['connector']['py_class']
-        access = val['connector']['access']
-        connector_manager.send(py_module, py_class, access, internal)
+        connector_data = val['connector']
+        connector_manager.send(connector_data, output_key, internal)

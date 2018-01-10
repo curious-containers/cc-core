@@ -113,8 +113,8 @@ class HttpJson:
         with open(internal['path']) as f:
             data = json.load(f)
 
-        if access.get('merge_internal_ids') and internal.get('ids'):
-            for key, val in internal['ids'].items():
+        if access.get('merge_agency_data') and internal.get('agency_data'):
+            for key, val in internal['agency_data'].items():
                 data[key] = val
 
         r = http_method_func(
