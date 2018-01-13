@@ -12,7 +12,7 @@ from cc_core.agent.cwl.main import DESCRIPTION as CWL_DESCRIPTION
 
 SCRIPT_NAME = 'ccagent'
 
-VERSION = '0.1'
+VERSION = '2.0.0'
 
 DESCRIPTION = 'CC-Agent Copyright (C) 2017  Christoph Jansen. This software is distributed under the Apache 2.0 ' \
               'LICENSE and is part of the Curious Containers project (https://www.curious-containers.cc).'
@@ -31,7 +31,7 @@ def main():
     parser.add_argument(
         '-v', '--version', action='version', version=VERSION
     )
-    subparsers = parser.add_subparsers(title="operation modes")
+    subparsers = parser.add_subparsers(title='operation modes')
 
     sub_parser = None
     for key, val in MODES.items():

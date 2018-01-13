@@ -74,8 +74,8 @@ faice_schema = {
         'container': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': container_engines.keys()},
-                'settings': {'type', 'object'}
+                'engine': {'enum': list(container_engines.keys())},
+                'settings': {'type': 'object'}
             },
             'additionalProperties': False,
             'required': ['engine', 'settings']
@@ -83,8 +83,8 @@ faice_schema = {
         'execution': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': execution_engines.keys()},
-                'settings': {'type', 'object'}
+                'engine': {'enum': list(execution_engines.keys())},
+                'settings': {'type': 'object'}
             },
             'additionalProperties': False,
             'required': ['engine', 'settings']
@@ -92,7 +92,7 @@ faice_schema = {
         'virtualization': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': virtualization_engines.keys()},
+                'engine': {'enum': list(virtualization_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -101,7 +101,7 @@ faice_schema = {
         'source': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': source_engines.keys()},
+                'engine': {'enum': list(source_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -110,7 +110,7 @@ faice_schema = {
         'build': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': build_engines.keys()},
+                'engine': {'enum': list(build_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,

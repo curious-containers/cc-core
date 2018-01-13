@@ -20,15 +20,15 @@ DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and FAICE connec
 def attach_args(parser):
     parser.add_argument(
         'cwl_file', action='store', type=str, metavar='CWL_FILE',
-        help='CWL_FILE containing a CLI description (json/yaml) as local path or http url'
+        help='CWL_FILE containing a CLI description (json/yaml) as local path or http url.'
     )
     parser.add_argument(
         'inputs_file', action='store', type=str, metavar='INPUTS_FILE',
-        help='INPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url'
+        help='INPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
         'outputs_file', action='store', type=str, metavar='OUTPUTS_FILE',
-        help='OUTPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url'
+        help='OUTPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
         '-o', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
