@@ -118,5 +118,5 @@ faice_schema = {
         }
     },
     'additionalProperties': False,
-    'required': ['version', 'cwl', 'inputs', 'outputs']
+    'required': ['version', 'cwl', 'inputs', 'outputs', 'container']
 }
