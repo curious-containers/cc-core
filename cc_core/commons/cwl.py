@@ -141,7 +141,7 @@ def cwl_output_files(cwl_data, output_dir=None):
 
             result['size'] = os.path.getsize(file_path) / (1024 * 1024)
         except:
-            result['debug_info'] = format_exc()
+            result['debug_info'] = exception_format()
 
         results[key] = result
 
