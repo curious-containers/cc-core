@@ -111,10 +111,12 @@ class ConnectorManager:
 def cwl_io_validation(cwl_data, inputs_data, outputs_data):
     jsonschema.validate(cwl_data, cwl_schema)
     jsonschema.validate(inputs_data, inputs_schema)
-    jsonschema.validate(outputs_data, outputs_schema)
 
-    for key, val in outputs_data.items():
-        assert key in cwl_data['outputs']
+    if outputs_data:
+        jsonschema.validate(outputs_data, outputs_schema)
+
+        for key, val in outputs_data.items():
+            assert key in cwl_data['outputs']
 
     for key, val in inputs_data.items():
         assert key in cwl_data['inputs']
@@ -129,13 +131,14 @@ def import_and_validate_connectors(connector_manager, inputs_data, outputs_data)
         connector_manager.import_connector(connector_data)
         connector_manager.receive_validate(connector_data, input_key)
 
-    for output_key, val in outputs_data.items():
-        if not isinstance(val, dict):
-            continue
+    if outputs_data:
+        for output_key, val in outputs_data.items():
+            if not isinstance(val, dict):
+                continue
 
-        connector_data = val['connector']
-        connector_manager.import_connector(connector_data)
-        connector_manager.send_validate(connector_data, output_key)
+            connector_data = val['connector']
+            connector_manager.import_connector(connector_data)
+            connector_manager.send_validate(connector_data, output_key)
 
 
 def inputs_to_job(inputs_data, tmp_dir):

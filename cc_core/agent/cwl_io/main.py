@@ -19,19 +19,19 @@ DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and FAICE connec
 
 def attach_args(parser):
     parser.add_argument(
-        'cwl_file', action='store', type=str, metavar='CWL_FILE',
+        '-c', '--cwl', action='store', type=str, metavar='CWL_FILE', required=True,
         help='CWL_FILE containing a CLI description (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        'inputs_file', action='store', type=str, metavar='INPUTS_FILE',
+        '-i', '--inputs', action='store', type=str, metavar='INPUTS_FILE', required=True,
         help='INPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        'outputs_file', action='store', type=str, metavar='OUTPUTS_FILE',
+        '-o', '--outputs', action='store', type=str, metavar='OUTPUTS_FILE',
         help='OUTPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        '-o', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
+        '-d', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
         help='Output directory, default current directory.'
     )
 
@@ -50,7 +50,7 @@ def main():
     return 0
 
 
-def run(cwl_file, inputs_file, outputs_file, outdir):
+def run(cwl, inputs, outputs, outdir):
     result = {
         'command': None,
         'input_files': None,
@@ -62,9 +62,9 @@ def run(cwl_file, inputs_file, outputs_file, outdir):
     tmp_dir = tempfile.mkdtemp()
 
     try:
-        cwl_data = load_and_read(cwl_file, 'CWL_FILE')
-        inputs_data = load_and_read(inputs_file, 'INPUTS_FILE')
-        outputs_data = load_and_read(outputs_file, 'OUTPUTS_FILE')
+        cwl_data = load_and_read(cwl, 'CWL_FILE')
+        inputs_data = load_and_read(inputs, 'INPUTS_FILE')
+        outputs_data = load_and_read(outputs, 'OUTPUTS_FILE')
 
         cwl_io_validation(cwl_data, inputs_data, outputs_data)
 
@@ -87,7 +87,9 @@ def run(cwl_file, inputs_file, outputs_file, outdir):
         result['output_files'] = output_files
 
         cwl_output_file_check(output_files)
-        send(connector_manager, output_files, outputs_data)
+
+        if outputs:
+            send(connector_manager, output_files, outputs_data)
     except:
         result['debug_info'] = exception_format()
     finally:

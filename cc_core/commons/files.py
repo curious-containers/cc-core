@@ -11,16 +11,25 @@ yaml = YAML(typ='safe')
 
 
 def load_and_read(location, var_name):
+    if not location:
+        return None
+    raw_data = load(location, var_name)
+    return read(raw_data, var_name)
+
+
+def load(location, var_name):
     scheme = urlparse(location).scheme
     if scheme == 'path':
-        raw_data = _local(location[5:], var_name)
-    elif scheme == '':
-        raw_data = _local(location, var_name)
-    elif scheme == 'http' or scheme == 'https':
-        raw_data = _http(location, var_name)
-    else:
-        raise AgentError('argument "{}" has unknown url scheme'.format(location))
+        return _local(location[5:], var_name)
+    if scheme == '':
+        return _local(location, var_name)
+    if scheme == 'http' or scheme == 'https':
+        return _http(location, var_name)
 
+    raise AgentError('argument "{}" has unknown url scheme'.format(location))
+
+
+def read(raw_data, var_name):
     try:
         data = json.loads(raw_data)
     except:

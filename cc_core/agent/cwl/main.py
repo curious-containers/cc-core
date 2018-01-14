@@ -23,7 +23,7 @@ def attach_args(parser):
         help='JOB_FILE in the CWL job format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        '-o', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
+        '-d', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
         help='Output directory, default current directory.'
     )
 
