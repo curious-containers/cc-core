@@ -18,6 +18,7 @@ setup(
         'cc_core.commons',
         'cc_core.commons.schemas',
         'cc_core.commons.schemas.engines',
+        'cc_core.commons.connectors',
         'cc_core.agent',
         'cc_core.agent.cwl',
         'cc_core.agent.cwl_io',
