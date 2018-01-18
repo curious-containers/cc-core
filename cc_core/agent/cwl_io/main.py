@@ -12,8 +12,8 @@ from cc_core.commons.shell import execute
 from cc_core.commons.exceptions import exception_format
 
 
-DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and FAICE connector files for remote inputs and ' \
-              'outputs respectively. Refer to CWL (http://www.commonwl.org) and FAICE ' \
+DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connector files for remote inputs and ' \
+              'outputs respectively. Refer to CWL (http://www.commonwl.org), RED and FAICE ' \
               'documentations for more details.'
 
 
@@ -24,11 +24,11 @@ def attach_args(parser):
     )
     parser.add_argument(
         '-i', '--inputs', action='store', type=str, metavar='INPUTS_FILE', required=True,
-        help='INPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url.'
+        help='INPUTS_FILE in the RED connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
         '-o', '--outputs', action='store', type=str, metavar='OUTPUTS_FILE',
-        help='OUTPUTS_FILE in the FAICE connectors format (json/yaml) as local path or http url.'
+        help='OUTPUTS_FILE in the RED connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
         '-d', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',

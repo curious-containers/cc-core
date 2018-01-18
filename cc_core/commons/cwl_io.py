@@ -3,7 +3,7 @@ import inspect
 import jsonschema
 
 from cc_core.commons.schemas.cwl import cwl_schema
-from cc_core.commons.schemas.faice import inputs_schema, outputs_schema
+from cc_core.commons.schemas.red import red_inputs_schema, red_outputs_schema
 from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
@@ -60,7 +60,7 @@ class ConnectorManager:
         try:
             connector = self._imported_connectors[c_key]
         except:
-            raise ConnectorError('connector "{}" has not been imported')
+            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
 
         self._check_func(c_key, 'receive', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
         self._check_func(c_key, 'receive_validate', SEND_RECEIVE_VALIDATE_SPEC_ARGS, SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
@@ -77,7 +77,7 @@ class ConnectorManager:
         try:
             connector = self._imported_connectors[c_key]
         except:
-            raise ConnectorError('connector "{}" has not been imported')
+            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
 
         self._check_func(c_key, 'send', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
         self._check_func(c_key, 'send_validate', SEND_RECEIVE_VALIDATE_SPEC_ARGS, SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
@@ -110,10 +110,10 @@ class ConnectorManager:
 
 def cwl_io_validation(cwl_data, inputs_data, outputs_data):
     jsonschema.validate(cwl_data, cwl_schema)
-    jsonschema.validate(inputs_data, inputs_schema)
+    jsonschema.validate(inputs_data, red_inputs_schema)
 
     if outputs_data:
-        jsonschema.validate(outputs_data, outputs_schema)
+        jsonschema.validate(outputs_data, red_outputs_schema)
 
         for key, val in outputs_data.items():
             assert key in cwl_data['outputs']

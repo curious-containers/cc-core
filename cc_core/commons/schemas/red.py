@@ -20,8 +20,8 @@ _connector_schema = {
     'required': ['py_module', 'py_class', 'access']
 }
 
-
-inputs_schema = {
+# Reproducible Experiment Description (RED)
+red_inputs_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {
@@ -53,7 +53,7 @@ inputs_schema = {
 }
 
 
-outputs_schema = {
+red_outputs_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {
@@ -69,14 +69,14 @@ outputs_schema = {
 }
 
 
-faice_schema = {
+red_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
         'format_version': {'enum': ['2']},
         'cwl': cwl_schema,
-        'inputs': inputs_schema,
-        'outputs': outputs_schema,
+        'inputs': red_inputs_schema,
+        'outputs': red_outputs_schema,
         'execution': {
             'type': 'object',
             'properties': {
