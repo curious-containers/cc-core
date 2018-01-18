@@ -3,7 +3,7 @@ import jsonschema
 import requests
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
-from cc_core.commons.schemas.connectors import http_schema, http_json_send_schema
+from cc_core.commons.schemas.connectors import http_schema
 
 
 def _http_method_func(access):
@@ -127,4 +127,4 @@ class HttpJson:
 
     @staticmethod
     def send_validate(access):
-        jsonschema.validate(access, http_json_send_schema)
+        jsonschema.validate(access, http_schema)

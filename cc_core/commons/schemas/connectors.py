@@ -24,10 +24,8 @@ http_schema = {
             'required': ['username', 'password']
         },
         'ssl_verify': {'type': 'boolean'},
+        'merge_agency_data':  {'type': 'boolean'}
     },
     'additionalProperties': False,
     'required': ['url', 'method']
 }
-
-http_json_send_schema = deepcopy(http_schema)
-http_json_send_schema['properties']['merge_agency_data'] = {'type': 'boolean'}

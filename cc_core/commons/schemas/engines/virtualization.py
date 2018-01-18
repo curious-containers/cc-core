@@ -1,25 +1,33 @@
 vagrant_schema = {
     'type': 'object',
     'properties': {
+        'doc': {'type': 'string'},
         'version': {'type': 'string'},
-        'hypervisor': {
+        'hypervisor': {'type': 'string'},
+        'ram': {'type': 'integer', 'minimum': 256},
+        'cpus': {'type': 'integer', 'minimum': 1},
+        'os': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': ['virtualbox']},
-                'settings': {
+                'doc': {'type': 'string'},
+                'image': {
                     'type': 'object',
                     'properties': {
-                        'version': {'type': 'string'}
+                        'doc': {'type': 'string'},
+                        'url': {'type': 'string'}
                     },
-                    'additionalProperties': False
+                    'additionalProperties': False,
+                    'required': ['url']
                 }
             },
             'additionalProperties': False,
-            'required': ['engine', 'settings']
-        },
-        'ram': {'type': 'integer', 'minimum': 256},
-        'cpus': {'type': 'integer', 'minimum': 1}
+            'required': 'image'
+        }
     },
     'additionalProperties': False,
-    'required': ['hypervisor', 'ram', 'cpus']
+    'required': ['hypervisor', 'ram', 'os']
+}
+
+virtualization_engines = {
+    'vagrant': vagrant_schema
 }

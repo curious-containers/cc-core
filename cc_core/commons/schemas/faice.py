@@ -1,7 +1,12 @@
 from cc_core.commons.schemas.common import pattern_key
 from cc_core.commons.schemas.cwl import cwl_schema
-from cc_core.commons.engines import execution_engines, container_engines, virtualization_engines, source_engines
-from cc_core.commons.engines import build_engines
+from cc_core.commons.schemas.engines.build import build_engines
+from cc_core.commons.schemas.engines.container import container_engines
+from cc_core.commons.schemas.engines.execution import execution_engines
+from cc_core.commons.schemas.engines.hardware import hardware_engines
+from cc_core.commons.schemas.engines.os import os_engines
+from cc_core.commons.schemas.engines.source import source_engines
+from cc_core.commons.schemas.engines.virtualization import virtualization_engines
 
 
 _connector_schema = {
@@ -67,41 +72,26 @@ outputs_schema = {
 faice_schema = {
     'type': 'object',
     'properties': {
-        'version': {'enum': ['2']},
+        'doc': {'type': 'string'},
+        'format_version': {'enum': ['2']},
         'cwl': cwl_schema,
         'inputs': inputs_schema,
         'outputs': outputs_schema,
-        'container': {
-            'type': 'object',
-            'properties': {
-                'engine': {'enum': list(container_engines.keys())},
-                'settings': {'type': 'object'}
-            },
-            'additionalProperties': False,
-            'required': ['engine', 'settings']
-        },
         'execution': {
             'type': 'object',
             'properties': {
+                'doc': {'type': 'string'},
                 'engine': {'enum': list(execution_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
             'required': ['engine', 'settings']
         },
-        'virtualization': {
+        'container': {
             'type': 'object',
             'properties': {
-                'engine': {'enum': list(virtualization_engines.keys())},
-                'settings': {'type': 'object'}
-            },
-            'additionalProperties': False,
-            'required': ['engine', 'settings']
-        },
-        'source': {
-            'type': 'object',
-            'properties': {
-                'engine': {'enum': list(source_engines.keys())},
+                'doc': {'type': 'string'},
+                'engine': {'enum': list(container_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -110,7 +100,48 @@ faice_schema = {
         'build': {
             'type': 'object',
             'properties': {
+                'doc': {'type': 'string'},
                 'engine': {'enum': list(build_engines.keys())},
+                'settings': {'type': 'object'}
+            },
+            'additionalProperties': False,
+            'required': ['engine', 'settings']
+        },
+        'source': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'engine': {'enum': list(source_engines.keys())},
+                'settings': {'type': 'object'}
+            },
+            'additionalProperties': False,
+            'required': ['engine', 'settings']
+        },
+        'os': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'engine': {'enum': list(os_engines.keys())},
+                'settings': {'type': 'object'}
+            },
+            'additionalProperties': False,
+            'required': ['engine', 'settings']
+        },
+        'virtualization': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'engine': {'enum': list(virtualization_engines.keys())},
+                'settings': {'type': 'object'}
+            },
+            'additionalProperties': False,
+            'required': ['engine', 'settings']
+        },
+        'hardware': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'engine': {'enum': list(hardware_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -118,5 +149,5 @@ faice_schema = {
         }
     },
     'additionalProperties': False,
-    'required': ['version', 'cwl', 'inputs', 'outputs', 'container']
+    'required': ['format_version', 'cwl', 'inputs', 'outputs']
 }
