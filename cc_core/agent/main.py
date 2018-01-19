@@ -2,6 +2,8 @@ import sys
 from collections import OrderedDict
 from argparse import ArgumentParser
 
+from cc_core.version import VERSION
+
 from cc_core.agent.connected.main import main as connected_main
 from cc_core.agent.cwl_io.main import main as cwl_io_main
 from cc_core.agent.cwl.main import main as cwl_main
@@ -12,9 +14,7 @@ from cc_core.agent.cwl.main import DESCRIPTION as CWL_DESCRIPTION
 
 SCRIPT_NAME = 'ccagent'
 
-VERSION = '2.0.0'
-
-DESCRIPTION = 'CC-Agent Copyright (C) 2017  Christoph Jansen. This software is distributed under the Apache 2.0 ' \
+DESCRIPTION = 'CC-Agent Copyright (C) 2018  Christoph Jansen. This software is distributed under the AGPL-3.0 ' \
               'LICENSE and is part of the Curious Containers project (https://www.curious-containers.cc).'
 
 MODES = OrderedDict([
