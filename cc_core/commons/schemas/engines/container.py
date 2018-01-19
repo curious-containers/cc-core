@@ -11,15 +11,24 @@ docker_schema = {
             'properties': {
                 'doc': {'type': 'string'},
                 'url': {'type': 'string'},
-                'auth': auth_schema
+                'auth': auth_schema,
+                'source': {
+                    'type': 'object',
+                    'properties': {
+                        'doc': {'type': 'string'},
+                        'url': {'type': 'string'}
+                    },
+                    'additionalProperties': False,
+                    'required': ['url']
+                }
             },
             'additionalProperties': False,
             'required': ['url']
         },
-        'ram': {'type': 'integer', 'minimum': 256}
+        'ram': {'type': 'integer', 'minimum': 256},
     },
     'additionalProperties': False,
-    'required': ['image', 'ram']
+    'required': ['image']
 }
 
 container_engines = {
