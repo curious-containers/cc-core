@@ -73,21 +73,21 @@ red_schema = {
         'cwl': cwl_schema,
         'inputs': red_inputs_schema,
         'outputs': red_outputs_schema,
-        'execution': {
-            'type': 'object',
-            'properties': {
-                'doc': {'type': 'string'},
-                'engine': {'enum': list(execution_engines.keys())},
-                'settings': {'type': 'object'}
-            },
-            'additionalProperties': False,
-            'required': ['engine', 'settings']
-        },
         'container': {
             'type': 'object',
             'properties': {
                 'doc': {'type': 'string'},
                 'engine': {'enum': list(container_engines.keys())},
+                'settings': {'type': 'object'}
+            },
+            'additionalProperties': False,
+            'required': ['engine', 'settings']
+        },
+        'execution': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'engine': {'enum': list(execution_engines.keys())},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -105,5 +105,5 @@ red_schema = {
         }
     },
     'additionalProperties': False,
-    'required': ['format_version', 'cwl', 'inputs', 'outputs']
+    'required': ['format_version', 'cwl', 'inputs', 'outputs', 'container']
 }

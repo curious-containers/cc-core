@@ -6,7 +6,7 @@ from shutil import which
 
 from cc_core.commons.exceptions import exception_format
 from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError
-from cc_core.commons.schemas.cwl import cwl_schema, job_schema
+from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
 
 
 ARGUMENT_TYPE_MAPPING = (
@@ -154,7 +154,7 @@ def cwl_validation(cwl_data, job_data):
         raise CWLSpecificationError('cwl does not comply with jsonschema')
 
     try:
-        validate(job_data, job_schema)
+        validate(job_data, cwl_job_schema)
     except:
         raise JobSpecificationError('job does not comply with jsonschema')
 

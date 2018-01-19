@@ -81,7 +81,7 @@ cwl_schema = {
     'required': ['cwlVersion', 'class', 'baseCommand', 'inputs', 'outputs']
 }
 
-job_schema = {
+cwl_job_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {
