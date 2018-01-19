@@ -163,14 +163,15 @@ def cwl_validation(cwl_data, job_data):
             raise JobSpecificationError('job argument "{}" is not specified in cwl'.format(key))
 
 
-def _check_base_command(base_command):
-    if not which(base_command):
+def cwl_to_command(cwl_data, job_data, input_dir=None, check_base_command=True):
+    base_command = cwl_data['baseCommand'].strip()
+
+    if len(base_command.split()) != 1:
         raise CWLSpecificationError('invalid baseCommand "{}"'.format(base_command))
 
-
-def cwl_to_command(cwl_data, job_data, inputs_dir=None):
-    base_command = cwl_data['baseCommand']
-    _check_base_command(base_command)
+    if check_base_command:
+        if not which(base_command):
+            raise CWLSpecificationError('invalid baseCommand "{}"'.format(base_command))
     command = [base_command]
     prefixed_arguments = []
     positional_arguments = []
@@ -213,10 +214,9 @@ def cwl_to_command(cwl_data, job_data, inputs_dir=None):
 
         if cwl_type == 'File':
             file_path = _location(key, arg)
-            file_path = os.path.expanduser(file_path)
 
-            if inputs_dir and not os.path.isabs(file_path):
-                file_path = os.path.join(inputs_dir, file_path)
+            if input_dir and not os.path.isabs(file_path):
+                file_path = os.path.join(input_dir, file_path)
 
             arg = file_path
 

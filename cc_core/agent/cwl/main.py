@@ -59,7 +59,7 @@ def run(cwl_file, job_file, outdir):
 
         input_dir = os.path.split(os.path.expanduser(job_file))[0]
 
-        command = cwl_to_command(cwl_data, job_data, input_dir)
+        command = cwl_to_command(cwl_data, job_data, input_dir=input_dir)
         result['command'] = command
 
         input_files = cwl_input_files(cwl_data, job_data, input_dir=input_dir)
