@@ -1,7 +1,6 @@
 import os
 from jsonschema import validate
 from urllib.parse import urlparse
-from traceback import format_exc
 from glob import glob
 from shutil import which
 
@@ -131,7 +130,7 @@ def cwl_output_files(cwl_data, output_dir=None):
         matches = glob(glob_path)
         try:
             if len(matches) != 1:
-                raise FileError('glob path "{}" does not match exactly one file')
+                raise FileError('glob path "{}" does not match exactly one file'.format(glob_path))
 
             file_path = matches[0]
             result['path'] = file_path
