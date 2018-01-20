@@ -29,7 +29,7 @@ def _assert_type(key, cwl_type, arg):
     raise CWLSpecificationError('argument "{}" has unknown type "{}"'.format(key, cwl_type))
 
 
-def _location(key, arg):
+def location(key, arg):
     if arg.get('path'):
         return os.path.expanduser(arg['path'])
 
@@ -82,8 +82,7 @@ def cwl_input_files(cwl_data, job_data, input_dir=None):
         if key in job_data:
             arg = job_data[key]
             try:
-                file_path = _location(key, arg)
-                file_path = os.path.expanduser(file_path)
+                file_path = location(key, arg)
 
                 if input_dir and not os.path.isabs(file_path):
                     file_path = os.path.join(os.path.expanduser(input_dir), file_path)
@@ -147,7 +146,7 @@ def cwl_output_files(cwl_data, output_dir=None):
     return results
 
 
-def cwl_validation(cwl_data, job_data):
+def cwl_validation(cwl_data, job_data, docker_requirement=False):
     try:
         validate(cwl_data, cwl_schema)
     except:
@@ -161,6 +160,13 @@ def cwl_validation(cwl_data, job_data):
     for key, val in job_data.items():
         if key not in cwl_data['inputs']:
             raise JobSpecificationError('job argument "{}" is not specified in cwl'.format(key))
+
+    if docker_requirement:
+        if not cwl_data.get('requirements'):
+            raise CWLSpecificationError('cwl does not contain DockerRequirement')
+
+        if not cwl_data['requirements'].get('DockerRequirement'):
+            raise CWLSpecificationError('cwl does not contain DockerRequirement')
 
 
 def cwl_to_command(cwl_data, job_data, input_dir=None, check_base_command=True):
@@ -213,7 +219,7 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_base_command=True):
             _assert_type(key, cwl_type, arg)
 
         if cwl_type == 'File':
-            file_path = _location(key, arg)
+            file_path = location(key, arg)
 
             if input_dir and not os.path.isabs(file_path):
                 file_path = os.path.join(input_dir, file_path)

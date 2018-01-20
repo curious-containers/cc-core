@@ -35,9 +35,6 @@ def main():
     result = run(**args.__dict__)
     print(json.dumps(result, indent=4))
 
-    if result['debug_info']:
-        return 1
-
     return 0
 
 

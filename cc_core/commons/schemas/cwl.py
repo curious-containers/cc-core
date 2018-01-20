@@ -16,7 +16,7 @@ cwl_schema = {
         'class': {'enum': ['CommandLineTool']},
         'baseCommand': {'type': 'string'},
         'doc': {'type': 'string'},
-        'hints': {
+        'requirements': {
             'type': 'object',
             'properties': {
                 'DockerRequirement': {
