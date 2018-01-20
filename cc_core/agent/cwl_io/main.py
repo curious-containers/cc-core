@@ -13,8 +13,7 @@ from cc_core.commons.exceptions import exception_format
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connector files for remote inputs and ' \
-              'outputs respectively. Refer to CWL (http://www.commonwl.org) and RED ' \
-              'documentations for more details.'
+              'outputs respectively.'
 
 
 def attach_args(parser):

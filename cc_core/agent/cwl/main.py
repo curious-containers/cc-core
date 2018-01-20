@@ -9,8 +9,7 @@ from cc_core.commons.shell import execute
 from cc_core.commons.exceptions import exception_format
 
 
-DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE. Refer to the CWL ' \
-              'documentation (http://www.commonwl.org) for more details.'
+DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE.'
 
 
 def attach_args(parser):
