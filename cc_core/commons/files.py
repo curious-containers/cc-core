@@ -1,15 +1,10 @@
 import os
-import requests
 import json
+import requests
 from urllib.parse import urlparse
 
+import cc_core.commons.yaml as yaml
 from cc_core.commons.exceptions import AgentError
-
-try:
-    from ruamel.yaml import YAML
-    yaml = YAML(typ='safe')
-except:
-    import ruamel.yaml as yaml
 
 
 def load_and_read(location, var_name):
