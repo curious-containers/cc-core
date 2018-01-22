@@ -43,9 +43,6 @@ def main():
     result = run(**args.__dict__)
     print(json.dumps(result, indent=4))
 
-    if result['debug_info']:
-        return 1
-
     return 0
 
 
@@ -53,7 +50,7 @@ def run(cwl, inputs, outputs, outdir):
     result = {
         'command': None,
         'input_files': None,
-        'process_data': None,
+        'process': None,
         'output_files': None,
         'debug_info': None
     }
@@ -80,7 +77,7 @@ def run(cwl, inputs, outputs, outdir):
 
         cwl_input_file_check(input_files)
         process_data = execute(command)
-        result['process_data'] = process_data
+        result['process'] = process_data
 
         output_files = cwl_output_files(cwl_data, output_dir=outdir)
         result['output_files'] = output_files
