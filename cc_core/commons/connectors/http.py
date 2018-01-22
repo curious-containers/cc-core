@@ -46,10 +46,14 @@ class Http:
         http_method_func = _http_method_func(access)
         auth_method_obj = _auth_method_obj(access)
 
+        verify = True
+        if access.get('disableSSLVerification'):
+            verify = False
+
         r = http_method_func(
             access['url'],
             auth=auth_method_obj,
-            verify=access.get('ssl_verify', True),
+            verify=verify,
             stream=True
         )
         r.raise_for_status()
@@ -69,13 +73,17 @@ class Http:
     def send(access, internal):
         http_method_func = _http_method_func(access)
         auth_method_obj = _auth_method_obj(access)
+        
+        verify = True
+        if access.get('disableSSLVerification'):
+            verify = False
 
         with open(internal['path'], 'rb') as f:
             r = http_method_func(
                 access['url'],
                 data=f,
                 auth=auth_method_obj,
-                verify=access.get('ssl_verify', True)
+                verify=verify
             )
             r.raise_for_status()
 
@@ -90,10 +98,14 @@ class HttpJson:
         http_method_func = _http_method_func(access)
         auth_method_obj = _auth_method_obj(access)
 
+        verify = True
+        if access.get('disableSSLVerification'):
+            verify = False
+
         r = http_method_func(
             access['url'],
             auth=auth_method_obj,
-            verify=access.get('ssl_verify', True)
+            verify=verify
         )
         r.raise_for_status()
         data = r.json()
@@ -113,15 +125,19 @@ class HttpJson:
         with open(internal['path']) as f:
             data = json.load(f)
 
-        if access.get('merge_agency_data') and internal.get('agency_data'):
-            for key, val in internal['agency_data'].items():
+        if access.get('mergeAgencyData') and internal.get('agencyData'):
+            for key, val in internal['agencyData'].items():
                 data[key] = val
+
+        verify = True
+        if access.get('disableSSLVerification'):
+            verify = False
 
         r = http_method_func(
             access['url'],
             json=data,
             auth=auth_method_obj,
-            verify=access.get('ssl_verify', True)
+            verify=verify
         )
         r.raise_for_status()
 

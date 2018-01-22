@@ -23,9 +23,13 @@ http_schema = {
             'additionalProperties': False,
             'required': ['username', 'password']
         },
-        'ssl_verify': {'type': 'boolean'},
-        'merge_agency_data':  {'type': 'boolean'}
+        'disableSSLVerification': {'type': 'boolean'},
+        'mergeAgencyData':  {'type': 'boolean'}
     },
     'additionalProperties': False,
     'required': ['url', 'method']
+}
+
+connectors = {
+    'http': http_schema
 }

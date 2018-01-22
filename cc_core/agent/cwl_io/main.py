@@ -49,10 +49,10 @@ def main():
 def run(cwl, inputs, outputs, outdir):
     result = {
         'command': None,
-        'input_files': None,
+        'inputFiles': None,
         'process': None,
-        'output_files': None,
-        'debug_info': None
+        'outputFiles': None,
+        'debugInfo': None
     }
 
     tmp_dir = tempfile.mkdtemp()
@@ -73,21 +73,21 @@ def run(cwl, inputs, outputs, outdir):
 
         receive(connector_manager, inputs_data, tmp_dir)
         input_files = cwl_input_files(cwl_data, job_data)
-        result['input_files'] = input_files
+        result['inputFiles'] = input_files
 
         cwl_input_file_check(input_files)
         process_data = execute(command)
         result['process'] = process_data
 
         output_files = cwl_output_files(cwl_data, output_dir=outdir)
-        result['output_files'] = output_files
+        result['outputFiles'] = output_files
 
         cwl_output_file_check(output_files)
 
         if outputs:
             send(connector_manager, output_files, outputs_data)
     except:
-        result['debug_info'] = exception_format()
+        result['debugInfo'] = exception_format()
     finally:
         shutil.rmtree(tmp_dir)
 

@@ -8,12 +8,12 @@ from cc_core.commons.schemas.engines.virtualization import virtualization_engine
 _connector_schema = {
     'type': 'object',
     'properties': {
-        'py_module': {'type': 'string'},
-        'py_class': {'type': 'string'},
+        'pyModule': {'type': 'string'},
+        'pyClass': {'type': 'string'},
         'access': {'type': 'object'}
     },
     'additionalProperties': False,
-    'required': ['py_module', 'py_class', 'access']
+    'required': ['pyModule', 'pyClass', 'access']
 }
 
 # Reproducible Experiment Description (RED)
@@ -69,8 +69,8 @@ red_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
-        'red_version': {'type': 'string'},
-        'cwl': cwl_schema,
+        'redVersion': {'type': 'string'},
+        'cli': cwl_schema,
         'inputs': red_inputs_schema,
         'outputs': red_outputs_schema,
         'container': {
@@ -105,5 +105,5 @@ red_schema = {
         }
     },
     'additionalProperties': False,
-    'required': ['format_version', 'cwl', 'inputs', 'outputs', 'container']
+    'required': ['redVersion', 'cli', 'inputs', 'outputs', 'container']
 }

@@ -3,6 +3,7 @@ from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
 from cc_core.commons.schemas.engines.container import container_engines
 from cc_core.commons.schemas.engines.execution import execution_engines
 from cc_core.commons.schemas.engines.virtualization import virtualization_engines
+from cc_core.commons.schemas.connectors import connectors
 
 
 schemas = [
@@ -12,6 +13,9 @@ schemas = [
     ('red-inputs', red_inputs_schema),
     ('red-outputs', red_outputs_schema)
 ]
+
+for e, s in connectors.items():
+    schemas.append(('red-connector-{}'.format(e), s))
 
 for e, s in container_engines.items():
     schemas.append(('red-container-{}'.format(e), s))

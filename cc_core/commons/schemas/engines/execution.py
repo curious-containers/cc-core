@@ -16,8 +16,8 @@ cc_agency_schema = {
             'additionalProperties': False,
             'required': ['url']
         },
-        'disable_image_pull': {'type': 'boolean'},
-        'enable_input_cache': {'type': 'boolean'}
+        'disableImagePull': {'type': 'boolean'},
+        'enableInputCache': {'type': 'boolean'}
     },
     'additionalProperties': False
 }
@@ -27,7 +27,7 @@ cc_faice_agent_schema = {
     'properties': {
         'doc': {'type': 'string'},
         'version': {'type': 'string'},
-        'disable_image_pull': {'type': 'boolean'},
+        'disableImagePull': {'type': 'boolean'},
     },
     'additionalProperties': False
 }
@@ -42,7 +42,7 @@ cwl_tool_schema = {
 }
 
 execution_engines = {
-    'cc_agency': cc_agency_schema,
-    'cc_faice_agent': cc_faice_agent_schema,
-    'cwl_tool': cwl_tool_schema
+    'cc-agency': cc_agency_schema,
+    'cc-faice-agent': cc_faice_agent_schema,
+    'cwl-tool': cwl_tool_schema
 }

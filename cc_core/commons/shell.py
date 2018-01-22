@@ -21,9 +21,9 @@ def execute(command):
     monitoring_data = monitor.result()
 
     return {
-        'std_out': [l for l in std_out.decode('utf-8').split('\n') if l],
-        'std_err': [l for l in std_err.decode('utf-8').split('\n') if l],
-        'return_code': return_code,
+        'stdOut': [l for l in std_out.decode('utf-8').split('\n') if l],
+        'stdErr': [l for l in std_err.decode('utf-8').split('\n') if l],
+        'returnCode': return_code,
         'monitoring': monitoring_data
     }
 
@@ -64,7 +64,7 @@ class ProcessMonitor:
     def result(self):
         with self.lock:
             return {
-                'max_vms_memory': self.max_vms_memory / (1024 * 1024),
-                'max_rss_memory': self.max_rss_memory / (1024 * 1024),
-                'wall_time': time() - self.timestamp
+                'maxVMSMemory': self.max_vms_memory / (1024 * 1024),
+                'maxRSSMemory': self.max_rss_memory / (1024 * 1024),
+                'wallTime': time() - self.timestamp
             }

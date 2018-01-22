@@ -41,10 +41,10 @@ def main():
 def run(cwl_file, job_file, outdir):
     result = {
         'command': None,
-        'input_files': None,
+        'inputFiles': None,
         'process': None,
-        'output_files': None,
-        'debug_info': None
+        'outputFiles': None,
+        'debugInfo': None
     }
 
     try:
@@ -59,7 +59,7 @@ def run(cwl_file, job_file, outdir):
         result['command'] = command
 
         input_files = cwl_input_files(cwl_data, job_data, input_dir=input_dir)
-        result['input_files'] = input_files
+        result['inputFiles'] = input_files
 
         cwl_input_file_check(input_files)
 
@@ -67,10 +67,10 @@ def run(cwl_file, job_file, outdir):
         result['process'] = process_data
 
         output_files = cwl_output_files(cwl_data, output_dir=outdir)
-        result['output_files'] = output_files
+        result['outputFiles'] = output_files
 
         cwl_output_file_check(output_files)
     except:
-        result['debug_info'] = exception_format()
+        result['debugInfo'] = exception_format()
 
     return result

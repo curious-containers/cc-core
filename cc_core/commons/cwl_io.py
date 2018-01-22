@@ -23,7 +23,7 @@ class ConnectorManager:
 
     @staticmethod
     def _cdata(connector_data):
-        return connector_data['py_module'], connector_data['py_class'], connector_data['access']
+        return connector_data['pyModule'], connector_data['pyClass'], connector_data['access']
 
     def _check_func(self, connector_key, funcname, spec_args, spec_kwargs):
         connector = self._imported_connectors[connector_key]
@@ -188,7 +188,7 @@ def send(connector_manager, output_files, outputs_data, agency_data=None):
         path = output_files[output_key]['path']
         internal = {
             'path': path,
-            'agency_data': agency_data
+            'agencyData': agency_data
         }
         connector_data = val['connector']
         connector_manager.send(connector_data, output_key, internal)
