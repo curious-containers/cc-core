@@ -69,7 +69,7 @@ red_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
-        'format_version': {'enum': ['2']},
+        'red_version': {'type': 'string'},
         'cwl': cwl_schema,
         'inputs': red_inputs_schema,
         'outputs': red_outputs_schema,

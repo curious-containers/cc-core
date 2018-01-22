@@ -25,6 +25,10 @@ class JobSpecificationError(Exception):
     pass
 
 
+class RedSpecificationError(Exception):
+    pass
+
+
 class ConnectorError(Exception):
     pass
 

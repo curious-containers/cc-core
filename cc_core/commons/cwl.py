@@ -1,5 +1,5 @@
 import os
-from jsonschema import validate
+import jsonschema
 from urllib.parse import urlparse
 from glob import glob
 from shutil import which
@@ -148,12 +148,12 @@ def cwl_output_files(cwl_data, output_dir=None):
 
 def cwl_validation(cwl_data, job_data, docker_requirement=False):
     try:
-        validate(cwl_data, cwl_schema)
+        jsonschema.validate(cwl_data, cwl_schema)
     except:
         raise CWLSpecificationError('cwl does not comply with jsonschema')
 
     try:
-        validate(job_data, cwl_job_schema)
+        jsonschema.validate(job_data, cwl_job_schema)
     except:
         raise JobSpecificationError('job does not comply with jsonschema')
 

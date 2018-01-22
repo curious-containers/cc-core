@@ -4,7 +4,8 @@ import jsonschema
 
 from cc_core.commons.schemas.cwl import cwl_schema
 from cc_core.commons.schemas.red import red_inputs_schema, red_outputs_schema
-from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError
+from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, CWLSpecificationError
+from cc_core.commons.exceptions import RedSpecificationError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
 SEND_RECEIVE_SPEC_KWARGS = []
@@ -109,17 +110,29 @@ class ConnectorManager:
 
 
 def cwl_io_validation(cwl_data, inputs_data, outputs_data):
-    jsonschema.validate(cwl_data, cwl_schema)
-    jsonschema.validate(inputs_data, red_inputs_schema)
+    try:
+        jsonschema.validate(cwl_data, cwl_schema)
+    except:
+        raise CWLSpecificationError('cwl does not comply with jsonschema')
+
+    try:
+        jsonschema.validate(inputs_data, red_inputs_schema)
+    except:
+        raise RedSpecificationError('red inputs do not comply with jsonschema')
 
     if outputs_data:
-        jsonschema.validate(outputs_data, red_outputs_schema)
+        try:
+            jsonschema.validate(outputs_data, red_outputs_schema)
+        except:
+            raise RedSpecificationError('red outputs do not comply with jsonschema')
 
         for key, val in outputs_data.items():
-            assert key in cwl_data['outputs']
+            if key not in cwl_data['outputs']:
+                raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
 
     for key, val in inputs_data.items():
-        assert key in cwl_data['inputs']
+        if key not in cwl_data['inputs']:
+            raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
 
 
 def import_and_validate_connectors(connector_manager, inputs_data, outputs_data):
