@@ -75,8 +75,8 @@ def cwl_input_files(cwl_data, job_data, input_dir=None):
         result = {
             'path': None,
             'size': None,
-            'is_optional': is_optional,
-            'debug_info': None
+            'isOptional': is_optional,
+            'debugInfo': None
         }
 
         if key in job_data:
@@ -95,7 +95,7 @@ def cwl_input_files(cwl_data, job_data, input_dir=None):
 
                 result['size'] = os.path.getsize(file_path) / (1024 * 1024)
             except:
-                result['debug_info'] = exception_format()
+                result['debugInfo'] = exception_format()
 
         results[key] = result
 
@@ -118,8 +118,8 @@ def cwl_output_files(cwl_data, output_dir=None):
         result = {
             'path': None,
             'size': None,
-            'is_optional': is_optional,
-            'debug_info': None
+            'isOptional': is_optional,
+            'debugInfo': None
         }
 
         glob_path = os.path.expanduser(val['outputBinding']['glob'])
@@ -139,7 +139,7 @@ def cwl_output_files(cwl_data, output_dir=None):
 
             result['size'] = os.path.getsize(file_path) / (1024 * 1024)
         except:
-            result['debug_info'] = exception_format()
+            result['debugInfo'] = exception_format()
 
         results[key] = result
 
