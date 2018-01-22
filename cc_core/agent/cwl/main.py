@@ -42,7 +42,7 @@ def run(cwl_file, job_file, outdir):
     result = {
         'command': None,
         'input_files': None,
-        'process_data': None,
+        'process': None,
         'output_files': None,
         'debug_info': None
     }
@@ -64,7 +64,7 @@ def run(cwl_file, job_file, outdir):
         cwl_input_file_check(input_files)
 
         process_data = execute(command)
-        result['process_data'] = process_data
+        result['process'] = process_data
 
         output_files = cwl_output_files(cwl_data, output_dir=outdir)
         result['output_files'] = output_files
