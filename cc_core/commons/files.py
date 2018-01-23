@@ -45,11 +45,19 @@ def read(raw_data, var_name):
     return data
 
 
+def file_extension(dump_format):
+    if dump_format == 'json':
+        return dump_format
+    if dump_format in ['yaml', 'yml']:
+        return 'yml'
+    raise AgentError('invalid dump format "{}"'.format(dump_format))
+
+
 def dump(stream, dump_format, file_name):
     if dump_format == 'json':
         with open(file_name, 'w') as f:
             json.dump(stream, f, indent=4)
-    elif dump_format == 'yaml':
+    elif dump_format in ['yaml', 'yml']:
         with open(file_name, 'w') as f:
             yaml.dump(stream, f)
     else:
@@ -62,7 +70,7 @@ def dump_print(stream, dump_format, error=False):
             print(json.dumps(stream, indent=4), file=sys.stderr)
         else:
             print(json.dumps(stream, indent=4))
-    elif dump_format == 'yaml':
+    elif dump_format in ['yaml', 'yml']:
         yaml.dump_print(stream, error=error)
     else:
         raise AgentError('invalid dump format "{}"'.format(dump_format))

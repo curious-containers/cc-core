@@ -16,6 +16,7 @@ try:
         else:
             yaml.dump(stream, sys.stdout)
 except:
+    # fallback for ruamel.yaml<0.15
     import ruamel.yaml as yaml
     from ruamel.yaml import Loader
 

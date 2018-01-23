@@ -1,4 +1,4 @@
-from cc_core.commons.schemas.red import red_schema, red_inputs_schema, red_outputs_schema
+from cc_core.commons.schemas.red import red_schema, red_inputs_schema, red_outputs_schema, red_jinja_schema
 from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
 from cc_core.commons.schemas.engines.container import container_engines
 from cc_core.commons.schemas.engines.execution import execution_engines
@@ -10,6 +10,7 @@ schemas = [
     ('cwl', cwl_schema),
     ('cwl-job', cwl_job_schema),
     ('red', red_schema),
+    ('red-jinja', red_jinja_schema),
     ('red-inputs', red_inputs_schema),
     ('red-outputs', red_outputs_schema)
 ]
