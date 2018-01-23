@@ -10,3 +10,7 @@ except:
 
     def load(stream):
         return yaml.load(stream, Loader=Loader)
+
+
+def dump(stream, file_handle=None):
+    return yaml.dump(stream, file_handle)

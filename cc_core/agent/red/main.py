@@ -3,9 +3,9 @@ import shutil
 import tempfile
 from argparse import ArgumentParser
 
-from cc_core.commons.files import load_and_read
-from cc_core.commons.cwl_io import inputs_to_job
-from cc_core.commons.cwl_io import cwl_io_validation, ConnectorManager, import_and_validate_connectors, receive, send
+from cc_core.commons.files import load_and_read, dumps
+from cc_core.commons.red import inputs_to_job
+from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute
@@ -18,20 +18,24 @@ DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connecto
 
 def attach_args(parser):
     parser.add_argument(
-        '-c', '--cwl', action='store', type=str, metavar='CWL_FILE', required=True,
+        'cwl_file', action='store', type=str, metavar='CWL_FILE',
         help='CWL_FILE containing a CLI description (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        '-i', '--inputs', action='store', type=str, metavar='INPUTS_FILE', required=True,
-        help='INPUTS_FILE in the RED connectors format (json/yaml) as local path or http url.'
+        'red_inputs_file', action='store', type=str, metavar='RED_INPUTS_FILE',
+        help='RED_INPUTS_FILE in the RED connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        '-o', '--outputs', action='store', type=str, metavar='OUTPUTS_FILE',
-        help='OUTPUTS_FILE in the RED connectors format (json/yaml) as local path or http url.'
+        '-o', '--red-outputs-file', action='store', type=str, metavar='RED_OUTPUTS_FILE',
+        help='RED_OUTPUTS_FILE in the RED connectors format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        '-d', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
+        '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
         help='Output directory, default current directory.'
+    )
+    parser.add_argument(
+        '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml'], default='json',
+        help='Dump format for data generated or aggregated by the agent.'
     )
 
 
@@ -41,12 +45,12 @@ def main():
     args = parser.parse_args()
 
     result = run(**args.__dict__)
-    print(json.dumps(result, indent=4))
+    print(dumps(result, args.dump_format))
 
     return 0
 
 
-def run(cwl, inputs, outputs, outdir):
+def run(cwl_file, red_inputs_file, red_outputs_file, outdir, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -58,11 +62,11 @@ def run(cwl, inputs, outputs, outdir):
     tmp_dir = tempfile.mkdtemp()
 
     try:
-        cwl_data = load_and_read(cwl, 'CWL_FILE')
-        inputs_data = load_and_read(inputs, 'INPUTS_FILE')
-        outputs_data = load_and_read(outputs, 'OUTPUTS_FILE')
+        cwl_data = load_and_read(cwl_file, 'CWL_FILE')
+        inputs_data = load_and_read(red_inputs_file, 'RED_INPUTS_FILE')
+        outputs_data = load_and_read(red_outputs_file, 'RED_OUTPUTS_FILE')
 
-        cwl_io_validation(cwl_data, inputs_data, outputs_data)
+        red_validation(cwl_data, inputs_data, outputs_data)
 
         connector_manager = ConnectorManager()
         import_and_validate_connectors(connector_manager, inputs_data, outputs_data)
@@ -84,7 +88,7 @@ def run(cwl, inputs, outputs, outdir):
 
         cwl_output_file_check(output_files)
 
-        if outputs:
+        if red_outputs_file:
             send(connector_manager, output_files, outputs_data)
     except:
         result['debugInfo'] = exception_format()

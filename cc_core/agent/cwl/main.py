@@ -2,7 +2,7 @@ import os
 import json
 from argparse import ArgumentParser
 
-from cc_core.commons.files import load_and_read
+from cc_core.commons.files import load_and_read, dumps
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute
@@ -22,8 +22,12 @@ def attach_args(parser):
         help='JOB_FILE in the CWL job format (json/yaml) as local path or http url.'
     )
     parser.add_argument(
-        '-d', '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
+        '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
         help='Output directory, default current directory.'
+    )
+    parser.add_argument(
+        '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml'], default='json',
+        help='Dump format for data generated or aggregated by the agent.'
     )
 
 
@@ -33,12 +37,12 @@ def main():
     args = parser.parse_args()
 
     result = run(**args.__dict__)
-    print(json.dumps(result, indent=4))
+    print(dumps(result, args.dump_format))
 
     return 0
 
 
-def run(cwl_file, job_file, outdir):
+def run(cwl_file, job_file, outdir, **_):
     result = {
         'command': None,
         'inputFiles': None,

@@ -5,11 +5,11 @@ from argparse import ArgumentParser
 from cc_core.version import VERSION
 
 from cc_core.agent.connected.main import main as connected_main
-from cc_core.agent.cwl_io.main import main as cwl_io_main
+from cc_core.agent.red.main import main as red_main
 from cc_core.agent.cwl.main import main as cwl_main
 
 from cc_core.agent.connected.main import DESCRIPTION as CONNECTED_DESCRIPTION
-from cc_core.agent.cwl_io.main import DESCRIPTION as CWL_IO_DESCRIPTION
+from cc_core.agent.red.main import DESCRIPTION as RED_DESCRIPTION
 from cc_core.agent.cwl.main import DESCRIPTION as CWL_DESCRIPTION
 
 SCRIPT_NAME = 'ccagent'
@@ -19,7 +19,7 @@ DESCRIPTION = 'CC-Agent Copyright (C) 2018  Christoph Jansen. This software is d
 
 MODES = OrderedDict([
     ('cwl', {'main': cwl_main, 'description': CWL_DESCRIPTION}),
-    ('cwl-io', {'main': cwl_io_main, 'description': CWL_IO_DESCRIPTION}),
+    ('red', {'main': red_main, 'description': RED_DESCRIPTION}),
     ('connected', {'main': connected_main, 'description': CONNECTED_DESCRIPTION})
 ])
 
@@ -31,7 +31,7 @@ def main():
     parser.add_argument(
         '-v', '--version', action='version', version=VERSION
     )
-    subparsers = parser.add_subparsers(title='operation modes')
+    subparsers = parser.add_subparsers(title='modes')
 
     sub_parser = None
     for key, val in MODES.items():

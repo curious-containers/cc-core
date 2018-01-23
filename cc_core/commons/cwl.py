@@ -150,12 +150,12 @@ def cwl_validation(cwl_data, job_data, docker_requirement=False):
     try:
         jsonschema.validate(cwl_data, cwl_schema)
     except:
-        raise CWLSpecificationError('cwl does not comply with jsonschema')
+        raise CWLSpecificationError('cwl file does not comply with jsonschema')
 
     try:
         jsonschema.validate(job_data, cwl_job_schema)
     except:
-        raise JobSpecificationError('job does not comply with jsonschema')
+        raise JobSpecificationError('job file does not comply with jsonschema')
 
     for key, val in job_data.items():
         if key not in cwl_data['inputs']:

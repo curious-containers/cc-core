@@ -109,22 +109,22 @@ class ConnectorManager:
             raise AccessError('could not access output file "{}"'.format(output_key))
 
 
-def cwl_io_validation(cwl_data, inputs_data, outputs_data):
+def red_validation(cwl_data, inputs_data, outputs_data):
     try:
         jsonschema.validate(cwl_data, cwl_schema)
     except:
-        raise CWLSpecificationError('cwl does not comply with jsonschema')
+        raise CWLSpecificationError('cwl file does not comply with jsonschema')
 
     try:
         jsonschema.validate(inputs_data, red_inputs_schema)
     except:
-        raise RedSpecificationError('red inputs do not comply with jsonschema')
+        raise RedSpecificationError('red inputs file do not comply with jsonschema')
 
     if outputs_data:
         try:
             jsonschema.validate(outputs_data, red_outputs_schema)
         except:
-            raise RedSpecificationError('red outputs do not comply with jsonschema')
+            raise RedSpecificationError('red outputs file do not comply with jsonschema')
 
         for key, val in outputs_data.items():
             if key not in cwl_data['outputs']:

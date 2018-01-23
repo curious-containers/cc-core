@@ -1,4 +1,4 @@
-from cc_core.agent.cwl_io.main import main
+from cc_core.agent.red.main import main
 
 
 if __name__ == '__main__':

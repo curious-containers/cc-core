@@ -45,7 +45,8 @@ red_inputs_schema = {
                 }
             ]
         }
-    }
+    },
+    'additionalProperties': False
 }
 
 
@@ -61,7 +62,8 @@ red_outputs_schema = {
             'additionalProperties': False,
             'required': ['class', 'connector']
         }
-    }
+    },
+    'additionalProperties': False
 }
 
 
@@ -106,4 +108,12 @@ red_schema = {
     },
     'additionalProperties': False,
     'required': ['redVersion', 'cli', 'inputs', 'outputs', 'container']
+}
+
+red_jinja_schema = {
+    'type': 'object',
+    'patternProperties': {
+        pattern_key: {'type': 'string'}
+    },
+    'additionalProperties': False
 }
