@@ -2,7 +2,7 @@ import os
 import json
 from argparse import ArgumentParser
 
-from cc_core.commons.files import load_and_read, dumps
+from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute
@@ -37,7 +37,7 @@ def main():
     args = parser.parse_args()
 
     result = run(**args.__dict__)
-    print(dumps(result, args.dump_format))
+    dump_print(result, args.dump_format)
 
     return 0
 

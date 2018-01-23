@@ -8,6 +8,9 @@ import cc_core.commons.yaml as yaml
 from cc_core.commons.exceptions import AgentError
 
 
+JSON_INDENT = 4
+
+
 def load_and_read(location, var_name):
     if not location:
         return None
@@ -45,19 +48,24 @@ def read(raw_data, var_name):
 def dump(stream, dump_format, file_name):
     if dump_format == 'json':
         with open(file_name, 'w') as f:
-            return json.dump(stream, f, indent=4)
-    if dump_format == 'yaml':
+            json.dump(stream, f, indent=4)
+    elif dump_format == 'yaml':
         with open(file_name, 'w') as f:
-            return yaml.dump(stream, f)
-    raise AgentError('unrecognized dump format "{}"'.format(dump_format))
+            yaml.dump(stream, f)
+    else:
+        raise AgentError('invalid dump format "{}"'.format(dump_format))
 
 
-def dumps(stream, dump_format):
+def dump_print(stream, dump_format, error=False):
     if dump_format == 'json':
-        return json.dumps(stream, indent=4)
-    if dump_format == 'yaml':
-        return yaml.dumps(stream)
-    raise AgentError('unrecognized dump format "{}"'.format(dump_format))
+        if error:
+            print(json.dumps(stream, indent=4), file=sys.stderr)
+        else:
+            print(json.dumps(stream, indent=4))
+    elif dump_format == 'yaml':
+        yaml.dump_print(stream, error=error)
+    else:
+        raise AgentError('invalid dump format "{}"'.format(dump_format))
 
 
 def _http(location, var_name):

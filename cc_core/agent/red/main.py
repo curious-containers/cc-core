@@ -3,7 +3,7 @@ import shutil
 import tempfile
 from argparse import ArgumentParser
 
-from cc_core.commons.files import load_and_read, dumps
+from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.red import inputs_to_job
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command
@@ -45,7 +45,7 @@ def main():
     args = parser.parse_args()
 
     result = run(**args.__dict__)
-    print(dumps(result, args.dump_format))
+    dump_print(result, args.dump_format)
 
     return 0
 

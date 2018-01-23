@@ -1,9 +1,20 @@
+import sys
+
 try:
     from ruamel.yaml import YAML
     yaml = YAML(typ='safe')
 
     def load(stream):
         return yaml.load(stream)
+
+    def dump(stream, file_handle):
+        yaml.dump(stream, file_handle)
+
+    def dump_print(stream, error=False):
+        if error:
+            yaml.dump(stream, sys.stderr)
+        else:
+            yaml.dump(stream, sys.stdout)
 except:
     import ruamel.yaml as yaml
     from ruamel.yaml import Loader
@@ -12,9 +23,12 @@ except:
         return yaml.load(stream, Loader=Loader)
 
 
-def dump(stream, file_handle):
-    return yaml.dump(stream, file_handle)
+    def dump(stream, file_handle):
+        yaml.dump(stream, file_handle)
 
 
-def dumps(stream):
-    return yaml.dump(stream)
+    def dump_print(stream, error=False):
+        if error:
+            print(yaml.dump(stream).rstrip(), file=sys.stderr)
+        else:
+            print(yaml.dump(stream).rstrip())
