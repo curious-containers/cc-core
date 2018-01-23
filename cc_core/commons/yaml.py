@@ -3,6 +3,7 @@ import sys
 try:
     from ruamel.yaml import YAML
     yaml = YAML(typ='safe')
+    yaml.default_flow_style = False
 
     def load(stream):
         return yaml.load(stream)
@@ -25,11 +26,11 @@ except:
 
 
     def dump(stream, file_handle):
-        yaml.dump(stream, file_handle)
+        yaml.safe_dump(stream, file_handle, default_flow_style=False)
 
 
     def dump_print(stream, error=False):
         if error:
-            print(yaml.dump(stream).rstrip(), file=sys.stderr)
+            print(yaml.safe_dump(stream, default_flow_style=False).rstrip(), file=sys.stderr)
         else:
-            print(yaml.dump(stream).rstrip())
+            print(yaml.safe_dump(stream, default_flow_style=False).rstrip())
