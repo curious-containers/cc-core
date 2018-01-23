@@ -21,7 +21,7 @@ setup(
         'cc_core.commons.connectors',
         'cc_core.agent',
         'cc_core.agent.cwl',
-        'cc_core.agent.cwl_io',
+        'cc_core.agent.red',
         'cc_core.agent.connected'
     ],
     entry_points={
