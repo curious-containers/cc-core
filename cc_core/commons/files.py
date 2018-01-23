@@ -43,7 +43,6 @@ def read(raw_data, var_name):
 
 
 def dump(stream, dump_format, file_name):
-    print('dump', dump_format)
     if dump_format == 'json':
         with open(file_name, 'w') as f:
             return json.dump(stream, f, indent=4)
@@ -54,11 +53,10 @@ def dump(stream, dump_format, file_name):
 
 
 def dumps(stream, dump_format):
-    print('dumps', dump_format)
     if dump_format == 'json':
         return json.dumps(stream, indent=4)
     if dump_format == 'yaml':
-        return yaml.dump(stream)
+        return yaml.dumps(stream)
     raise AgentError('unrecognized dump format "{}"'.format(dump_format))
 
 

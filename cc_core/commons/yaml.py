@@ -12,5 +12,9 @@ except:
         return yaml.load(stream, Loader=Loader)
 
 
-def dump(stream, file_handle=None):
+def dump(stream, file_handle):
     return yaml.dump(stream, file_handle)
+
+
+def dumps(stream):
+    return yaml.dump(stream)
