@@ -1,9 +1,5 @@
 from cc_core.commons.schemas.common import pattern_key
 from cc_core.commons.schemas.cwl import cwl_schema
-from cc_core.commons.schemas.engines.container import container_engines
-from cc_core.commons.schemas.engines.execution import execution_engines
-from cc_core.commons.schemas.engines.virtualization import virtualization_engines
-
 
 _connector_schema = {
     'type': 'object',
@@ -79,7 +75,7 @@ red_schema = {
             'type': 'object',
             'properties': {
                 'doc': {'type': 'string'},
-                'engine': {'enum': list(container_engines.keys())},
+                'engine': {'type': 'string'},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -89,7 +85,7 @@ red_schema = {
             'type': 'object',
             'properties': {
                 'doc': {'type': 'string'},
-                'engine': {'enum': list(execution_engines.keys())},
+                'engine': {'type': 'string'},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,
@@ -99,7 +95,7 @@ red_schema = {
             'type': 'object',
             'properties': {
                 'doc': {'type': 'string'},
-                'engine': {'enum': list(virtualization_engines.keys())},
+                'engine': {'type': 'string'},
                 'settings': {'type': 'object'}
             },
             'additionalProperties': False,

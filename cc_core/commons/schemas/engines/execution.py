@@ -1,7 +1,7 @@
 from cc_core.commons.schemas.common import auth_schema
 
 
-cc_agency_schema = {
+ccagency_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
@@ -22,7 +22,7 @@ cc_agency_schema = {
     'additionalProperties': False
 }
 
-cc_faice_agent_schema = {
+ccfaice_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
@@ -32,7 +32,7 @@ cc_faice_agent_schema = {
     'additionalProperties': False
 }
 
-cwl_tool_schema = {
+cwltool_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
@@ -42,7 +42,7 @@ cwl_tool_schema = {
 }
 
 execution_engines = {
-    'cc-agency': cc_agency_schema,
-    'cc-faice-agent': cc_faice_agent_schema,
-    'cwl-tool': cwl_tool_schema
+    'ccagency': ccagency_schema,
+    'ccfaice': ccfaice_schema,
+    'cwltool': cwltool_schema
 }

@@ -9,6 +9,10 @@ class AgentError(Exception):
     pass
 
 
+class EngineError(Exception):
+    pass
+
+
 class FileError(Exception):
     pass
 
