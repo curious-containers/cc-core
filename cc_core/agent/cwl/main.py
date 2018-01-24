@@ -26,8 +26,8 @@ def attach_args(parser):
         help='Output directory, default current directory.'
     )
     parser.add_argument(
-        '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml'], default='json',
-        help='Dump format for data generated or aggregated by the agent.'
+        '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml', 'yml'],
+        default='yaml', help='Dump format for data written to files or stdout.'
     )
 
 
