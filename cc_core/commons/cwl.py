@@ -169,16 +169,26 @@ def cwl_validation(cwl_data, job_data, docker_requirement=False):
             raise CWLSpecificationError('cwl does not contain DockerRequirement')
 
 
-def cwl_to_command(cwl_data, job_data, input_dir=None, check_base_command=True):
-    base_command = cwl_data['baseCommand'].strip()
+def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
+    base_command = cwl_data['baseCommand']
 
-    if len(base_command.split()) != 1:
-        raise CWLSpecificationError('invalid baseCommand "{}"'.format(base_command))
-
-    if check_base_command:
-        if not which(base_command):
+    if isinstance(base_command, list):
+        if len(base_command) < 1:
             raise CWLSpecificationError('invalid baseCommand "{}"'.format(base_command))
-    command = [base_command]
+
+        executable = base_command[0].strip()
+        subcommands = base_command[1:]
+    else:
+        executable = base_command.strip()
+        subcommands = []
+
+    if check_executable:
+        if not which(executable):
+            raise CWLSpecificationError('invalid executable "{}"'.format(executable))
+
+    joined_subcommands = ' '.join([executable] + subcommands)
+
+    command = [joined_subcommands]
     prefixed_arguments = []
     positional_arguments = []
 

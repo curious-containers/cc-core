@@ -14,7 +14,15 @@ cwl_schema = {
     'properties': {
         'cwlVersion': {'type': ['string', 'number']},
         'class': {'enum': ['CommandLineTool']},
-        'baseCommand': {'type': 'string'},
+        'baseCommand': {
+            'oneOf': [
+                {'type': 'string'},
+                {
+                    'type': 'array',
+                    'items': {'type': 'string'}
+                }
+            ]
+        },
         'doc': {'type': 'string'},
         'requirements': {
             'type': 'object',
