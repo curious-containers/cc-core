@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import requests
+import textwrap
 from urllib.parse import urlparse
 
 import cc_core.commons.yaml as yaml
@@ -74,6 +75,15 @@ def dump_print(stream, dump_format, error=False):
         yaml.dump_print(stream, error=error)
     else:
         raise AgentError('invalid dump format "{}"'.format(dump_format))
+
+
+def wrapped_print(blocks, error=False):
+    if error:
+        for block in blocks:
+            print(textwrap.fill(block), file=sys.stderr)
+    else:
+        for block in blocks:
+            print(textwrap.fill(block))
 
 
 def _http(location, var_name):
