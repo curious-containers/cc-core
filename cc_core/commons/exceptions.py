@@ -2,7 +2,7 @@ from traceback import format_exc
 
 
 def exception_format():
-    return [l.replace('"', "'") for l in format_exc().split('\n') if l]
+    return [l for l in format_exc().split('\n') if l]
 
 
 class AgentError(Exception):
