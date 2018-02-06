@@ -45,7 +45,7 @@ def location(key, arg):
 def _file_check(file_data, error_text):
     missing_files = []
     for key, val in file_data.items():
-        if val['size'] is None and not val['is_optional']:
+        if val['size'] is None and not val['isOptional']:
             missing_files.append(key)
     if missing_files:
         raise FileError(error_text.format(missing_files))
