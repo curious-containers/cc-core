@@ -166,7 +166,7 @@ def cwl_validation(cwl_data, job_data, docker_requirement=False):
             raise CWLSpecificationError('cwl does not contain DockerRequirement')
 
         if not cwl_data['requirements'].get('DockerRequirement'):
-            raise CWLSpecificationError('cwl does not contain DockerRequirement')
+            raise CWLSpecificationError('DockerRequirement is missing in cwl')
 
 
 def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):

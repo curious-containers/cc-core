@@ -108,7 +108,7 @@ class ConnectorManager:
             raise AccessError('could not access output file "{}"'.format(output_key))
 
 
-def red_validation(red_data, ignore_outputs):
+def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
     except:
@@ -122,6 +122,10 @@ def red_validation(red_data, ignore_outputs):
         for key, val in red_data['outputs'].items():
             if key not in red_data['cli']['outputs']:
                 raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
+
+    if container_requirement:
+        if not red_data.get('container'):
+            raise RedSpecificationError('container engine description is missing in red file')
 
 
 def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
