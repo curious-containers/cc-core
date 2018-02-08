@@ -81,7 +81,7 @@ def run(red_file, outdir, ignore_outputs, **_):
         cwl_output_file_check(output_files)
 
         if not ignore_outputs and red_data.get('outputs'):
-            send(connector_manager, output_files, red_data['outputs'])
+            send(connector_manager, output_files, red_data)
     except:
         result['debugInfo'] = exception_format()
     finally:
