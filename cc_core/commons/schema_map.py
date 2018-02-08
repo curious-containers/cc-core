@@ -12,8 +12,6 @@ schemas = OrderedDict([
     ('cwl', cwl_schema),
     ('cwl-job', cwl_job_schema),
     ('red', red_schema),
-    ('red-inputs', red_inputs_schema),
-    ('red-outputs', red_outputs_schema),
     ('red-jinja', red_jinja_schema)
 ])
 

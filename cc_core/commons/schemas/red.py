@@ -103,8 +103,9 @@ red_schema = {
         }
     },
     'additionalProperties': False,
-    'required': ['redVersion', 'cli', 'inputs', 'outputs', 'container']
+    'required': ['redVersion', 'cli', 'inputs']
 }
+
 
 red_jinja_schema = {
     'type': 'object',

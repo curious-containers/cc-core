@@ -2,8 +2,7 @@ import os
 import inspect
 import jsonschema
 
-from cc_core.commons.schemas.cwl import cwl_schema
-from cc_core.commons.schemas.red import red_inputs_schema, red_outputs_schema
+from cc_core.commons.schemas.red import red_schema
 from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, CWLSpecificationError
 from cc_core.commons.exceptions import RedSpecificationError
 
@@ -109,34 +108,24 @@ class ConnectorManager:
             raise AccessError('could not access output file "{}"'.format(output_key))
 
 
-def red_validation(cwl_data, inputs_data, outputs_data):
+def red_validation(red_data, ignore_outputs):
     try:
-        jsonschema.validate(cwl_data, cwl_schema)
+        jsonschema.validate(red_data, red_schema)
     except:
-        raise CWLSpecificationError('cwl file does not comply with jsonschema')
+        raise RedSpecificationError('red file does not comply with jsonschema')
 
-    try:
-        jsonschema.validate(inputs_data, red_inputs_schema)
-    except:
-        raise RedSpecificationError('red inputs file does not comply with jsonschema')
-
-    if outputs_data:
-        try:
-            jsonschema.validate(outputs_data, red_outputs_schema)
-        except:
-            raise RedSpecificationError('red outputs file does not comply with jsonschema')
-
-        for key, val in outputs_data.items():
-            if key not in cwl_data['outputs']:
-                raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
-
-    for key, val in inputs_data.items():
-        if key not in cwl_data['inputs']:
+    for key, val in red_data['inputs'].items():
+        if key not in red_data['cli']['inputs']:
             raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
 
+    if not ignore_outputs and red_data.get('outputs'):
+        for key, val in red_data['outputs'].items():
+            if key not in red_data['cli']['outputs']:
+                raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
 
-def import_and_validate_connectors(connector_manager, inputs_data, outputs_data):
-    for input_key, val in inputs_data.items():
+
+def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
+    for input_key, val in red_data['inputs'].items():
         if not isinstance(val, dict):
             continue
 
@@ -144,8 +133,8 @@ def import_and_validate_connectors(connector_manager, inputs_data, outputs_data)
         connector_manager.import_connector(connector_data)
         connector_manager.receive_validate(connector_data, input_key)
 
-    if outputs_data:
-        for output_key, val in outputs_data.items():
+    if not ignore_outputs and red_data.get('outputs'):
+        for output_key, val in red_data['outputs'].items():
             if not isinstance(val, dict):
                 continue
 
@@ -154,10 +143,10 @@ def import_and_validate_connectors(connector_manager, inputs_data, outputs_data)
             connector_manager.send_validate(connector_data, output_key)
 
 
-def inputs_to_job(inputs_data, tmp_dir):
+def inputs_to_job(red_data, tmp_dir):
     job = {}
 
-    for key, val in inputs_data.items():
+    for key, val in red_data['inputs'].items():
         if not isinstance(val, dict):
             job[key] = val
             continue
@@ -171,8 +160,8 @@ def inputs_to_job(inputs_data, tmp_dir):
     return job
 
 
-def receive(connector_manager, inputs_data, tmp_dir):
-    for input_key, val in inputs_data.items():
+def receive(connector_manager, red_data, tmp_dir):
+    for input_key, val in red_data['inputs'].items():
         if not isinstance(val, dict):
             continue
 
@@ -183,8 +172,8 @@ def receive(connector_manager, inputs_data, tmp_dir):
         connector_manager.receive(connector_data, input_key, internal)
 
 
-def send(connector_manager, output_files, outputs_data, agency_data=None):
-    for output_key, val in outputs_data.items():
+def send(connector_manager, output_files, red_data, agency_data=None):
+    for output_key, val in red_data['outputs'].items():
         path = output_files[output_key]['path']
         internal = {
             'path': path,
