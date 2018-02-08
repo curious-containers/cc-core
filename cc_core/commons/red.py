@@ -4,7 +4,7 @@ import jsonschema
 
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
-from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, CWLSpecificationError
+from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError
 from cc_core.commons.exceptions import RedSpecificationError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
