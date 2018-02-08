@@ -2,6 +2,7 @@ import os
 import inspect
 import jsonschema
 
+from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
 from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, CWLSpecificationError
 from cc_core.commons.exceptions import RedSpecificationError
@@ -113,6 +114,13 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
         jsonschema.validate(red_data, red_schema)
     except:
         raise RedSpecificationError('red file does not comply with jsonschema')
+
+    if not red_data['redVersion'] == RED_VERSION:
+        raise RedSpecificationError(
+            'red version "{}" specified in RED_FILE is not compatible with red version "{}" of cc-faice'.format(
+                red_data['redVersion'], RED_VERSION
+            )
+        )
 
     for key, val in red_data['inputs'].items():
         if key not in red_data['cli']['inputs']:
