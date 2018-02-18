@@ -1,3 +1,4 @@
+import os
 from subprocess import Popen, PIPE
 from threading import Thread
 from psutil import Process
@@ -5,12 +6,14 @@ from time import sleep
 from threading import Lock
 from time import time
 
+from cc_core.commons.exceptions import JobExecutionError
+
 
 SUPERVISION_INTERVAL_SECONDS = 1
 
 
 def execute(command):
-    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
+    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=False, universal_newlines=True)
 
     monitor = ProcessMonitor(sp)
     t = Thread(target=monitor.start)
@@ -21,11 +24,16 @@ def execute(command):
     monitoring_data = monitor.result()
 
     return {
-        'stdOut': [l for l in std_out.decode('utf-8').split('\n') if l],
-        'stdErr': [l for l in std_err.decode('utf-8').split('\n') if l],
+        'stdOut': [l for l in std_out.split(os.linesep) if l],
+        'stdErr': [l for l in std_err.split(os.linesep) if l],
         'returnCode': return_code,
         'monitoring': monitoring_data
     }
+
+
+def shell_result_check(process_data):
+    if process_data['returnCode'] != 0:
+        raise JobExecutionError('process returned non-zero exit code "{}"'.format(process_data['returnCode']))
 
 
 class ProcessMonitor:

@@ -186,9 +186,7 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
         if not which(executable):
             raise CWLSpecificationError('invalid executable "{}"'.format(executable))
 
-    joined_subcommands = ' '.join([executable] + subcommands)
-
-    command = [joined_subcommands]
+    command = [executable] + subcommands
     prefixed_arguments = []
     positional_arguments = []
 
@@ -291,4 +289,4 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
     command += prefixed_arguments
     command += [p['arg'] for p in back_positional_arguments]
 
-    return ' '.join([str(e) for e in command])
+    return command

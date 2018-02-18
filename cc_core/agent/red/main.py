@@ -7,7 +7,7 @@ from cc_core.commons.red import inputs_to_job
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
-from cc_core.commons.shell import execute
+from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format
 
 
@@ -32,6 +32,10 @@ def attach_args(parser):
         '--ignore-outputs', action='store_true',
         help='Ignore RED connectors specified in RED_FILE outputs section.'
     )
+    parser.add_argument(
+        '--return-zero', action='store_true',
+        help='Always return exit code zero.'
+    )
 
 
 def main():
@@ -42,7 +46,10 @@ def main():
     result = run(**args.__dict__)
     dump_print(result, args.dump_format)
 
-    return 0
+    if args.return_zero or result['state'] == 'succeeded':
+        return 0
+
+    return 1
 
 
 def run(red_file, outdir, ignore_outputs, **_):
@@ -51,7 +58,8 @@ def run(red_file, outdir, ignore_outputs, **_):
         'inputFiles': None,
         'process': None,
         'outputFiles': None,
-        'debugInfo': None
+        'debugInfo': None,
+        'state': 'succeeded'
     }
 
     tmp_dir = tempfile.mkdtemp()
@@ -70,20 +78,21 @@ def run(red_file, outdir, ignore_outputs, **_):
         receive(connector_manager, red_data, tmp_dir)
         input_files = cwl_input_files(red_data['cli'], job_data)
         result['inputFiles'] = input_files
-
         cwl_input_file_check(input_files)
+
         process_data = execute(command)
         result['process'] = process_data
+        shell_result_check(process_data)
 
         output_files = cwl_output_files(red_data['cli'], output_dir=outdir)
         result['outputFiles'] = output_files
-
         cwl_output_file_check(output_files)
 
         if not ignore_outputs and red_data.get('outputs'):
             send(connector_manager, output_files, red_data)
     except:
         result['debugInfo'] = exception_format()
+        result['state'] = 'failed'
     finally:
         shutil.rmtree(tmp_dir)
 

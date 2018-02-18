@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
-from cc_core.commons.shell import execute
+from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format
 
 
@@ -29,6 +29,10 @@ def attach_args(parser):
         '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml', 'yml'],
         default='yaml', help='Dump format for data written to files or stdout, default is "yaml".'
     )
+    parser.add_argument(
+        '--return-zero', action='store_true',
+        help='Always return exit code zero.'
+    )
 
 
 def main():
@@ -39,7 +43,10 @@ def main():
     result = run(**args.__dict__)
     dump_print(result, args.dump_format)
 
-    return 0
+    if args.return_zero or result['state'] == 'succeeded':
+        return 0
+
+    return 1
 
 
 def run(cwl_file, job_file, outdir, **_):
@@ -48,7 +55,8 @@ def run(cwl_file, job_file, outdir, **_):
         'inputFiles': None,
         'process': None,
         'outputFiles': None,
-        'debugInfo': None
+        'debugInfo': None,
+        'state': 'succeeded'
     }
 
     try:
@@ -64,17 +72,17 @@ def run(cwl_file, job_file, outdir, **_):
 
         input_files = cwl_input_files(cwl_data, job_data, input_dir=input_dir)
         result['inputFiles'] = input_files
-
         cwl_input_file_check(input_files)
 
         process_data = execute(command)
         result['process'] = process_data
+        shell_result_check(process_data)
 
         output_files = cwl_output_files(cwl_data, output_dir=outdir)
         result['outputFiles'] = output_files
-
         cwl_output_file_check(output_files)
     except:
         result['debugInfo'] = exception_format()
+        result['state'] = 'failed'
 
     return result
