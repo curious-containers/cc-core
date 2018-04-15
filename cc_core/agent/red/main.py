@@ -9,7 +9,7 @@ from cc_core.commons.red import red_validation, ConnectorManager, import_and_val
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
-from cc_core.commons.exceptions import exception_format
+from cc_core.commons.exceptions import exception_format, RedValidationError
 from cc_core.commons.jinja import jinja_validation, template_values, fill_template
 
 
@@ -74,6 +74,7 @@ def run(red_file, jinja_file, destroy_jinja_file, outdir, ignore_outputs, **_):
     }
 
     tmp_dir = tempfile.mkdtemp()
+    template_vals = None
 
     try:
         red_raw = load(red_file, 'RED_FILE')
@@ -114,6 +115,9 @@ def run(red_file, jinja_file, destroy_jinja_file, outdir, ignore_outputs, **_):
 
         if not ignore_outputs and red_data.get('outputs'):
             send(connector_manager, output_files, red_data)
+    except RedValidationError:
+        result['debugInfo'] = exception_format(template_vals=template_vals)
+        result['state'] = 'failed'
     except:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'

@@ -5,7 +5,7 @@ import jsonschema
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
 from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError
-from cc_core.commons.exceptions import RedSpecificationError
+from cc_core.commons.exceptions import RedSpecificationError, RedValidationError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
 SEND_RECEIVE_SPEC_KWARGS = []
@@ -113,7 +113,7 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
     except:
-        raise RedSpecificationError('red file does not comply with jsonschema')
+        raise RedValidationError('red file does not comply with jsonschema')
 
     if not red_data['redVersion'] == RED_VERSION:
         raise RedSpecificationError(

@@ -4,14 +4,14 @@ from jinja2 import Template, Environment, meta
 
 from cc_core.commons.files import wrapped_print
 from cc_core.commons.schemas.red import red_jinja_schema
-from cc_core.commons.exceptions import RedSpecificationError, RedVariablesError
+from cc_core.commons.exceptions import RedValidationError, RedVariablesError
 
 
 def jinja_validation(jinja_data):
     try:
         jsonschema.validate(jinja_data, red_jinja_schema)
     except:
-        raise RedSpecificationError('jinja file does not comply with jsonschema')
+        raise RedValidationError('jinja file does not comply with jsonschema')
 
 
 def fill_template(template, template_vals):
