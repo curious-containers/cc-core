@@ -277,19 +277,16 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
 
     positional_arguments = [p for p in positional_arguments if p is not None]
 
-    #first_array_index = len(positional_arguments)
-    #for i, p in enumerate(positional_arguments):
-    #    if p['is_array']:
-    #        first_array_index = i
-    #        break
-    #front_positional_arguments = positional_arguments[:first_array_index]
-    #back_positional_arguments = positional_arguments[first_array_index:]
+    first_array_index = len(positional_arguments)
+    for i, p in enumerate(positional_arguments):
+        if p['is_array']:
+            first_array_index = i
+            break
+    front_positional_arguments = positional_arguments[:first_array_index]
+    back_positional_arguments = positional_arguments[first_array_index:]
 
-    #command += [p['arg'] for p in front_positional_arguments]
-    #command += prefixed_arguments
-    #command += [p['arg'] for p in back_positional_arguments]
-
+    command += [p['arg'] for p in front_positional_arguments]
     command += prefixed_arguments
-    command += [p['arg'] for p in positional_arguments]
+    command += [p['arg'] for p in back_positional_arguments]
 
     return [str(c) for c in command]
