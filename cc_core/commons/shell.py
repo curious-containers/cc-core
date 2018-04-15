@@ -13,7 +13,7 @@ SUPERVISION_INTERVAL_SECONDS = 1
 
 
 def execute(command):
-    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=False, universal_newlines=True)
+    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
 
     monitor = ProcessMonitor(sp)
     t = Thread(target=monitor.start)
