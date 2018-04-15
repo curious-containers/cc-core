@@ -29,7 +29,7 @@ def attach_args(parser):
     )
     parser.add_argument(
         '--destroy-jinja-file', action='store_true',
-        help='Delete JINJA_FILE after use.'
+        help='Destroy JINJA_FILE after use.'
     )
     parser.add_argument(
         '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
