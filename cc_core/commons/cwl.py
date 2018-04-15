@@ -289,4 +289,4 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
     command += prefixed_arguments
     command += [p['arg'] for p in back_positional_arguments]
 
-    return command
+    return [str(c) for c in command]
