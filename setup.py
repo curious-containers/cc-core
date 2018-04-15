@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from distutils.core import setup
+from setuptools import setup
 
 description = 'CC-Core is part of the Curious Containers project. It provides common functionality for other parts of' \
               'Curious Containers and implements an agent for CLI tool execution.'
 
 setup(
     name='cc-core',
-    version='3.1.0',
+    version='3.2.0',
     summary=description,
     description=description,
     author='Christoph Jansen',
@@ -34,6 +34,7 @@ setup(
         'requests',
         'jsonschema',
         'ruamel.yaml',
-        'psutil'
+        'psutil',
+        'jinja2'
     ]
 )

@@ -1,8 +1,12 @@
+import re
 from traceback import format_exc
 
 
-def exception_format():
-    return [l.replace('"', '').replace("'", '') for l in format_exc().split('\n') if l]
+def exception_format(template_vals=None):
+    exc_text = format_exc()
+    if template_vals:
+        exc_text = re.sub('|'.join([val for _, val in template_vals.items()]), '********', exc_text)
+    return [l.replace('"', '').replace("'", '') for l in exc_text.split('\n') if l]
 
 
 class AgentError(Exception):
@@ -30,6 +34,10 @@ class JobSpecificationError(Exception):
 
 
 class RedSpecificationError(Exception):
+    pass
+
+
+class RedVariablesError(Exception):
     pass
 
 

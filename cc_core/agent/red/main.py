@@ -1,14 +1,16 @@
+import os
 import shutil
 import tempfile
 from argparse import ArgumentParser
 
-from cc_core.commons.files import load_and_read, dump_print
+from cc_core.commons.files import load, read, load_and_read, dump_print
 from cc_core.commons.red import inputs_to_job
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format
+from cc_core.commons.jinja import jinja_validation, template_values, fill_template
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connector files for remote inputs and ' \
@@ -19,6 +21,15 @@ def attach_args(parser):
     parser.add_argument(
         'red_file', action='store', type=str, metavar='RED_FILE',
         help='RED_FILE (json or yaml) containing an experiment description as local path or http url.'
+    )
+    parser.add_argument(
+        '-j', '--jinja-file', action='store', type=str, metavar='JINJA_FILE',
+        help='JINJA_FILE (json or yaml) containing values for jinja template variables in RED_FILE as local path '
+             'or http url.'
+    )
+    parser.add_argument(
+        '--delete-jinja-file', action='store_true',
+        help='Delete JINJA_FILE after use.'
     )
     parser.add_argument(
         '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
@@ -52,7 +63,7 @@ def main():
     return 1
 
 
-def run(red_file, outdir, ignore_outputs, **_):
+def run(red_file, jinja_file, delete_jinja_file, outdir, ignore_outputs, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -65,7 +76,19 @@ def run(red_file, outdir, ignore_outputs, **_):
     tmp_dir = tempfile.mkdtemp()
 
     try:
-        red_data = load_and_read(red_file, 'RED_FILE')
+        red_raw = load(red_file, 'RED_FILE')
+
+        jinja_data = None
+        if jinja_file:
+            jinja_data = load_and_read(jinja_file, 'JINJA_FILE')
+            jinja_validation(jinja_data)
+
+            if delete_jinja_file:
+                os.remove(jinja_file)
+
+        template_vals = template_values(red_raw, jinja_data)
+        red_raw_filled = fill_template(red_raw, template_vals)
+        red_data = read(red_raw_filled, 'RED_FILE')
         red_validation(red_data, ignore_outputs)
 
         connector_manager = ConnectorManager()
@@ -95,5 +118,8 @@ def run(red_file, outdir, ignore_outputs, **_):
         result['state'] = 'failed'
     finally:
         shutil.rmtree(tmp_dir)
+
+        if delete_jinja_file and os.path.exists(jinja_file):
+            os.remove(jinja_file)
 
     return result
