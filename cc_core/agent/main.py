@@ -15,7 +15,7 @@ from cc_core.agent.cwl.main import DESCRIPTION as CWL_DESCRIPTION
 SCRIPT_NAME = 'ccagent'
 
 DESCRIPTION = 'CC-Agent Copyright (C) 2018  Christoph Jansen. This software is distributed under the AGPL-3.0 ' \
-              'LICENSE and is part of the Curious Containers project (https://www.curious-containers.cc).'
+              'LICENSE and is part of the Curious Containers project (https://curious-containers.github.io/).'
 
 MODES = OrderedDict([
     ('cwl', {'main': cwl_main, 'description': CWL_DESCRIPTION}),

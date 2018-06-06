@@ -1,6 +1,6 @@
-CC-Core is part of the Curious Containers project. It provides common
-functionality for other parts of Curious Containers and implements an agent for
-CLI tool execution.
+CC-Core is part of the Curious Containers project. CC-Core is part of the Curious Containers project. It provides
+common functionality for other parts of Curious Containers and implements agents to run data-driven experiments defined
+in RED or CWL format.
 
 Copyright 2018 Christoph Jansen
 
@@ -27,7 +27,7 @@ Affairs and Energy (ZIM Project BeCRF, Grant number KF3470401BZ4).
 
 Web:
   - https://cbmi.htw-berlin.de/
-  - https://www.curious-containers.cc
+  - https://curious-containers.github.io/
   - https://github.com/curious-containers/cc-core
 
 E-Mail:

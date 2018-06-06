@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "cc-core"
+version = "4.0.0"
+authors = ["Christoph Jansen <Christoph.Jansen@htw-berlin.de>"]
+license = "AGPL-3.0"
+readme = "README.md"
+repository = "https://github.com/curious-containers/cc-core"
+homepage = "https://curious-containers.github.io/"
+description = "CC-Core is part of the Curious Containers project. It provides common functionality for other parts of Curious Containers and implements agents to run data-driven experiments defined in RED or CWL format."
+
+[tool.poetry.dependencies]
+python = "^3.4"
+flask = "^1.0"
+requests = "^2.18"
+jsonschema = "^2.6"
+psutil = "^5.4"
+jinja2 = "^2.10"
+"ruamel.yaml" = "^0.14 || ^0.15"
+
+[tool.poetry.dev-dependencies]
+
+[tool.poetry.scripts]
+ccagent = 'cc_core.agent.main:main'
