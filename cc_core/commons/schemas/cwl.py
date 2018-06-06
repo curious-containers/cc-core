@@ -1,12 +1,12 @@
-from copy import deepcopy
-
 from cc_core.commons.schemas.common import pattern_key
 
 
-CWL_BASE_TYPES = ['string', 'int', 'long', 'float', 'double', 'boolean', 'File']
-CWL_INPUT_ARRAY_TYPES = ['{}{}'.format(t, '[]') for t in CWL_BASE_TYPES[:-2]]
-CWL_INPUT_TYPES = deepcopy(CWL_BASE_TYPES) + ['{}{}'.format(t, '?') for t in CWL_BASE_TYPES] + CWL_INPUT_ARRAY_TYPES
-CWL_OUTPUT_TYPES = ['File', 'File?']
+CWL_INPUT_TYPES = ['File', 'string', 'int', 'long', 'float', 'double', 'boolean']
+CWL_INPUT_TYPES += ['{}[]'.format(t) for t in CWL_INPUT_TYPES[:-1]]
+CWL_INPUT_TYPES += ['{}?'.format(t) for t in CWL_INPUT_TYPES[:]]
+
+CWL_OUTPUT_TYPES = ['File']
+CWL_OUTPUT_TYPES += ['{}?'.format(t) for t in CWL_OUTPUT_TYPES[:]]
 
 
 cwl_schema = {

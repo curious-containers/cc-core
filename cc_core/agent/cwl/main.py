@@ -1,5 +1,4 @@
 import os
-import json
 from argparse import ArgumentParser
 
 from cc_core.commons.files import load_and_read, dump_print

@@ -7,7 +7,7 @@ description = 'CC-Core is part of the Curious Containers project. It provides co
 
 setup(
     name='cc-core',
-    version='3.2.0',
+    version='4.0.0',
     summary=description,
     description=description,
     author='Christoph Jansen',

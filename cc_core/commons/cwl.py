@@ -29,11 +29,11 @@ def _assert_type(key, cwl_type, arg):
     raise CWLSpecificationError('argument "{}" has unknown type "{}"'.format(key, cwl_type))
 
 
-def location(key, arg):
-    if arg.get('path'):
-        return os.path.expanduser(arg['path'])
+def location(key, arg_item):
+    if arg_item.get('path'):
+        return os.path.expanduser(arg_item['path'])
 
-    p = arg['location']
+    p = arg_item['location']
     scheme = urlparse(p).scheme
 
     if scheme != 'path':
@@ -42,21 +42,68 @@ def location(key, arg):
     return os.path.expanduser(p[5:])
 
 
-def _file_check(file_data, error_text):
-    missing_files = []
-    for key, val in file_data.items():
-        if val['size'] is None and not val['isOptional']:
-            missing_files.append(key)
-    if missing_files:
-        raise FileError(error_text.format(missing_files))
+def _arg_item_to_string(key, arg_item, input_dir):
+    if isinstance(arg_item, dict):
+        file_path = location(key, arg_item)
+
+        if input_dir and not os.path.isabs(file_path):
+            file_path = os.path.join(input_dir, file_path)
+
+        return file_path
+
+    return str(arg_item)
+
+
+def _input_file_description(key, arg_item, input_dir):
+    description = {
+        'path': None,
+        'size': None,
+        'debugInfo': None
+    }
+
+    try:
+        file_path = location(key, arg_item)
+
+        if input_dir and not os.path.isabs(file_path):
+            file_path = os.path.join(os.path.expanduser(input_dir), file_path)
+
+        description['path'] = file_path
+        if not os.path.exists(file_path):
+            raise FileError('path does not exist')
+        if not os.path.isfile(file_path):
+            raise FileError('path is not a file')
+
+        description['size'] = os.path.getsize(file_path) / (1024 * 1024)
+    except:
+        description['debugInfo'] = exception_format()
+
+    return description
 
 
 def cwl_input_file_check(input_files):
-    _file_check(input_files, 'missing input files {}')
+    missing_files = []
+    for key, val in input_files.items():
+        if val['files'] is None and not val['isOptional']:
+            missing_files.append(key)
+            continue
+
+        for f in val['files']:
+            if f['size'] is None:
+                missing_files.append(key)
+                continue
+
+    if missing_files:
+        raise FileError('missing input files {}'.format(missing_files))
 
 
 def cwl_output_file_check(output_files):
-    _file_check(output_files, 'missing output files {}')
+    missing_files = []
+    for key, val in output_files.items():
+        if val['size'] is None and not val['isOptional']:
+            missing_files.append(key)
+
+    if missing_files:
+        raise FileError('missing output files {}'.format(missing_files))
 
 
 def cwl_input_files(cwl_data, job_data, input_dir=None):
@@ -64,38 +111,31 @@ def cwl_input_files(cwl_data, job_data, input_dir=None):
 
     for key, val in cwl_data['inputs'].items():
         cwl_type = val['type']
-        is_optional = cwl_type.endswith('?')
 
+        is_optional = cwl_type.endswith('?')
         if is_optional:
             cwl_type = cwl_type[:-1]
+
+        is_array = cwl_type.endswith('[]')
+        if is_array:
+            cwl_type = cwl_type[:-2]
 
         if not cwl_type == 'File':
             continue
 
         result = {
-            'path': None,
-            'size': None,
             'isOptional': is_optional,
-            'debugInfo': None
+            'isArray': is_array,
+            'files': None
         }
 
         if key in job_data:
             arg = job_data[key]
-            try:
-                file_path = location(key, arg)
 
-                if input_dir and not os.path.isabs(file_path):
-                    file_path = os.path.join(os.path.expanduser(input_dir), file_path)
-
-                result['path'] = file_path
-                if not os.path.exists(file_path):
-                    raise FileError('path does not exist')
-                if not os.path.isfile(file_path):
-                    raise FileError('path is not a file')
-
-                result['size'] = os.path.getsize(file_path) / (1024 * 1024)
-            except:
-                result['debugInfo'] = exception_format()
+            if is_array:
+                result['files'] = [_input_file_description(key, i, input_dir) for i in arg]
+            else:
+                result['files'] = [_input_file_description(key, arg, input_dir)]
 
         results[key] = result
 
@@ -107,18 +147,22 @@ def cwl_output_files(cwl_data, output_dir=None):
 
     for key, val in cwl_data['outputs'].items():
         cwl_type = val['type']
-        is_optional = cwl_type.endswith('?')
 
+        is_optional = cwl_type.endswith('?')
         if is_optional:
             cwl_type = cwl_type[:-1]
+
+        is_array = cwl_type.endswith('[]')
+        if is_array:
+            cwl_type = cwl_type[:-2]
 
         if not cwl_type == 'File':
             continue
 
         result = {
+            'isOptional': is_optional,
             'path': None,
             'size': None,
-            'isOptional': is_optional,
             'debugInfo': None
         }
 
@@ -192,14 +236,16 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
 
     for key, val in cwl_data['inputs'].items():
         cwl_type = val['type']
-        is_optional = cwl_type.endswith('?')
-        is_array = cwl_type.endswith('[]')
-        is_positional = val['inputBinding'].get('position') is not None
 
+        is_optional = cwl_type.endswith('?')
         if is_optional:
             cwl_type = cwl_type[:-1]
-        elif is_array:
+
+        is_array = cwl_type.endswith('[]')
+        if is_array:
             cwl_type = cwl_type[:-2]
+
+        is_positional = val['inputBinding'].get('position') is not None
 
         if not is_positional:
             if not val['inputBinding'].get('prefix'):
@@ -213,7 +259,7 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
         arg = job_data[key]
 
         if is_array:
-            if (not isinstance(arg, list)) or len(arg) == 0:
+            if not isinstance(arg, list):
                 raise JobSpecificationError('array argument "{}" has not been parsed to list'.format(key))
 
             try:
@@ -226,30 +272,28 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
         else:
             _assert_type(key, cwl_type, arg)
 
-        if cwl_type == 'File':
-            file_path = location(key, arg)
-
-            if input_dir and not os.path.isabs(file_path):
-                file_path = os.path.join(input_dir, file_path)
-
-            arg = file_path
-
         if is_array:
             if val['inputBinding'].get('prefix'):
                 prefix = val['inputBinding'].get('prefix')
 
                 if val['inputBinding'].get('separate', True):
-                    arg = '{} {}'.format(prefix, ' '.join([str(e) for e in arg]))
+                    arg = '{} {}'.format(prefix, ' '.join([_arg_item_to_string(key, i, input_dir) for i in arg]))
+
                 elif val['inputBinding'].get('itemSeparator'):
                     item_sep = val['inputBinding']['itemSeparator']
-                    arg = '{}{}'.format(prefix, item_sep.join([str(e) for e in arg]))
+                    arg = '{}{}'.format(prefix, item_sep.join([_arg_item_to_string(key, i, input_dir) for i in arg]))
+
                 else:
-                    arg = ' '.join(['{}{}'.format(prefix, e) for e in arg])
+                    arg = ' '.join(['{}{}'.format(prefix, _arg_item_to_string(key, i, input_dir)) for i in arg])
+
             else:
                 item_sep = val['inputBinding'].get('itemSeparator')
+
                 if not item_sep:
                     item_sep = ' '
-                arg = item_sep.join([str(e) for e in arg])
+
+                arg = item_sep.join([_arg_item_to_string(key, i, input_dir) for i in arg])
+
         elif val['inputBinding'].get('prefix'):
             prefix = val['inputBinding']['prefix']
             separate = val['inputBinding'].get('separate', True)
@@ -261,9 +305,9 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
                     else:
                         continue
                 else:
-                    arg = '{} {}'.format(prefix, arg)
+                    arg = '{} {}'.format(prefix, _arg_item_to_string(key, arg, input_dir))
             else:
-                arg = '{}{}'.format(prefix, arg)
+                arg = '{}{}'.format(prefix, _arg_item_to_string(key, arg, input_dir))
 
         if is_positional:
             pos = val['inputBinding']['position']

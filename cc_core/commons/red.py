@@ -137,20 +137,26 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
 
 
 def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
-    for input_key, val in red_data['inputs'].items():
-        if not isinstance(val, dict):
-            continue
+    for input_key, arg in red_data['inputs'].items():
+        arg_items = []
 
-        connector_data = val['connector']
-        connector_manager.import_connector(connector_data)
-        connector_manager.receive_validate(connector_data, input_key)
+        if isinstance(arg, dict):
+            arg_items.append(arg)
+
+        elif isinstance(arg, list):
+            arg_items += [i for i in arg if isinstance(i, dict)]
+
+        for i in arg_items:
+            connector_data = i['connector']
+            connector_manager.import_connector(connector_data)
+            connector_manager.receive_validate(connector_data, input_key)
 
     if not ignore_outputs and red_data.get('outputs'):
-        for output_key, val in red_data['outputs'].items():
-            if not isinstance(val, dict):
+        for output_key, arg in red_data['outputs'].items():
+            if not isinstance(arg, dict):
                 continue
 
-            connector_data = val['connector']
+            connector_data = arg['connector']
             connector_manager.import_connector(connector_data)
             connector_manager.send_validate(connector_data, output_key)
 
@@ -158,38 +164,58 @@ def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
 def inputs_to_job(red_data, tmp_dir):
     job = {}
 
-    for key, val in red_data['inputs'].items():
-        if not isinstance(val, dict):
-            job[key] = val
-            continue
+    for key, arg in red_data['inputs'].items():
+        val = arg
+        if isinstance(arg, list):
+            val = []
+            for index, i in enumerate(arg):
+                if isinstance(i, dict):
+                    path = os.path.join(tmp_dir, '{}_{}'.format(key, index))
+                    val.append({
+                        'class': 'File',
+                        'path': path
+                    })
+                else:
+                    val.append(i)
+        elif isinstance(arg, dict):
+            path = os.path.join(tmp_dir, key)
+            val = {
+                'class': 'File',
+                'path': path
+            }
 
-        path = os.path.join(tmp_dir, key)
-        job[key] = {
-            'class': 'File',
-            'path': path
-        }
+        job[key] = val
 
     return job
 
 
 def receive(connector_manager, red_data, tmp_dir):
-    for input_key, val in red_data['inputs'].items():
-        if not isinstance(val, dict):
-            continue
+    for key, arg in red_data['inputs'].items():
+        val = arg
+        if isinstance(arg, list):
+            for index, i in enumerate(arg):
+                if not isinstance(i, dict):
+                    continue
 
-        path = os.path.join(tmp_dir, input_key)
-        connector_data = val['connector']
-        internal = {'path': path}
+                input_key = '{}_{}'.format(key, index)
+                path = os.path.join(tmp_dir, input_key)
+                connector_data = i['connector']
+                internal = {'path': path}
+                connector_manager.receive(connector_data, input_key, internal)
 
-        connector_manager.receive(connector_data, input_key, internal)
+        elif isinstance(arg, dict):
+            path = os.path.join(tmp_dir, key)
+            connector_data = val['connector']
+            internal = {'path': path}
+            connector_manager.receive(connector_data, key, internal)
 
 
 def send(connector_manager, output_files, red_data, agency_data=None):
-    for output_key, val in red_data['outputs'].items():
-        path = output_files[output_key]['path']
+    for key, arg in red_data['outputs'].items():
+        path = output_files[key]['path']
         internal = {
             'path': path,
             'agencyData': agency_data
         }
-        connector_data = val['connector']
-        connector_manager.send(connector_data, output_key, internal)
+        connector_data = arg['connector']
+        connector_manager.send(connector_data, key, internal)

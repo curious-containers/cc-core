@@ -12,7 +12,16 @@ _connector_schema = {
     'required': ['pyModule', 'pyClass', 'access']
 }
 
-# Reproducible Experiment Description (RED)
+_file_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['File']},
+        'connector': _connector_schema
+    },
+    'additionalProperties': False,
+    'required': ['class', 'connector']
+}
+
 red_inputs_schema = {
     'type': 'object',
     'patternProperties': {
@@ -26,19 +35,12 @@ red_inputs_schema = {
                     'items': {
                         'oneOf': [
                             {'type': 'string'},
-                            {'type': 'number'}
+                            {'type': 'number'},
+                            _file_schema
                         ]
                     }
                 },
-                {
-                    'type': 'object',
-                    'properties': {
-                        'class': {'enum': ['File']},
-                        'connector': _connector_schema
-                    },
-                    'additionalProperties': False,
-                    'required': ['class', 'connector']
-                }
+                _file_schema
             ]
         }
     },
@@ -63,6 +65,7 @@ red_outputs_schema = {
 }
 
 
+# Reproducible Experiment Description (RED)
 red_schema = {
     'type': 'object',
     'properties': {
