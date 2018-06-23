@@ -28,10 +28,6 @@ def attach_args(parser):
              'or http url.'
     )
     parser.add_argument(
-        '--destroy-jinja-file', action='store_true',
-        help='Delete JINJA_FILE after use.'
-    )
-    parser.add_argument(
         '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
         help='Output directory, default current directory.'
     )
@@ -63,7 +59,7 @@ def main():
     return 1
 
 
-def run(red_file, jinja_file, destroy_jinja_file, batch, outdir, ignore_outputs, **_):
+def run(red_file, jinja_file, batch, outdir, ignore_outputs, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -83,10 +79,6 @@ def run(red_file, jinja_file, destroy_jinja_file, batch, outdir, ignore_outputs,
         if jinja_file:
             jinja_data = load_and_read(jinja_file, 'JINJA_FILE')
             jinja_validation(jinja_data)
-
-            if destroy_jinja_file:
-                with open(jinja_file, 'w') as f:
-                    print('', file=f)
 
         template_vals = template_values(red_raw, jinja_data)
         red_raw_filled = fill_template(red_raw, template_vals)
@@ -125,9 +117,5 @@ def run(red_file, jinja_file, destroy_jinja_file, batch, outdir, ignore_outputs,
         result['state'] = 'failed'
     finally:
         shutil.rmtree(tmp_dir)
-
-        if destroy_jinja_file and os.path.exists(jinja_file):
-            with open(jinja_file, 'w') as f:
-                print('', file=f)
 
     return result
