@@ -5,7 +5,6 @@ ccagency_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
-        'version': {'type': 'string'},
         'access': {
             'type': 'object',
             'properties': {
@@ -17,32 +16,14 @@ ccagency_schema = {
             'required': ['url']
         },
         'disableImagePull': {'type': 'boolean'},
-        'enableInputCache': {'type': 'boolean'}
-    },
-    'additionalProperties': False
-}
-
-ccfaice_schema = {
-    'type': 'object',
-    'properties': {
-        'doc': {'type': 'string'},
-        'version': {'type': 'string'},
-        'disableImagePull': {'type': 'boolean'},
-    },
-    'additionalProperties': False
-}
-
-cwltool_schema = {
-    'type': 'object',
-    'properties': {
-        'doc': {'type': 'string'},
-        'version': {'type': 'string'}
+        'protectedKeys': {
+            'type': 'array',
+            'items': {'type', 'string'}
+        }
     },
     'additionalProperties': False
 }
 
 execution_engines = {
-    'ccagency': ccagency_schema,
-    'ccfaice': ccfaice_schema,
-    'cwltool': cwltool_schema
+    'ccagency': ccagency_schema
 }

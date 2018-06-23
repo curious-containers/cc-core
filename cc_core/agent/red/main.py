@@ -4,7 +4,7 @@ import tempfile
 from argparse import ArgumentParser
 
 from cc_core.commons.files import load, read, load_and_read, dump_print
-from cc_core.commons.red import inputs_to_job
+from cc_core.commons.red import inputs_to_job, convert_batch_experiment
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
@@ -36,16 +36,16 @@ def attach_args(parser):
         help='Output directory, default current directory.'
     )
     parser.add_argument(
+        '--batch', action='store', type=int, metavar='BATCH',
+        help='If the RED_FILE contains batches, the index of a BATCH, starting with 0, must be passed.'
+    )
+    parser.add_argument(
         '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml', 'yml'],
         default='yaml', help='Dump format for data written to files or stdout, default is "yaml".'
     )
     parser.add_argument(
         '--ignore-outputs', action='store_true',
         help='Ignore RED connectors specified in RED_FILE outputs section.'
-    )
-    parser.add_argument(
-        '--return-zero', action='store_true',
-        help='Always return exit code zero.'
     )
 
 
@@ -57,13 +57,13 @@ def main():
     result = run(**args.__dict__)
     dump_print(result, args.dump_format)
 
-    if args.return_zero or result['state'] == 'succeeded':
+    if result['state'] == 'succeeded':
         return 0
 
     return 1
 
 
-def run(red_file, jinja_file, destroy_jinja_file, outdir, ignore_outputs, **_):
+def run(red_file, jinja_file, destroy_jinja_file, batch, outdir, ignore_outputs, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -92,6 +92,8 @@ def run(red_file, jinja_file, destroy_jinja_file, outdir, ignore_outputs, **_):
         red_raw_filled = fill_template(red_raw, template_vals)
         red_data = read(red_raw_filled, 'RED_FILE')
         red_validation(red_data, ignore_outputs)
+
+        red_data = convert_batch_experiment(red_data, batch)
 
         connector_manager = ConnectorManager()
         import_and_validate_connectors(connector_manager, red_data, ignore_outputs)

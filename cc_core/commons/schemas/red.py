@@ -22,7 +22,7 @@ _file_schema = {
     'required': ['class', 'connector']
 }
 
-red_inputs_schema = {
+_inputs_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {
@@ -48,7 +48,7 @@ red_inputs_schema = {
 }
 
 
-red_outputs_schema = {
+_outputs_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {
@@ -64,49 +64,57 @@ red_outputs_schema = {
     'additionalProperties': False
 }
 
-
-# Reproducible Experiment Description (RED)
-red_schema = {
+_engine_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
-        'redVersion': {'type': 'string'},
-        'cli': cwl_schema,
-        'inputs': red_inputs_schema,
-        'outputs': red_outputs_schema,
-        'container': {
-            'type': 'object',
-            'properties': {
-                'doc': {'type': 'string'},
-                'engine': {'type': 'string'},
-                'settings': {'type': 'object'}
-            },
-            'additionalProperties': False,
-            'required': ['engine', 'settings']
-        },
-        'execution': {
-            'type': 'object',
-            'properties': {
-                'doc': {'type': 'string'},
-                'engine': {'type': 'string'},
-                'settings': {'type': 'object'}
-            },
-            'additionalProperties': False,
-            'required': ['engine', 'settings']
-        },
-        'virtualization': {
-            'type': 'object',
-            'properties': {
-                'doc': {'type': 'string'},
-                'engine': {'type': 'string'},
-                'settings': {'type': 'object'}
-            },
-            'additionalProperties': False,
-            'required': ['engine', 'settings']
-        }
+        'engine': {'type': 'string'},
+        'settings': {'type': 'object'}
     },
     'additionalProperties': False,
-    'required': ['redVersion', 'cli', 'inputs']
+    'required': ['engine', 'settings']
+}
+
+
+# Reproducible Experiment Description (RED)
+red_schema = {
+    'oneOf': [{
+        'type': 'object',
+        'properties': {
+            'doc': {'type': 'string'},
+            'redVersion': {'type': 'string'},
+            'cli': cwl_schema,
+            'inputs': _inputs_schema,
+            'outputs': _outputs_schema,
+            'container': _engine_schema,
+            'execution': _engine_schema
+        },
+        'additionalProperties': False,
+        'required': ['redVersion', 'cli', 'inputs']
+    }, {
+        'type': 'object',
+        'properties': {
+            'doc': {'type': 'string'},
+            'redVersion': {'type': 'string'},
+            'cli': cwl_schema,
+            'batches': {
+                'type': 'array',
+                'items': {
+                    'type': 'object',
+                    'properties': {
+                        'inputs': _inputs_schema,
+                        'outputs': _outputs_schema
+                    },
+                    'additionalProperties': False,
+                    'required': ['inputs']
+                }
+            },
+            'container': _engine_schema,
+            'execution': _engine_schema
+        },
+        'additionalProperties': False,
+        'required': ['redVersion', 'cli', 'batches']
+    }]
 }
 
 

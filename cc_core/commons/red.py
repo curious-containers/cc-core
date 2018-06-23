@@ -4,7 +4,7 @@ import jsonschema
 
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
-from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError
+from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, ArgumentError
 from cc_core.commons.exceptions import RedSpecificationError, RedValidationError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
@@ -134,6 +134,27 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
     if container_requirement:
         if not red_data.get('container'):
             raise RedSpecificationError('container engine description is missing in red file')
+
+
+def convert_batch_experiment(red_data, batch):
+    if 'batches' not in red_data:
+        return red_data
+
+    if batch is None:
+        raise ArgumentError('batches are specified in RED_FILE, but --batch argument is missing')
+
+    try:
+        batch_data = red_data['batches'][batch]
+    except:
+        raise ArgumentError('invalid batch index provided by --batch argument')
+
+    result = {key: val for key, val in red_data.items() if not key == 'batch'}
+    result['inputs'] = batch_data['inputs']
+
+    if batch_data.get('outputs'):
+        result['outputs'] = batch_data['outputs']
+
+    return result
 
 
 def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):

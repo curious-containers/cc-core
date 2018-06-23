@@ -1,10 +1,9 @@
 from collections import OrderedDict
 
-from cc_core.commons.schemas.red import red_schema, red_inputs_schema, red_outputs_schema, red_jinja_schema
+from cc_core.commons.schemas.red import red_schema, red_jinja_schema
 from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
 from cc_core.commons.schemas.engines.container import container_engines
 from cc_core.commons.schemas.engines.execution import execution_engines
-from cc_core.commons.schemas.engines.virtualization import virtualization_engines
 from cc_core.commons.schemas.connectors import connectors
 
 
@@ -23,6 +22,3 @@ for e, s in container_engines.items():
 
 for e, s in execution_engines.items():
     schemas['red-engine-execution-{}'.format(e)] = s
-
-for e, s in virtualization_engines.items():
-    schemas['red-engine-virtualization-{}'.format(e)] = s

@@ -9,6 +9,10 @@ def exception_format(template_vals=None):
     return [l.replace('"', '').replace("'", '') for l in exc_text.split('\n') if l]
 
 
+class ArgumentError(Exception):
+    pass
+
+
 class AgentError(Exception):
     pass
 
