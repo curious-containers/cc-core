@@ -122,14 +122,25 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
             )
         )
 
-    for key, val in red_data['inputs'].items():
-        if key not in red_data['cli']['inputs']:
-            raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
+    if 'batches' in red_data:
+        for batch in red_data['batches']:
+            for key, val in batch['inputs'].items():
+                if key not in red_data['cli']['inputs']:
+                    raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
 
-    if not ignore_outputs and red_data.get('outputs'):
-        for key, val in red_data['outputs'].items():
-            if key not in red_data['cli']['outputs']:
-                raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
+            if not ignore_outputs and batch.get('outputs'):
+                for key, val in batch['outputs'].items():
+                    if key not in red_data['cli']['outputs']:
+                        raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
+    else:
+        for key, val in red_data['inputs'].items():
+            if key not in red_data['cli']['inputs']:
+                raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
+
+        if not ignore_outputs and red_data.get('outputs'):
+            for key, val in red_data['outputs'].items():
+                if key not in red_data['cli']['outputs']:
+                    raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
 
     if container_requirement:
         if not red_data.get('container'):
