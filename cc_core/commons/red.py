@@ -159,7 +159,7 @@ def convert_batch_experiment(red_data, batch):
     except:
         raise ArgumentError('invalid batch index provided by --batch argument')
 
-    result = {key: val for key, val in red_data.items() if not key == 'batch'}
+    result = {key: val for key, val in red_data.items() if not key == 'batches'}
     result['inputs'] = batch_data['inputs']
 
     if batch_data.get('outputs'):
