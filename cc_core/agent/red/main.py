@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 from argparse import ArgumentParser

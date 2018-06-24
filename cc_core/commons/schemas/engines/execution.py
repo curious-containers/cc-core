@@ -15,7 +15,8 @@ ccagency_schema = {
             'additionalProperties': False,
             'required': ['url']
         },
-        'disableImagePull': {'type': 'boolean'},
+        'disablePull': {'type': 'boolean'},
+        'outdir': {'type': 'string'},
         'protectedKeys': {
             'type': 'array',
             'items': {'type', 'string'}

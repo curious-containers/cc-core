@@ -28,10 +28,6 @@ def attach_args(parser):
         '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml', 'yml'],
         default='yaml', help='Dump format for data written to files or stdout, default is "yaml".'
     )
-    parser.add_argument(
-        '--return-zero', action='store_true',
-        help='Always return exit code zero.'
-    )
 
 
 def main():
@@ -42,7 +38,7 @@ def main():
     result = run(**args.__dict__)
     dump_print(result, args.dump_format)
 
-    if args.return_zero or result['state'] == 'succeeded':
+    if result['state'] == 'succeeded':
         return 0
 
     return 1
