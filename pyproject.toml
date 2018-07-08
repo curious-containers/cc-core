@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cc-core"
-version = "5.1.0"
+version = "5.1.1"
 authors = ["Christoph Jansen <Christoph.Jansen@htw-berlin.de>"]
 license = "AGPL-3.0"
 readme = "README.md"
@@ -15,7 +15,7 @@ requests = "^2.18"
 jsonschema = "^2.6"
 psutil = "^5.4"
 jinja2 = "^2.10"
-"ruamel.yaml" = "^0.14 || ^0.15"
+"ruamel.yaml" = "^0.15"
 
 [tool.poetry.dev-dependencies]
 
