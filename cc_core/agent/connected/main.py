@@ -25,9 +25,8 @@ def attach_args(parser):
         help='Output directory, default current directory.'
     )
     parser.add_argument(
-        '--inspect', action='store', type=int, metavar='INSPECT',
-        help='In INSPECT mode the agent will only perform one callback to the agency to check for network connectivity '
-             'failures.'
+        '--inspect', action='store_true',
+        help='The agent will only perform one callback to inspect if CC-Agency is reachable via the network.'
     )
 
 
