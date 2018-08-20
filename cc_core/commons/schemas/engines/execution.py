@@ -19,7 +19,7 @@ ccagency_schema = {
         'outdir': {'type': 'string'},
         'protectedKeys': {
             'type': 'array',
-            'items': {'type', 'string'}
+            'items': {'type': 'string'}
         }
     },
     'additionalProperties': False
