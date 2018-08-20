@@ -1,3 +1,4 @@
+import os
 import tempfile
 import requests
 from argparse import ArgumentParser
@@ -48,6 +49,7 @@ def run(callback_url, outdir, inspect):
     r.raise_for_status()
     red_data = r.json()
     tmp_dir = tempfile.mkdtemp()
+    os.chdir(tempfile.mkdtemp())
 
     result = {
         'command': None,
@@ -84,5 +86,5 @@ def run(callback_url, outdir, inspect):
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
 
-    r = requests.post(callback_url)
+    r = requests.post(callback_url, json=result)
     r.raise_for_status()
