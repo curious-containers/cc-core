@@ -89,6 +89,26 @@ cwl_schema = {
     'required': ['cwlVersion', 'class', 'baseCommand', 'inputs', 'outputs']
 }
 
+_file_location_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['File']},
+        'location': {'type': 'string'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'location']
+}
+
+_file_path_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['File']},
+        'path': {'type': 'string'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'path']
+}
+
 cwl_job_schema = {
     'type': 'object',
     'patternProperties': {
@@ -97,30 +117,16 @@ cwl_job_schema = {
                 {'type': 'string'},
                 {'type': 'number'},
                 {'type': 'boolean'},
-                {
-                    'type': 'object',
-                    'properties': {
-                        'class': {'enum': ['File']},
-                        'path': {'type': 'string'}
-                    },
-                    'additionalProperties': False,
-                    'required': ['class', 'path']
-                },
-                {
-                    'type': 'object',
-                    'properties': {
-                        'class': {'enum': ['File']},
-                        'location': {'type': 'string'}
-                    },
-                    'additionalProperties': False,
-                    'required': ['class', 'location']
-                },
+                _file_location_schema,
+                _file_path_schema,
                 {
                     'type': 'array',
                     'items': {
                         'oneOf': [
                             {'type': 'string'},
-                            {'type': 'number'}
+                            {'type': 'number'},
+                            _file_location_schema,
+                            _file_path_schema,
                         ]
                     }
                 }
