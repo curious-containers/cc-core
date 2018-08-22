@@ -1,8 +1,8 @@
-# CC Core
+# CC-Core
 
-CC Core is part of the Curious Containers project. It provides common functionality for other parts of Curious Containers and implements agents to run data-driven experiments defined in RED or CWL format.
+CC-Core is part of the Curious Containers project. It provides common functionality for other parts of Curious Containers and implements agents to run data-driven experiments defined in RED or CWL format.
 
-For more information please refer to the Curious Containers [documentation](https://curious-containers.github.io/).
+For more information please refer to the Curious Containers [documentation](https://www.curious-containers.cc/).
 
 ## Acknowledgements
 
