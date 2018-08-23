@@ -11,7 +11,7 @@ from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format
 
 
-DESCRIPTION = 'In order to run an application container with Curious Containers, CC-Agency will launch CC-Agent in ' \
+DESCRIPTION = 'In order to run an application container with Curious Containers, CC-Agency will launch ccagent in ' \
               'connected mode. The agent sends the container\'s internal status to the server and receives ' \
               'instructions.'
 
