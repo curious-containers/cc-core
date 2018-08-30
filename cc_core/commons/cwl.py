@@ -315,7 +315,7 @@ def cwl_to_command(cwl_data, job_data, input_dir=None, check_executable=True):
             positional_arguments += [None for _ in range(additional)]
             if positional_arguments[pos] is not None:
                 raise CWLSpecificationError('multiple positional arguments exist for position "{}"'.format(pos))
-            positional_arguments[pos] = {'arg': arg, 'is_array': is_array}
+            positional_arguments[pos] = {'arg': _arg_item_to_string(key, arg, input_dir), 'is_array': is_array}
         else:
             prefixed_arguments.append(arg)
 
