@@ -10,7 +10,6 @@ description = "CC-Core is part of the Curious Containers project. It provides co
 
 [tool.poetry.dependencies]
 python = "^3.4"
-cc-core = "~5.2"
 flask = "^1.0"
 requests = "^2.18"
 jsonschema = "^2.6"
