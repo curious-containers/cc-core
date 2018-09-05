@@ -82,11 +82,11 @@ def template_values(data, secrets_data, non_interactive=True):
     return declared
 
 
-def _fill_recursively(data, secrets_data, access, finalize):
+def _fill_recursively(data, secrets_data, allow_section, finalize):
     if isinstance(data, dict):
         result = {}
         for key, val in data.items():
-            if access and key.startswith('_'):
+            if allow_section and key.startswith('_'):
                 new_val = {}
                 
                 if 'value' in val:
@@ -105,19 +105,19 @@ def _fill_recursively(data, secrets_data, access, finalize):
                 else:
                     result[key] = new_val
             
-            elif key == 'access':
+            elif key in ['access', 'auth']:
                 result[key] = _fill_recursively(val, secrets_data, True, finalize)
             
             else:
-                result[key] = _fill_recursively(val, secrets_data, access, finalize)
+                result[key] = _fill_recursively(val, secrets_data, allow_section, finalize)
 
         return result
     
     elif isinstance(data, list):
-        return [_fill_recursively(val, secrets_data, access, finalize) for val in data]
+        return [_fill_recursively(val, secrets_data, allow_section, finalize) for val in data]
     
     return data
 
 
-def fill_template(data, secrets_data, finalize=True):
-    return _fill_recursively(data, secrets_data, False, finalize)
+def fill_template(data, secrets_data, allow_section=False, finalize=True):
+    return _fill_recursively(data, secrets_data, allow_section, finalize)
