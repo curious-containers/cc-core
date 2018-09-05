@@ -9,7 +9,7 @@ from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, RedValidationError
-from cc_core.commons.jinja import jinja_validation, template_values, fill_template
+from cc_core.commons.secrets import secrets_validation, template_values, fill_template
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connector files for remote inputs and ' \
@@ -22,9 +22,9 @@ def attach_args(parser):
         help='RED_FILE (json or yaml) containing an experiment description as local path or http url.'
     )
     parser.add_argument(
-        '-j', '--jinja-file', action='store', type=str, metavar='JINJA_FILE',
-        help='JINJA_FILE (json or yaml) containing values for jinja template variables in RED_FILE as local path '
-             'or http url.'
+        '-s', '--secrets-file', action='store', type=str, metavar='SECRETS_FILE',
+        help='SECRETS_FILE (json or yaml) containing key-value pairs for secret template variables in RED_FILE as '
+             'local path or http url.'
     )
     parser.add_argument(
         '--outdir', action='store', type=str, metavar='OUTPUT_DIR',
@@ -58,7 +58,7 @@ def main():
     return 1
 
 
-def run(red_file, jinja_file, batch, outdir, ignore_outputs, **_):
+def run(red_file, secrets_file, batch, outdir, ignore_outputs, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -72,19 +72,18 @@ def run(red_file, jinja_file, batch, outdir, ignore_outputs, **_):
     template_vals = None
 
     try:
-        red_raw = load(red_file, 'RED_FILE')
-
-        jinja_data = None
-        if jinja_file:
-            jinja_data = load_and_read(jinja_file, 'JINJA_FILE')
-            jinja_validation(jinja_data)
-
-        template_vals = template_values(red_raw, jinja_data)
-        red_raw_filled = fill_template(red_raw, template_vals)
-        red_data = read(red_raw_filled, 'RED_FILE')
+        red_data = load_and_read(red_file, 'RED_FILE')
         red_validation(red_data, ignore_outputs)
 
+        secrets_data = None
+        if secrets_file:
+            secrets_data = load_and_read(secrets_file, 'SECRETS_FILE')
+            secrets_validation(secrets_data)
+
         red_data = convert_batch_experiment(red_data, batch)
+
+        secrets_data = template_values(red_data, secrets_data)
+        red_data = fill_template(red_data, secrets_data)
 
         connector_manager = ConnectorManager()
         import_and_validate_connectors(connector_manager, red_data, ignore_outputs)

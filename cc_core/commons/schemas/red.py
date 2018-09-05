@@ -118,10 +118,38 @@ red_schema = {
 }
 
 
-red_jinja_schema = {
+secrets_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {'type': 'string'}
     },
     'additionalProperties': False
+}
+
+template_schema = {
+    'oneOf': [{
+        'type': 'object',
+        'properties': {
+            'doc': {'type': 'string'},
+            'value': {'oneOf': [
+                {'type': 'string'},
+                {'type': 'integer'}
+            ]},
+            'template': {'type': 'string'},
+            'type': {'enum': ['string', 'integer']}
+        },
+        'additionalProperties': False,
+        'required': ['template', 'type']
+    }, {
+        'type': 'object',
+        'properties': {
+            'doc': {'type': 'string'},
+            'value': {'oneOf': [
+                {'type': 'string'},
+                {'type': 'integer'}
+            ]}
+        },
+        'additionalProperties': False,
+        'required': ['value']
+    }]
 }
