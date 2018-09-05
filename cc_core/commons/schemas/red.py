@@ -118,7 +118,7 @@ red_schema = {
 }
 
 
-secrets_schema = {
+red_secrets_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {'type': 'string'}
@@ -126,28 +126,22 @@ secrets_schema = {
     'additionalProperties': False
 }
 
-template_schema = {
+red_underscore_schema = {
     'oneOf': [{
         'type': 'object',
         'properties': {
             'doc': {'type': 'string'},
-            'value': {'oneOf': [
-                {'type': 'string'},
-                {'type': 'integer'}
-            ]},
             'template': {'type': 'string'},
-            'type': {'enum': ['string', 'integer']}
+            'disableProtection': {'type': 'boolean'}
         },
         'additionalProperties': False,
-        'required': ['template', 'type']
+        'required': ['template']
     }, {
         'type': 'object',
         'properties': {
             'doc': {'type': 'string'},
-            'value': {'oneOf': [
-                {'type': 'string'},
-                {'type': 'integer'}
-            ]}
+            'value': {'type': 'string'},
+            'disableProtection': {'type': 'boolean'}
         },
         'additionalProperties': False,
         'required': ['value']

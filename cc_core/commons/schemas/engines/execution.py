@@ -16,11 +16,7 @@ ccagency_schema = {
             'required': ['url']
         },
         'disablePull': {'type': 'boolean'},
-        'outdir': {'type': 'string'},
-        'protectedKeys': {
-            'type': 'array',
-            'items': {'type': 'string'}
-        }
+        'outdir': {'type': 'string'}
     },
     'additionalProperties': False
 }

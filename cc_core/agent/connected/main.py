@@ -3,8 +3,9 @@ import tempfile
 import requests
 from argparse import ArgumentParser
 
-from cc_core.commons.red import inputs_to_job
+from cc_core.commons.red import inputs_to_job, red_validation
 from cc_core.commons.red import ConnectorManager, import_and_validate_connectors, receive, send
+from cc_core.commons.secrets import template_values
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
@@ -61,6 +62,9 @@ def run(callback_url, outdir, inspect):
     }
 
     try:
+        red_validation(red_data, False)
+        _ = template_values(red_data, None, non_interactive=True)
+
         connector_manager = ConnectorManager()
         import_and_validate_connectors(connector_manager, red_data, False)
 

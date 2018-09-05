@@ -2,7 +2,7 @@ import shutil
 import tempfile
 from argparse import ArgumentParser
 
-from cc_core.commons.files import load, read, load_and_read, dump_print
+from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.red import inputs_to_job, convert_batch_experiment
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command
@@ -82,7 +82,7 @@ def run(red_file, secrets_file, batch, outdir, ignore_outputs, **_):
 
         red_data = convert_batch_experiment(red_data, batch)
 
-        secrets_data = template_values(red_data, secrets_data)
+        secrets_data = template_values(red_data, secrets_data, non_interactive=True)
         red_data = fill_template(red_data, secrets_data)
 
         connector_manager = ConnectorManager()

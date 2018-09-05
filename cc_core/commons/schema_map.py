@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from cc_core.commons.schemas.red import red_schema, red_jinja_schema
+from cc_core.commons.schemas.red import red_schema, red_secrets_schema, red_underscore_schema
 from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
 from cc_core.commons.schemas.engines.container import container_engines
 from cc_core.commons.schemas.engines.execution import execution_engines
@@ -11,7 +11,8 @@ schemas = OrderedDict([
     ('cwl', cwl_schema),
     ('cwl-job', cwl_job_schema),
     ('red', red_schema),
-    ('red-jinja', red_jinja_schema)
+    ('red-underscore', red_underscore_schema),
+    ('red-secrets', red_secrets_schema)
 ])
 
 for e, s in connectors.items():
