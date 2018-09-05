@@ -2,21 +2,22 @@ import jsonschema
 from getpass import getpass
 
 from cc_core.commons.files import wrapped_print
-from cc_core.commons.schemas.red import red_secrets_schema, red_underscore_schema
+from cc_core.commons.schemas.red import secrets_schema
+from cc_core.commons.schemas.common import underscore_schema
 from cc_core.commons.exceptions import RedValidationError, RedVariablesError
 
 
 def secrets_validation(secrets_data):
     try:
-        jsonschema.validate(secrets_data, red_secrets_schema)
+        jsonschema.validate(secrets_data, secrets_schema)
     except Exception:
         raise RedValidationError('secrets file does not comply with jsonschema')
 
 
-def _find_undeclared_recursively(data, undeclared_template_keys, access):
+def _find_undeclared_recursively(data, undeclared_template_keys, allow_section):
     if isinstance(data, dict):
         for key, val in data.items():
-            if access and key.startswith('_'):
+            if allow_section and key.startswith('_'):
                 if len(key) == 1:
                     raise RedValidationError('key _ is invalid')
                 
@@ -24,22 +25,22 @@ def _find_undeclared_recursively(data, undeclared_template_keys, access):
                     raise RedValidationError('key {} and key {} cannot be in one dict'.format(key, key[1:]))
                 
                 try:
-                    jsonschema.validate(val, red_underscore_schema)
+                    jsonschema.validate(val, underscore_schema)
                 except Exception:
                     raise RedValidationError('underscore mode {} does not comply with jsonschema'.format(key))
 
                 if 'template' in val:
                     undeclared_template_keys.update([val['template']])
             
-            elif key == 'access':
+            elif key in ['access', 'auth']:
                 _find_undeclared_recursively(val, undeclared_template_keys, True)
             
             else:
-                _find_undeclared_recursively(val, undeclared_template_keys, access)
+                _find_undeclared_recursively(val, undeclared_template_keys, allow_section)
             
     elif isinstance(data, list):
         for val in data:
-            _find_undeclared_recursively(val, undeclared_template_keys, access)
+            _find_undeclared_recursively(val, undeclared_template_keys, allow_section)
 
 
 def template_values(data, secrets_data, non_interactive=True):

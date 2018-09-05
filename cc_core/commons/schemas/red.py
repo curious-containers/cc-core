@@ -118,7 +118,7 @@ red_schema = {
 }
 
 
-red_secrets_schema = {
+secrets_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {'type': 'string'}
@@ -126,7 +126,7 @@ red_secrets_schema = {
     'additionalProperties': False
 }
 
-red_underscore_schema = {
+underscore_schema = {
     'oneOf': [{
         'type': 'object',
         'properties': {
