@@ -9,7 +9,7 @@ from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, RedValidationError
-from cc_core.commons.secrets import secrets_validation, template_values, fill_template
+from cc_core.commons.templates import fill_validation, inspect_templates_and_secrets, fill_template
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connector files for remote inputs and ' \
@@ -22,8 +22,8 @@ def attach_args(parser):
         help='RED_FILE (json or yaml) containing an experiment description as local path or http url.'
     )
     parser.add_argument(
-        '-s', '--secrets-file', action='store', type=str, metavar='SECRETS_FILE',
-        help='SECRETS_FILE (json or yaml) containing key-value pairs for secret template variables in RED_FILE as '
+        '--fill-file', action='store', type=str, metavar='FILL_FILE',
+        help='FILL_FILE (json or yaml) containing key-value pairs for template variables in RED_FILE as '
              'local path or http url.'
     )
     parser.add_argument(
@@ -58,7 +58,7 @@ def main():
     return 1
 
 
-def run(red_file, secrets_file, batch, outdir, ignore_outputs, **_):
+def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -69,21 +69,21 @@ def run(red_file, secrets_file, batch, outdir, ignore_outputs, **_):
     }
 
     tmp_dir = tempfile.mkdtemp()
-    template_vals = None
+    secret_values = None
 
     try:
         red_data = load_and_read(red_file, 'RED_FILE')
         red_validation(red_data, ignore_outputs)
 
-        secrets_data = None
-        if secrets_file:
-            secrets_data = load_and_read(secrets_file, 'SECRETS_FILE')
-            secrets_validation(secrets_data)
+        fill_data = None
+        if fill_file:
+            fill_data = load_and_read(fill_file, 'FILL_FILE')
+            fill_validation(fill_data)
 
         red_data = convert_batch_experiment(red_data, batch)
 
-        secrets_data = template_values(red_data, secrets_data, non_interactive=True)
-        red_data = fill_template(red_data, secrets_data)
+        template_keys_and_values, secret_values = inspect_templates_and_secrets(red_data, fill_data, True)
+        red_data = fill_template(red_data, template_keys_and_values, False, True)
 
         connector_manager = ConnectorManager()
         import_and_validate_connectors(connector_manager, red_data, ignore_outputs)
@@ -108,9 +108,9 @@ def run(red_file, secrets_file, batch, outdir, ignore_outputs, **_):
         if not ignore_outputs and red_data.get('outputs'):
             send(connector_manager, output_files, red_data)
     except RedValidationError:
-        result['debugInfo'] = exception_format(template_vals=template_vals)
+        result['debugInfo'] = exception_format(secret_values=secret_values)
         result['state'] = 'failed'
-    except:
+    except Exception:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
     finally:

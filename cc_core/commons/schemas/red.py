@@ -118,32 +118,10 @@ red_schema = {
 }
 
 
-secrets_schema = {
+fill_schema = {
     'type': 'object',
     'patternProperties': {
         pattern_key: {'type': 'string'}
     },
     'additionalProperties': False
-}
-
-underscore_schema = {
-    'oneOf': [{
-        'type': 'object',
-        'properties': {
-            'doc': {'type': 'string'},
-            'template': {'type': 'string'},
-            'disableProtection': {'type': 'boolean'}
-        },
-        'additionalProperties': False,
-        'required': ['template']
-    }, {
-        'type': 'object',
-        'properties': {
-            'doc': {'type': 'string'},
-            'value': {'type': 'string'},
-            'disableProtection': {'type': 'boolean'}
-        },
-        'additionalProperties': False,
-        'required': ['value']
-    }]
 }

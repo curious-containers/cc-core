@@ -2,10 +2,10 @@ import re
 from traceback import format_exc
 
 
-def exception_format(secrets_data=None):
+def exception_format(secret_values=None):
     exc_text = format_exc()
-    if secrets_data:
-        exc_text = re.sub('|'.join([val for _, val in secrets_data.items()]), '********', exc_text)
+    if secret_values:
+        exc_text = re.sub('|'.join(secret_values), '********', exc_text)
     return [l.replace('"', '').replace("'", '') for l in exc_text.split('\n') if l]
 
 
