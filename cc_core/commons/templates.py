@@ -14,7 +14,7 @@ def fill_validation(fill_data):
         raise RedValidationError('FILL_FILE does not comply with jsonschema')
 
 
-def _find_undeclared_recursively(data, template_key_is_secret, secret_values, allowed_section):
+def _find_undeclared_recursively(data, template_key_is_protected, protected_values, allowed_section):
     if isinstance(data, dict):
         for key, val in data.items():
             if allowed_section and key.startswith('_'):
@@ -30,9 +30,9 @@ def _find_undeclared_recursively(data, template_key_is_secret, secret_values, al
                 if val.startswith('{{') and val.endswith('}}'):
                     if len(val) == 4:
                         raise RedValidationError('string template value inside double curly braces must not be empty')
-                    template_key_is_secret[val[2:-2]] = True
+                    template_key_is_protected[val[2:-2]] = True
                 else:
-                    secret_values.update([val])
+                    protected_values.update([val])
 
             elif allowed_section and key == 'password':
                 if not isinstance(val, str):
@@ -41,57 +41,62 @@ def _find_undeclared_recursively(data, template_key_is_secret, secret_values, al
                 if val.startswith('{{') and val.endswith('}}'):
                     if len(val) == 4:
                         raise RedValidationError('string template value inside double curly braces must not be empty')
-                    template_key_is_secret[val[2:-2]] = True
+                    template_key_is_protected[val[2:-2]] = True
                 else:
-                    secret_values.update([val])
+                    protected_values.update([val])
             
             elif key in ['access', 'auth']:
-                _find_undeclared_recursively(val, template_key_is_secret, secret_values, True)
+                _find_undeclared_recursively(val, template_key_is_protected, protected_values, True)
             
             else:
-                _find_undeclared_recursively(val, template_key_is_secret, secret_values, allowed_section)
+                _find_undeclared_recursively(val, template_key_is_protected, protected_values, allowed_section)
             
     elif isinstance(data, list):
         for val in data:
-            _find_undeclared_recursively(val, template_key_is_secret, secret_values, allowed_section)
+            _find_undeclared_recursively(val, template_key_is_protected, protected_values, allowed_section)
 
     elif isinstance(data, str):
         if data.startswith('{{') and data.endswith('}}'):
             if len(data) == 4:
                 raise RedValidationError('string template value inside double curly braces must not be empty')
 
-            template_key_is_secret[data[2:-2]] = False
+            template_key = data[2:-2]
+            if template_key not in template_key_is_protected:
+                template_key_is_protected[template_key] = False
 
 
 def inspect_templates_and_secrets(data, fill_data, non_interactive):
-    template_key_is_secret = OrderedDict()
-    secret_values = set()
-    _find_undeclared_recursively(data, template_key_is_secret, secret_values, False)
+    template_key_is_protected = OrderedDict()
+    protected_values = set()
+    _find_undeclared_recursively(data, template_key_is_protected, protected_values, False)
 
     template_keys_and_values = {}
-    undeclared_template_key_is_secret = {}
+    undeclared_template_key_is_protected = {}
 
     fill_data = fill_data or {}
 
-    for key, is_secret in template_key_is_secret.items():
+    for key, is_protected in template_key_is_protected.items():
         if key in fill_data:
             value = fill_data[key]
             template_keys_and_values[key] = value
-            if is_secret:
-                secret_values.update([value])
+            if is_protected:
+                protected_values.update([value])
         else:
-            undeclared_template_key_is_secret[key] = is_secret
+            undeclared_template_key_is_protected[key] = is_protected
 
-    if undeclared_template_key_is_secret:
+    if undeclared_template_key_is_protected:
         if non_interactive:
             raise RedVariablesError('RED_FILE contains undeclared template variables: {}'.format(
-                list(undeclared_template_key_is_secret.keys())
+                list(undeclared_template_key_is_protected.keys())
             ))
 
         out = [
             'RED_FILE contains the following undeclared template variables:'
         ]
-        out += list(undeclared_template_key_is_secret.keys())
+        out += [
+            '{} (protected)'.format(key) if is_protected else '{}'.format(key)
+            for key, is_protected in undeclared_template_key_is_protected.items()
+        ]
         out += [
             '',
             'Set variables interactively...',
@@ -99,16 +104,16 @@ def inspect_templates_and_secrets(data, fill_data, non_interactive):
         ]
         wrapped_print(out)
 
-        for key, is_secret in undeclared_template_key_is_secret.items():
-            if is_secret:
-                value = getpass('{}: '.format(key))
+        for key, is_protected in undeclared_template_key_is_protected.items():
+            if is_protected:
+                value = getpass('{} (protected): '.format(key))
                 template_keys_and_values[key] = value
-                secret_values.update([value])
+                protected_values.update([value])
             else:
                 value = input('{}: '.format(key))
                 template_keys_and_values[key] = value
 
-    return template_keys_and_values, secret_values
+    return template_keys_and_values, protected_values
 
 
 def _fill_recursively(data, template_keys_and_values, allowed_section, remove_underscores):
