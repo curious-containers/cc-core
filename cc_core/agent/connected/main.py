@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 
 from cc_core.commons.red import inputs_to_job, red_validation
 from cc_core.commons.red import ConnectorManager, import_and_validate_connectors, receive, send
-from cc_core.commons.templates import inspect_templates_and_secrets
+from cc_core.commons.templates import inspect_templates_and_secrets, fill_template
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
@@ -61,9 +61,12 @@ def run(callback_url, outdir, inspect):
         'state': 'succeeded'
     }
 
+    secret_values = None
+
     try:
         red_validation(red_data, False)
-        inspect_templates_and_secrets(red_data, None, True)
+        _, secret_values = inspect_templates_and_secrets(red_data, None, True)
+        red_data = fill_template(red_data, None, False, True)
 
         connector_manager = ConnectorManager()
         import_and_validate_connectors(connector_manager, red_data, False)
@@ -87,7 +90,7 @@ def run(callback_url, outdir, inspect):
 
         send(connector_manager, output_files, red_data)
     except Exception:
-        result['debugInfo'] = exception_format()
+        result['debugInfo'] = exception_format(secret_values=secret_values)
         result['state'] = 'failed'
 
     r = requests.post(callback_url, json=result)
