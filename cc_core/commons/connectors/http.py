@@ -144,3 +144,9 @@ class HttpJson:
     @staticmethod
     def send_validate(access):
         jsonschema.validate(access, http_schema)
+
+
+class HttpMockSend(Http):
+    @staticmethod
+    def send(access, internal):
+        pass
