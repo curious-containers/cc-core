@@ -25,6 +25,41 @@ docker_schema = {
             'additionalProperties': False,
             'required': ['url']
         },
+        'runtime': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'engine': {
+                    'type': 'string',
+                    'enum': ['nvidia']
+                },
+                'settings': {
+                    'type': 'object',
+                    'properties': {
+                        'doc': {'type': 'string'},
+                        'gpus': {
+                            'oneOf': [{
+                                'type': 'array',
+                                'items': {
+                                    'type': 'object',
+                                    'properties': {
+                                        'vram': {'type': 'integer'}
+                                    }
+                                }
+                            }, {
+                                'type': 'object',
+                                'properties': {
+                                    'count': {'type': 'integer'}
+                                }
+                            }]
+                        }
+                    },
+                    'additionalProperties': False
+                }
+            },
+            'additionalProperties': False,
+            'required': ['engine']
+        },
         'ram': {'type': 'integer', 'minimum': 256},
     },
     'additionalProperties': False,
