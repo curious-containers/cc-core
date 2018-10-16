@@ -1,71 +1,76 @@
 from cc_core.commons.schemas.common import auth_schema
 
 
+MIN_RAM_LIMIT = 256
+
+
+gpus_schema = {
+    'oneOf': [{
+        'type': 'array',
+        'items': {
+            'type': 'object',
+            'properties': {
+                'vram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
+            }
+        }
+    }, {
+        'type': 'object',
+        'properties': {
+            'count': {'type': 'integer'}
+        }
+    }]
+}
+
+
+image_schema = {
+    'type': 'object',
+    'properties': {
+        'doc': {'type': 'string'},
+        'url': {'type': 'string'},
+        'auth': auth_schema,
+        'source': {
+            'type': 'object',
+            'properties': {
+                'doc': {'type': 'string'},
+                'url': {'type': 'string'}
+            },
+            'additionalProperties': False,
+            'required': ['url']
+        }
+    },
+    'additionalProperties': False,
+    'required': ['url']
+}
+
+
 docker_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
         'version': {'type': 'string'},
-        'image': {
-            'type': 'object',
-            'properties': {
-                'doc': {'type': 'string'},
-                'url': {'type': 'string'},
-                'auth': auth_schema,
-                'source': {
-                    'type': 'object',
-                    'properties': {
-                        'doc': {'type': 'string'},
-                        'url': {'type': 'string'}
-                    },
-                    'additionalProperties': False,
-                    'required': ['url']
-                }
-            },
-            'additionalProperties': False,
-            'required': ['url']
-        },
-        'runtime': {
-            'type': 'object',
-            'properties': {
-                'doc': {'type': 'string'},
-                'engine': {
-                    'type': 'string',
-                    'enum': ['nvidia']
-                },
-                'settings': {
-                    'type': 'object',
-                    'properties': {
-                        'doc': {'type': 'string'},
-                        'gpus': {
-                            'oneOf': [{
-                                'type': 'array',
-                                'items': {
-                                    'type': 'object',
-                                    'properties': {
-                                        'vram': {'type': 'integer'}
-                                    }
-                                }
-                            }, {
-                                'type': 'object',
-                                'properties': {
-                                    'count': {'type': 'integer'}
-                                }
-                            }]
-                        }
-                    },
-                    'additionalProperties': False
-                }
-            },
-            'additionalProperties': False,
-            'required': ['engine']
-        },
-        'ram': {'type': 'integer', 'minimum': 256},
+        'image': image_schema,
+        'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
     },
     'additionalProperties': False,
     'required': ['image']
 }
 
+
+nvidia_docker_schema = {
+    'type': 'object',
+    'properties': {
+        'doc': {'type': 'string'},
+        'version': {'type': 'string'},
+        'image': image_schema,
+        'gpus': gpus_schema,
+        'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
+    },
+    'additionalProperties': False,
+    'required': ['image']
+}
+
+
 container_engines = {
-    'docker': docker_schema
+    'docker': docker_schema,
+    'nvidia-docker': nvidia_docker_schema
 }
