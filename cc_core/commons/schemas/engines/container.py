@@ -10,14 +10,17 @@ gpus_schema = {
         'items': {
             'type': 'object',
             'properties': {
-                'vram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
-            }
+                'min_vram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
+            },
+            'additionalProperties': False
         }
     }, {
         'type': 'object',
         'properties': {
             'count': {'type': 'integer'}
-        }
+        },
+        'additionalProperties': False,
+        'required': ['count']
     }]
 }
 
