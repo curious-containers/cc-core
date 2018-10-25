@@ -1,6 +1,7 @@
 import os
 import inspect
 import jsonschema
+from jsonschema.exceptions import ValidationError
 
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
@@ -112,8 +113,8 @@ class ConnectorManager:
 def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
-    except:
-        raise RedValidationError('red file does not comply with jsonschema')
+    except ValidationError as e:
+        raise RedValidationError('red file does not comply with jsonschema: {}'.format(e.context))
 
     if not red_data['redVersion'] == RED_VERSION:
         raise RedSpecificationError(

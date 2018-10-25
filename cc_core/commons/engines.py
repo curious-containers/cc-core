@@ -1,4 +1,6 @@
 import jsonschema
+from jsonschema.exceptions import ValidationError
+
 from cc_core.commons.exceptions import EngineError
 from cc_core.commons.schemas.engines.container import container_engines
 from cc_core.commons.schemas.engines.execution import execution_engines
@@ -32,5 +34,5 @@ def engine_validation(red_data, engine_type, supported, optional=False):
     schema = ENGINES[engine_type][engine]
     try:
         jsonschema.validate(settings, schema)
-    except:
-        raise EngineError('{}-engine "{}" does not comply with jsonschema'.format(engine_type, engine))
+    except ValidationError as e:
+        raise EngineError('{}-engine "{}" does not comply with jsonschema: {}'.format(engine_type, engine, e.context))
