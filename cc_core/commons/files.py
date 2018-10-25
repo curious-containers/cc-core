@@ -4,12 +4,14 @@ import json
 import requests
 import textwrap
 from urllib.parse import urlparse
+from ruamel.yaml import YAML
 
-import cc_core.commons.yaml as yaml
 from cc_core.commons.exceptions import AgentError
 
-
 JSON_INDENT = 4
+
+yaml = YAML(typ='safe')
+yaml.default_flow_style = False
 
 
 def load_and_read(location, var_name):
@@ -57,7 +59,7 @@ def file_extension(dump_format):
 def dump(stream, dump_format, file_name):
     if dump_format == 'json':
         with open(file_name, 'w') as f:
-            json.dump(stream, f, indent=4)
+            json.dump(stream, f, indent=JSON_INDENT)
     elif dump_format in ['yaml', 'yml']:
         with open(file_name, 'w') as f:
             yaml.dump(stream, f)
@@ -68,11 +70,14 @@ def dump(stream, dump_format, file_name):
 def dump_print(stream, dump_format, error=False):
     if dump_format == 'json':
         if error:
-            print(json.dumps(stream, indent=4), file=sys.stderr)
+            print(json.dumps(stream, indent=JSON_INDENT), file=sys.stderr)
         else:
-            print(json.dumps(stream, indent=4))
+            print(json.dumps(stream, indent=JSON_INDENT))
     elif dump_format in ['yaml', 'yml']:
-        yaml.dump_print(stream, error=error)
+        if error:
+            yaml.dump(stream, sys.stderr)
+        else:
+            yaml.dump(stream, sys.stdout)
     else:
         raise AgentError('invalid dump format "{}"'.format(dump_format))
 
