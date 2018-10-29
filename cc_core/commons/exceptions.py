@@ -2,11 +2,19 @@ import re
 from traceback import format_exc
 
 
+def _lstrip_quarter(s):
+    len_s = len(s)
+    s = s.lstrip()
+    len_s_strip = len(s)
+    quarter = (len_s - len_s_strip) // 4
+    return ' ' * quarter + s
+
+
 def exception_format(secret_values=None):
     exc_text = format_exc()
     if secret_values:
         exc_text = re.sub('|'.join(secret_values), '********', exc_text)
-    return [l.replace('"', '').replace("'", '') for l in exc_text.split('\n') if l]
+    return [_lstrip_quarter(l.replace('"', '').replace("'", '').rstrip()) for l in exc_text.split('\n') if l]
 
 
 class ArgumentError(Exception):

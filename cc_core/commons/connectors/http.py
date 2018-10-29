@@ -1,6 +1,7 @@
+import requests
 import json
 import jsonschema
-import requests
+from jsonschema.exceptions import ValidationError
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
 from cc_core.commons.schemas.connectors import http_schema
@@ -67,7 +68,10 @@ class Http:
 
     @staticmethod
     def receive_validate(access):
-        jsonschema.validate(access, http_schema)
+        try:
+            jsonschema.validate(access, http_schema)
+        except ValidationError as e:
+            raise Exception(e.context)
 
     @staticmethod
     def send(access, internal):
@@ -89,7 +93,10 @@ class Http:
 
     @staticmethod
     def send_validate(access):
-        jsonschema.validate(access, http_schema)
+        try:
+            jsonschema.validate(access, http_schema)
+        except ValidationError as e:
+            raise Exception(e.context)
 
 
 class HttpJson:
@@ -115,7 +122,10 @@ class HttpJson:
 
     @staticmethod
     def receive_validate(access):
-        jsonschema.validate(access, http_schema)
+        try:
+            jsonschema.validate(access, http_schema)
+        except ValidationError as e:
+            raise Exception(e.context)
 
     @staticmethod
     def send(access, internal):
@@ -143,7 +153,10 @@ class HttpJson:
 
     @staticmethod
     def send_validate(access):
-        jsonschema.validate(access, http_schema)
+        try:
+            jsonschema.validate(access, http_schema)
+        except ValidationError as e:
+            raise Exception(e.context)
 
 
 class HttpMockSend(Http):
