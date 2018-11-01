@@ -131,12 +131,11 @@ def match_gpus(available_devices, requirements=[GPURequirement()]):
     return used_devices
 
 
-def get_gpu_requirements(gpus_reqs, at_least=GPURequirement()):
+def get_gpu_requirements(gpus_reqs):
     """
-    Extracts the GPU requirements as list of GPURequirements.
+    Extracts the GPU from a dictionary requirements as list of GPURequirements.
 
     :param gpus_reqs: A dictionary {'count': <count>} or a list [{min_vram: <min_vram>}, {min_vram: <min_vram>}, ...]
-    :param at_least: If gpu_reqs is empty return at_least
     :return: A list of GPURequirements
     """
     requirements = []
@@ -153,4 +152,4 @@ def get_gpu_requirements(gpus_reqs, at_least=GPURequirement()):
         return requirements
     else:
         # If no requirements are supplied
-        return [at_least]
+        return []
