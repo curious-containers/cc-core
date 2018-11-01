@@ -129,3 +129,28 @@ def match_gpus(available_devices, requirements=[GPURequirement()]):
             raise InsufficientGPUError("Not all GPU requirements could be fulfilled.")
 
     return used_devices
+
+
+def get_gpu_requirements(gpus_reqs, at_least=GPURequirement()):
+    """
+    Extracts the GPU requirements as list of GPURequirements.
+
+    :param gpus_reqs: A dictionary {'count': <count>} or a list [{min_vram: <min_vram>}, {min_vram: <min_vram>}, ...]
+    :param at_least: If gpu_reqs is empty return at_least
+    :return: A list of GPURequirements
+    """
+    requirements = []
+
+    if gpus_reqs:
+        if type(gpus_reqs) is dict:
+            count = gpus_reqs.get('count')
+            if count:
+                for i in range(count):
+                    requirements.append(GPURequirement())
+        elif type(gpus_reqs) is list:
+            for gpu_req in gpus_reqs:
+                requirements.append(GPURequirement(**gpu_req))
+        return requirements
+    else:
+        # If no requirements are supplied
+        return [at_least]
