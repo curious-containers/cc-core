@@ -11,6 +11,9 @@ ENGINES = {
     'execution': execution_engines
 }
 
+DEFAULT_DOCKER_RUNTIME = 'runc'
+NVIDIA_DOCKER_RUNTIME = 'nvidia'
+
 
 def engine_validation(red_data, engine_type, supported, optional=False):
     if engine_type not in ENGINES:
@@ -36,3 +39,17 @@ def engine_validation(red_data, engine_type, supported, optional=False):
         jsonschema.validate(settings, schema)
     except ValidationError as e:
         raise EngineError('{}-engine "{}" does not comply with jsonschema: {}'.format(engine_type, engine, e.context))
+
+
+def engine_to_runtime(engine):
+    """
+
+    :param engine:
+    :return:
+    """
+
+    runtime = DEFAULT_DOCKER_RUNTIME
+    if engine == 'nvidia-docker':
+        runtime = NVIDIA_DOCKER_RUNTIME
+
+    return runtime
