@@ -17,7 +17,7 @@ NVIDIA_DOCKER_RUNTIME = 'nvidia'
 
 def engine_validation(red_data, engine_type, supported, optional=False):
     if engine_type not in ENGINES:
-        raise EngineError('invlid engine type "{}"'.format(engine_type))
+        raise EngineError('invalid engine type "{}"'.format(engine_type))
 
     if engine_type not in red_data:
         if optional:
@@ -43,9 +43,10 @@ def engine_validation(red_data, engine_type, supported, optional=False):
 
 def engine_to_runtime(engine):
     """
+    Returns the docker runtime string depending on which engine is present
 
-    :param engine:
-    :return:
+    :param engine: On of 'docker' or 'nvidia-docker'
+    :return: 'nvidia' for engine=='nvidia-docker', otherwise 'runc'
     """
 
     runtime = DEFAULT_DOCKER_RUNTIME
