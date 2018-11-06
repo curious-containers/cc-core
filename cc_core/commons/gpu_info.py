@@ -118,6 +118,11 @@ def match_gpus(available_devices, requirements=[GPURequirement()]):
     if not requirements:
         return []
 
+    if not available_devices:
+        raise InsufficientGPUError("No GPU devices available, but {} devices required.".format(len(requirements)))
+
+    available_devices = available_devices.copy()
+
     used_devices = []
 
     for req in requirements:
