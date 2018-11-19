@@ -4,9 +4,10 @@ from argparse import ArgumentParser
 from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check,\
-                                cwl_input_directories, cwl_input_directories_check
+                                cwl_input_directories, cwl_input_directories_check,\
+                                cwl_output_directories, cwl_output_directory_check
 from cc_core.commons.shell import execute, shell_result_check
-from cc_core.commons.exceptions import exception_format, FileError
+from cc_core.commons.exceptions import exception_format
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE.'
@@ -49,8 +50,10 @@ def run(cwl_file, job_file, outdir, **_):
     result = {
         'command': None,
         'inputFiles': None,
+        'inputDirectories': None,
         'process': None,
         'outputFiles': None,
+        'outputDirectories': None,
         'debugInfo': None,
         'state': 'succeeded'
     }
@@ -71,6 +74,7 @@ def run(cwl_file, job_file, outdir, **_):
         cwl_input_file_check(input_files)
 
         input_directories = cwl_input_directories(cwl_data, job_data, input_dir=input_dir)
+        result['inputDirectories'] = input_directories
         cwl_input_directories_check(input_directories)
 
         process_data = execute(command)
@@ -80,6 +84,11 @@ def run(cwl_file, job_file, outdir, **_):
         output_files = cwl_output_files(cwl_data, output_dir=outdir)
         result['outputFiles'] = output_files
         cwl_output_file_check(output_files)
+
+        output_directories = cwl_output_directories(cwl_data, output_dir=outdir)
+        result['outputDirectories'] = output_directories
+        cwl_output_directory_check(output_directories)
+
     except:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'

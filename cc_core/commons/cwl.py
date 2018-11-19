@@ -3,9 +3,10 @@ import jsonschema
 from urllib.parse import urlparse
 from glob import glob
 from shutil import which
+from operator import itemgetter
 
 from cc_core.commons.exceptions import exception_format
-from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError
+from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError, DirectoryError
 from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
 
 
@@ -112,9 +113,9 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
 
         description['path'] = file_path
         if not os.path.exists(file_path):
-            raise FileError('path does not exist')
+            raise DirectoryError('path does not exist')
         if not os.path.isdir(file_path):
-            raise FileError('path is not a directory')
+            raise DirectoryError('path is not a directory')
 
         description['found'] = True
     except:
@@ -152,7 +153,7 @@ def cwl_input_directories_check(input_directories):
                 continue
 
     if missing_directories:
-        raise FileError('missing input directories {}'.format(missing_directories))
+        raise DirectoryError('missing input directories {}'.format(missing_directories))
 
 
 def cwl_output_file_check(output_files):
@@ -163,6 +164,16 @@ def cwl_output_file_check(output_files):
 
     if missing_files:
         raise FileError('missing output files {}'.format(missing_files))
+
+
+def cwl_output_directory_check(output_directories):
+    missing_directories = []
+    for key, val in output_directories.items():
+        if not val['found'] and not val['isOptional']:
+            missing_directories.append(key)
+
+    if missing_directories:
+        raise DirectoryError('missing output directories {}'.format(missing_directories))
 
 
 def parse_cwl_type(cwl_type_string):
@@ -192,9 +203,7 @@ def cwl_input_files(cwl_data, job_data, input_dir=None):
     for key, val in cwl_data['inputs'].items():
         cwl_type = parse_cwl_type(val['type'])
 
-        is_optional = cwl_type['isOptional']
-        is_array = cwl_type['isArray']
-        cwl_type = cwl_type['type']
+        (is_optional, is_array, cwl_type) = itemgetter('isOptional', 'isArray', 'type')(cwl_type)
 
         if cwl_type == 'File':
             result = {
@@ -240,9 +249,7 @@ def cwl_input_directories(cwl_data, job_data, input_dir=None):
     for input_identifier, input_data in cwl_data['inputs'].items():
         cwl_type = parse_cwl_type(input_data['type'])
 
-        is_optional = cwl_type['isOptional']
-        is_array = cwl_type['isArray']
-        cwl_type = cwl_type['type']
+        (is_optional, is_array, cwl_type) = itemgetter('isOptional', 'isArray', 'type')(cwl_type)
 
         if cwl_type == 'Directory':
             result = {
@@ -268,15 +275,8 @@ def cwl_output_files(cwl_data, output_dir=None):
     results = {}
 
     for key, val in cwl_data['outputs'].items():
-        cwl_type = val['type']
-
-        is_optional = cwl_type.endswith('?')
-        if is_optional:
-            cwl_type = cwl_type[:-1]
-
-        is_array = cwl_type.endswith('[]')
-        if is_array:
-            cwl_type = cwl_type[:-2]
+        cwl_type = parse_cwl_type(val['type'])
+        (is_optional, is_array, cwl_type) = itemgetter('isOptional', 'isArray', 'type')(cwl_type)
 
         if not cwl_type == 'File':
             continue
@@ -304,6 +304,47 @@ def cwl_output_files(cwl_data, output_dir=None):
                 raise FileError('path is not a file')
 
             result['size'] = os.path.getsize(file_path) / (1024 * 1024)
+        except:
+            result['debugInfo'] = exception_format()
+
+        results[key] = result
+
+    return results
+
+
+def cwl_output_directories(cwl_data, output_dir=None):
+    results = {}
+
+    for key, val in cwl_data['outputs'].items():
+        cwl_type = parse_cwl_type(val['type'])
+        (is_optional, is_array, cwl_type) = itemgetter('isOptional', 'isArray', 'type')(cwl_type)
+
+        if not cwl_type == 'Directory':
+            continue
+
+        result = {
+            'isOptional': is_optional,
+            'path': None,
+            'debugInfo': None,
+            'found': False
+        }
+
+        glob_path = os.path.expanduser(val['outputBinding']['glob'])
+        if output_dir and not os.path.isabs(glob_path):
+            glob_path = os.path.join(os.path.expanduser(output_dir), glob_path)
+
+        matches = glob(glob_path)
+        try:
+            if len(matches) != 1:
+                raise DirectoryError('glob path "{}" does not match exactly one directory'.format(glob_path))
+
+            file_path = matches[0]
+            result['path'] = file_path
+
+            if not os.path.isdir(file_path):
+                raise DirectoryError('path is not a directory')
+
+            result['found'] = True
         except:
             result['debugInfo'] = exception_format()
 

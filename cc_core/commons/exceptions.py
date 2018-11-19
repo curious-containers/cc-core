@@ -33,6 +33,10 @@ class FileError(Exception):
     pass
 
 
+class DirectoryError(Exception):
+    pass
+
+
 class JobExecutionError(Exception):
     pass
 
