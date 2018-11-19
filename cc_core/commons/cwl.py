@@ -16,8 +16,12 @@ ARGUMENT_TYPE_MAPPING = (
     ('float', float),
     ('double', float),
     ('boolean', bool),
-    ('File', dict)
+    ('File', dict),
+    ('Directory', dict)
 )
+
+
+URL_SCHEME_IDENTIFIER = 'path'
 
 
 def _assert_type(key, cwl_type, arg):
@@ -30,14 +34,15 @@ def _assert_type(key, cwl_type, arg):
 
 
 def location(key, arg_item):
-    if arg_item.get('path'):
-        return os.path.expanduser(arg_item['path'])
+    if arg_item.get(URL_SCHEME_IDENTIFIER):
+        return os.path.expanduser(arg_item[URL_SCHEME_IDENTIFIER])
 
     p = arg_item['location']
     scheme = urlparse(p).scheme
 
-    if scheme != 'path':
-        raise JobSpecificationError('argument "{}" uses url scheme "{}" other than "path"'.format(key, scheme))
+    if scheme != URL_SCHEME_IDENTIFIER:
+        raise JobSpecificationError('argument "{}" uses url scheme "{}"'
+                                    'other than "{}"'.format(key, scheme, URL_SCHEME_IDENTIFIER))
 
     return os.path.expanduser(p[5:])
 
@@ -80,6 +85,44 @@ def _input_file_description(key, arg_item, input_dir):
     return description
 
 
+def _input_directory_description(input_identifier, arg_item, input_dir):
+    """
+     Produces a directory description.
+     A directory description is a dictionary containing the following information.
+
+     - 'path': An array containing the paths to the specified directories
+     - 'debugInfo': A field to possibly provide debug information
+
+    :param input_identifier: The input identifier in the cwl description file
+    :param arg_item: The corresponding job information
+    :param input_dir: TODO
+    :return:
+    """
+    description = {
+        'path': None,
+        'found': False,
+        'debugInfo': None
+    }
+
+    try:
+        file_path = location(input_identifier, arg_item)
+
+        if input_dir and not os.path.isabs(file_path):
+            file_path = os.path.join(os.path.expanduser(input_dir), file_path)
+
+        description['path'] = file_path
+        if not os.path.exists(file_path):
+            raise FileError('path does not exist')
+        if not os.path.isdir(file_path):
+            raise FileError('path is not a directory')
+
+        description['found'] = True
+    except:
+        description['debugInfo'] = exception_format()
+
+    return description
+
+
 def cwl_input_file_check(input_files):
     missing_files = []
     for key, val in input_files.items():
@@ -96,6 +139,22 @@ def cwl_input_file_check(input_files):
         raise FileError('missing input files {}'.format(missing_files))
 
 
+def cwl_input_directories_check(input_directories):
+    missing_directories = []
+    for key, val in input_directories.items():
+        if val['directories'] is None and not val['isOptional']:
+            missing_directories.append(key)
+            continue
+
+        for f in val['directories']:
+            if f['found'] is False:
+                missing_directories.append(key)
+                continue
+
+    if missing_directories:
+        raise FileError('missing input directories {}'.format(missing_directories))
+
+
 def cwl_output_file_check(output_files):
     missing_files = []
     for key, val in output_files.items():
@@ -106,38 +165,101 @@ def cwl_output_file_check(output_files):
         raise FileError('missing output files {}'.format(missing_files))
 
 
+def parse_cwl_type(cwl_type_string):
+    """
+    Parses cwl type information from a cwl type string.
+    Examples: "File[]" -> {'type': 'File', 'isArray': True, 'isOptional': False}
+              "int?" -> {'type': 'int', 'isArray': False, 'isOptional': True}
+
+    :param cwl_type_string: The cwl type string to extract information from
+    :return: A dictionary containing information about the parsed cwl type string
+    """
+
+    is_optional = cwl_type_string.endswith('?')
+    if is_optional:
+        cwl_type_string = cwl_type_string[:-1]
+
+    is_array = cwl_type_string.endswith('[]')
+    if is_array:
+        cwl_type_string = cwl_type_string[:-2]
+
+    return {'type': cwl_type_string, 'isArray': is_array, 'isOptional': is_optional}
+
+
 def cwl_input_files(cwl_data, job_data, input_dir=None):
     results = {}
 
     for key, val in cwl_data['inputs'].items():
-        cwl_type = val['type']
+        cwl_type = parse_cwl_type(val['type'])
 
-        is_optional = cwl_type.endswith('?')
-        if is_optional:
-            cwl_type = cwl_type[:-1]
+        is_optional = cwl_type['isOptional']
+        is_array = cwl_type['isArray']
+        cwl_type = cwl_type['type']
 
-        is_array = cwl_type.endswith('[]')
-        if is_array:
-            cwl_type = cwl_type[:-2]
+        if cwl_type == 'File':
+            result = {
+                'isOptional': is_optional,
+                'isArray': is_array,
+                'files': None
+            }
 
-        if not cwl_type == 'File':
-            continue
+            if key in job_data:
+                arg = job_data[key]
 
-        result = {
-            'isOptional': is_optional,
-            'isArray': is_array,
-            'files': None
-        }
+                if is_array:
+                    result['files'] = [_input_file_description(key, i, input_dir) for i in arg]
+                else:
+                    result['files'] = [_input_file_description(key, arg, input_dir)]
 
-        if key in job_data:
-            arg = job_data[key]
+            results[key] = result
 
-            if is_array:
-                result['files'] = [_input_file_description(key, i, input_dir) for i in arg]
-            else:
-                result['files'] = [_input_file_description(key, arg, input_dir)]
+    return results
 
-        results[key] = result
+
+def cwl_input_directories(cwl_data, job_data, input_dir=None):
+    """
+    Searches for Directories and in the cwl data and produces a dictionary containing input file information.
+
+    :param cwl_data: The cwl data as dictionary
+    :param job_data: The job data as dictionary
+    :param input_dir: TODO
+    :return: Returns the a dictionary containing information about input files.
+             The keys of this dictionary are the input/output identifiers of the files specified in the cwl description.
+             The corresponding value is a dictionary again with the following keys and values:
+             - 'isOptional': A bool indicating whether this input directory is optional
+             - 'isArray': A bool indicating whether this could be a list of directories
+             - 'files': A list of input file descriptions
+
+             A input file description is a dictionary containing the following information
+             - 'path': The path to the specified directory
+             - 'debugInfo': A field to possibly provide debug information
+    """
+
+    results = {}
+
+    for input_identifier, input_data in cwl_data['inputs'].items():
+        cwl_type = parse_cwl_type(input_data['type'])
+
+        is_optional = cwl_type['isOptional']
+        is_array = cwl_type['isArray']
+        cwl_type = cwl_type['type']
+
+        if cwl_type == 'Directory':
+            result = {
+                'isOptional': is_optional,
+                'isArray': is_array,
+                'directories': None
+            }
+
+            if input_identifier in job_data:
+                arg = job_data[input_identifier]
+
+                if is_array:
+                    result['directories'] = [_input_directory_description(input_identifier, i, input_dir) for i in arg]
+                else:
+                    result['directories'] = [_input_directory_description(input_identifier, arg, input_dir)]
+
+            results[input_identifier] = result
 
     return results
 

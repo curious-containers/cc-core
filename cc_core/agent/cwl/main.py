@@ -3,9 +3,10 @@ from argparse import ArgumentParser
 
 from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
-from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
+from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check,\
+                                cwl_input_directories, cwl_input_directories_check
 from cc_core.commons.shell import execute, shell_result_check
-from cc_core.commons.exceptions import exception_format
+from cc_core.commons.exceptions import exception_format, FileError
 
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE.'
@@ -68,6 +69,9 @@ def run(cwl_file, job_file, outdir, **_):
         input_files = cwl_input_files(cwl_data, job_data, input_dir=input_dir)
         result['inputFiles'] = input_files
         cwl_input_file_check(input_files)
+
+        input_directories = cwl_input_directories(cwl_data, job_data, input_dir=input_dir)
+        cwl_input_directories_check(input_directories)
 
         process_data = execute(command)
         result['process'] = process_data

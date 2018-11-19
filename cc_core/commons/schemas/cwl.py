@@ -1,11 +1,11 @@
 from cc_core.commons.schemas.common import pattern_key
 
 
-CWL_INPUT_TYPES = ['File', 'string', 'int', 'long', 'float', 'double', 'boolean']
+CWL_INPUT_TYPES = ['File', 'Directory', 'string', 'int', 'long', 'float', 'double', 'boolean']
 CWL_INPUT_TYPES += ['{}[]'.format(t) for t in CWL_INPUT_TYPES[:-1]]
 CWL_INPUT_TYPES += ['{}?'.format(t) for t in CWL_INPUT_TYPES[:]]
 
-CWL_OUTPUT_TYPES = ['File']
+CWL_OUTPUT_TYPES = ['File', 'Directory']
 CWL_OUTPUT_TYPES += ['{}?'.format(t) for t in CWL_OUTPUT_TYPES[:]]
 
 
@@ -109,6 +109,26 @@ _file_path_schema = {
     'required': ['class', 'path']
 }
 
+_directory_location_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['Directory']},
+        'location': {'type': 'string'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'location']
+}
+
+_directory_path_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['Directory']},
+        'path': {'type': 'string'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'path']
+}
+
 cwl_job_schema = {
     'type': 'object',
     'patternProperties': {
@@ -119,6 +139,8 @@ cwl_job_schema = {
                 {'type': 'boolean'},
                 _file_location_schema,
                 _file_path_schema,
+                _directory_location_schema,
+                _directory_path_schema,
                 {
                     'type': 'array',
                     'items': {
@@ -127,6 +149,8 @@ cwl_job_schema = {
                             {'type': 'number'},
                             _file_location_schema,
                             _file_path_schema,
+                            _directory_location_schema,
+                            _directory_path_schema
                         ]
                     }
                 }
