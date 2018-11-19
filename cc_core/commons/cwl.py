@@ -22,7 +22,7 @@ ARGUMENT_TYPE_MAPPING = (
 )
 
 
-URL_SCHEME_IDENTIFIER = 'path'
+URL_SCHEME_IDENTIFIER = 'file'
 
 
 def _assert_type(key, cwl_type, arg):
