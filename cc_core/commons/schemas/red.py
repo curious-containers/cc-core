@@ -1,3 +1,5 @@
+import copy
+
 from cc_core.commons.schemas.common import pattern_key
 from cc_core.commons.schemas.cwl import cwl_schema
 
@@ -22,6 +24,9 @@ _file_schema = {
     'required': ['class', 'connector']
 }
 
+_directory_schema = copy.deepcopy(_file_schema)
+_directory_schema['properties']['class']['enum'] = ['Directory']
+
 _inputs_schema = {
     'type': 'object',
     'patternProperties': {
@@ -36,11 +41,13 @@ _inputs_schema = {
                         'oneOf': [
                             {'type': 'string'},
                             {'type': 'number'},
-                            _file_schema
+                            _file_schema,
+                            _directory_schema
                         ]
                     }
                 },
-                _file_schema
+                _file_schema,
+                _directory_schema
             ]
         }
     },

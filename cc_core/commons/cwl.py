@@ -88,8 +88,7 @@ def _input_file_description(key, arg_item, input_dir):
 
 def _input_directory_description(input_identifier, arg_item, input_dir):
     """
-     Produces a directory description.
-     A directory description is a dictionary containing the following information.
+     Produces a directory description. A directory description is a dictionary containing the following information.
 
      - 'path': An array containing the paths to the specified directories
      - 'debugInfo': A field to possibly provide debug information
@@ -97,7 +96,7 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
     :param input_identifier: The input identifier in the cwl description file
     :param arg_item: The corresponding job information
     :param input_dir: TODO
-    :return:
+    :return: A directory description
     """
     description = {
         'path': None,
@@ -179,8 +178,11 @@ def cwl_output_directory_check(output_directories):
 def parse_cwl_type(cwl_type_string):
     """
     Parses cwl type information from a cwl type string.
-    Examples: "File[]" -> {'type': 'File', 'isArray': True, 'isOptional': False}
-              "int?" -> {'type': 'int', 'isArray': False, 'isOptional': True}
+
+    Examples:
+
+    - "File[]" -> {'type': 'File', 'isArray': True, 'isOptional': False}
+    - "int?" -> {'type': 'int', 'isArray': False, 'isOptional': True}
 
     :param cwl_type_string: The cwl type string to extract information from
     :return: A dictionary containing information about the parsed cwl type string
