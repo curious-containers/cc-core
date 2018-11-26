@@ -7,7 +7,6 @@ _HTTP_METHODS_ENUMS = deepcopy(_HTTP_METHODS) + [m.lower() for m in _HTTP_METHOD
 _AUTH_METHODS = ['Basic', 'Digest']
 _AUTH_METHODS_ENUMS = deepcopy(_AUTH_METHODS) + [m.lower() for m in _AUTH_METHODS] + [m.upper() for m in _AUTH_METHODS]
 
-
 http_schema = {
     'type': 'object',
     'properties': {
@@ -29,6 +28,8 @@ http_schema = {
     'additionalProperties': False,
     'required': ['url', 'method']
 }
+
+http_directory_schema = deepcopy(http_schema)
 
 connectors = {
     'http': http_schema

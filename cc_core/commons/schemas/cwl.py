@@ -1,6 +1,9 @@
 from cc_core.commons.schemas.common import pattern_key
 
 
+URL_SCHEME_IDENTIFIER = 'file'
+
+
 CWL_INPUT_TYPES = ['File', 'Directory', 'string', 'int', 'long', 'float', 'double', 'boolean']
 CWL_INPUT_TYPES += ['{}[]'.format(t) for t in CWL_INPUT_TYPES[:-1]]
 CWL_INPUT_TYPES += ['{}?'.format(t) for t in CWL_INPUT_TYPES[:]]
@@ -103,10 +106,10 @@ _file_path_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['File']},
-        'path': {'type': 'string'}
+        URL_SCHEME_IDENTIFIER: {'type': 'string'}
     },
     'additionalProperties': False,
-    'required': ['class', 'path']
+    'required': ['class', URL_SCHEME_IDENTIFIER]
 }
 
 _directory_location_schema = {
@@ -123,10 +126,10 @@ _directory_path_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['Directory']},
-        'path': {'type': 'string'}
+        URL_SCHEME_IDENTIFIER: {'type': 'string'}
     },
     'additionalProperties': False,
-    'required': ['class', 'path']
+    'required': ['class', URL_SCHEME_IDENTIFIER]
 }
 
 cwl_job_schema = {

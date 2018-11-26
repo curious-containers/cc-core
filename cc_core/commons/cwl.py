@@ -7,8 +7,7 @@ from operator import itemgetter
 
 from cc_core.commons.exceptions import exception_format
 from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError, DirectoryError
-from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema
-
+from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema, URL_SCHEME_IDENTIFIER
 
 ARGUMENT_TYPE_MAPPING = (
     ('string', str),
@@ -20,9 +19,6 @@ ARGUMENT_TYPE_MAPPING = (
     ('File', dict),
     ('Directory', dict)
 )
-
-
-URL_SCHEME_IDENTIFIER = 'file'
 
 
 def _assert_type(key, cwl_type, arg):

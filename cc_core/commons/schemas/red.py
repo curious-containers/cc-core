@@ -26,6 +26,7 @@ _file_schema = {
 
 _directory_schema = copy.deepcopy(_file_schema)
 _directory_schema['properties']['class']['enum'] = ['Directory']
+_directory_schema['properties']['listing'] = {'type': 'array'}
 
 _inputs_schema = {
     'type': 'object',

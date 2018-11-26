@@ -4,14 +4,21 @@ import jsonschema
 from jsonschema.exceptions import ValidationError
 
 from cc_core.version import RED_VERSION
+from cc_core.commons.cwl import URL_SCHEME_IDENTIFIER
 from cc_core.commons.schemas.red import red_schema
-from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, ArgumentError
-from cc_core.commons.exceptions import RedSpecificationError, RedValidationError
+from cc_core.commons.exceptions import ConnectorError, AccessValidationError, AccessError, ArgumentError, \
+    RedValidationError
+from cc_core.commons.exceptions import RedSpecificationError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
 SEND_RECEIVE_SPEC_KWARGS = []
 SEND_RECEIVE_VALIDATE_SPEC_ARGS = ['access']
 SEND_RECEIVE_VALIDATE_SPEC_KWARGS = []
+
+SEND_RECEIVE_DIRECTORY_SPEC_ARGS = ['access', 'internal', 'listing']
+SEND_RECEIVE_DIRECTORY_SPEC_KWARGS = []
+SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS = ['access', 'listing']
+SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS = []
 
 
 class ConnectorManager:
@@ -72,6 +79,29 @@ class ConnectorManager:
         except:
             raise AccessValidationError('invalid access data for input file "{}"'.format(input_key))
 
+    def receive_directory_validate(self, connector_data, input_key, listing):
+        py_module, py_class, access = self._cdata(connector_data)
+        c_key = self._key(py_module, py_class)
+
+        try:
+            connector = self._imported_connectors[c_key]
+        except:
+            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
+
+        self._check_func(c_key,
+                         'receive_directory',
+                         SEND_RECEIVE_DIRECTORY_SPEC_ARGS,
+                         SEND_RECEIVE_DIRECTORY_SPEC_KWARGS)
+        self._check_func(c_key,
+                         'receive_directory_validate',
+                         SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS,
+                         SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS)
+
+        try:
+            connector.receive_directory_validate(access, listing)
+        except:
+            raise AccessValidationError('invalid access data for input file "{}"'.format(input_key))
+
     def send_validate(self, connector_data, output_key):
         py_module, py_class, access = self._cdata(connector_data)
         c_key = ConnectorManager._key(py_module, py_class)
@@ -89,6 +119,26 @@ class ConnectorManager:
         except:
             raise AccessValidationError('invalid access data for output file "{}"'.format(output_key))
 
+    def send_directory_validate(self, connector_data, output_key):
+        py_module, py_class, access = self._cdata(connector_data)
+        c_key = ConnectorManager._key(py_module, py_class)
+
+        try:
+            connector = self._imported_connectors[c_key]
+        except:
+            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
+
+        self._check_func(c_key, 'send_directory', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
+        self._check_func(c_key,
+                         'send_directory_validate',
+                         SEND_RECEIVE_VALIDATE_SPEC_ARGS,
+                         SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
+
+        try:
+            connector.send_directory_validate(access)
+        except:
+            raise AccessValidationError('invalid access data for output file "{}"'.format(output_key))
+
     def receive(self, connector_data, input_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
         key = ConnectorManager._key(py_module, py_class)
@@ -98,6 +148,16 @@ class ConnectorManager:
             connector.receive(access, internal)
         except:
             raise AccessError('could not access input file "{}"'.format(input_key))
+
+    def receive_directory(self, connector_data, input_key, internal, listing=None):
+        py_module, py_class, access = self._cdata(connector_data)
+        key = ConnectorManager._key(py_module, py_class)
+        connector = self._imported_connectors[key]
+
+        try:
+            connector.receive_directory(access, internal, listing)
+        except:
+            raise # AccessError('could not access input file "{}"'.format(input_key))
 
     def send(self, connector_data, output_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
@@ -180,9 +240,17 @@ def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
             arg_items += [i for i in arg if isinstance(i, dict)]
 
         for i in arg_items:
+            connector_class = i['class']
             connector_data = i['connector']
             connector_manager.import_connector(connector_data)
-            connector_manager.receive_validate(connector_data, input_key)
+
+            if connector_class == 'File':
+                connector_manager.receive_validate(connector_data, input_key)
+            elif connector_class == 'Directory':
+                listing = i.get('listing')
+                connector_manager.receive_directory_validate(connector_data, input_key, listing)
+            else:
+                raise ConnectorError('Unsupported class for connector object: "{}"'.format(connector_class))
 
     if not ignore_outputs and red_data.get('outputs'):
         for output_key, arg in red_data['outputs'].items():
@@ -206,7 +274,7 @@ def inputs_to_job(red_data, tmp_dir):
                     path = os.path.join(tmp_dir, '{}_{}'.format(key, index))
                     val.append({
                         'class': 'File',
-                        'path': path
+                        URL_SCHEME_IDENTIFIER: path
                     })
                 else:
                     val.append(i)
@@ -214,7 +282,7 @@ def inputs_to_job(red_data, tmp_dir):
             path = os.path.join(tmp_dir, key)
             val = {
                 'class': 'File',
-                'path': path
+                URL_SCHEME_IDENTIFIER: path
             }
 
         job[key] = val
@@ -225,6 +293,10 @@ def inputs_to_job(red_data, tmp_dir):
 def receive(connector_manager, red_data, tmp_dir):
     for key, arg in red_data['inputs'].items():
         val = arg
+
+        # connector_class should be one of 'File' or 'Directory'
+        connector_class = arg['class']
+
         if isinstance(arg, list):
             for index, i in enumerate(arg):
                 if not isinstance(i, dict):
@@ -233,21 +305,31 @@ def receive(connector_manager, red_data, tmp_dir):
                 input_key = '{}_{}'.format(key, index)
                 path = os.path.join(tmp_dir, input_key)
                 connector_data = i['connector']
-                internal = {'path': path}
-                connector_manager.receive(connector_data, input_key, internal)
+                internal = {URL_SCHEME_IDENTIFIER: path}
+
+                if connector_class == 'File':
+                    connector_manager.receive(connector_data, input_key, internal)
+                elif connector_class == 'Directory':
+                    listing = i.get('listing')
+                    connector_manager.receive_directory(connector_data, input_key, internal, listing)
 
         elif isinstance(arg, dict):
             path = os.path.join(tmp_dir, key)
             connector_data = val['connector']
-            internal = {'path': path}
-            connector_manager.receive(connector_data, key, internal)
+            internal = {URL_SCHEME_IDENTIFIER: path}
+
+            if connector_class == 'File':
+                connector_manager.receive(connector_data, key, internal)
+            elif connector_class == 'Directory':
+                listing = arg.get('listing')
+                connector_manager.receive_directory(connector_data, key, internal, listing)
 
 
 def send(connector_manager, output_files, red_data, agency_data=None):
     for key, arg in red_data['outputs'].items():
-        path = output_files[key]['path']
+        path = output_files[key][URL_SCHEME_IDENTIFIER]
         internal = {
-            'path': path,
+            URL_SCHEME_IDENTIFIER: path,
             'agencyData': agency_data
         }
         connector_data = arg['connector']
