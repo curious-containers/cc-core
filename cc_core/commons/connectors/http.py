@@ -208,9 +208,12 @@ class Http:
     def receive_directory_validate(access, listing):
         try:
             jsonschema.validate(access, http_directory_schema)
-            jsonschema.validate(listing, cwl_job_listing_schema)
         except ValidationError as e:
             raise Exception(e.context)
+
+        if not listing:
+            raise Exception('Connector "{}.{}" needs a not empty listing to work properly'
+                            .format(Http.__module__, Http.__name__))
 
 
 class HttpJson:

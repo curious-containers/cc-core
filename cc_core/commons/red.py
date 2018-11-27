@@ -3,6 +3,7 @@ import inspect
 import jsonschema
 from jsonschema.exceptions import ValidationError
 
+from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.version import RED_VERSION
 from cc_core.commons.cwl import URL_SCHEME_IDENTIFIER
 from cc_core.commons.schemas.red import red_schema
@@ -99,8 +100,8 @@ class ConnectorManager:
 
         try:
             connector.receive_directory_validate(access, listing)
-        except:
-            raise AccessValidationError('invalid access data for input file "{}"'.format(input_key))
+        except Exception as e:
+            raise AccessValidationError('invalid access data for input file "{}":\n{}'.format(input_key, str(e)))
 
     def send_validate(self, connector_data, output_key):
         py_module, py_class, access = self._cdata(connector_data)
@@ -170,6 +171,24 @@ class ConnectorManager:
             raise AccessError('could not access output file "{}"'.format(output_key))
 
 
+def _red_listing_validation(key, listing):
+    """
+    Raises an RedValidationError, if the given listing does not comply with cwl_job_listing_schema.
+    If listing is None or an empty list, no exception is thrown.
+
+    :param key: The input key to build an error message if needed.
+    :param listing: The listing to validate
+    :raise RedValidationError: If the given listing does not comply with cwl_job_listing_schema
+    """
+
+    if listing:
+        try:
+            jsonschema.validate(listing, cwl_job_listing_schema)
+        except ValidationError as e:
+            raise RedValidationError('red file listing of input "{}" does not comply with jsonschema: {}'
+                                     .format(key, e.context))
+
+
 def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
@@ -189,6 +208,8 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
                 if key not in red_data['cli']['inputs']:
                     raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
 
+                _red_listing_validation(key, val.get('listing'))
+
             if not ignore_outputs and batch.get('outputs'):
                 for key, val in batch['outputs'].items():
                     if key not in red_data['cli']['outputs']:
@@ -197,6 +218,8 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
         for key, val in red_data['inputs'].items():
             if key not in red_data['cli']['inputs']:
                 raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
+
+            _red_listing_validation(key, val.get('listing'))
 
         if not ignore_outputs and red_data.get('outputs'):
             for key, val in red_data['outputs'].items():
@@ -247,8 +270,7 @@ def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
             if connector_class == 'File':
                 connector_manager.receive_validate(connector_data, input_key)
             elif connector_class == 'Directory':
-                listing = i.get('listing')
-                connector_manager.receive_directory_validate(connector_data, input_key, listing)
+                connector_manager.receive_directory_validate(connector_data, input_key, listing=i.get('listing'))
             else:
                 raise ConnectorError('Unsupported class for connector object: "{}"'.format(connector_class))
 
