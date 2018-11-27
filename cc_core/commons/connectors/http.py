@@ -8,12 +8,12 @@ import jsonschema
 from jsonschema.exceptions import ValidationError
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
-from cc_core.commons.schemas.common import listing_schema
 from cc_core.commons.schemas.connectors import http_schema, http_directory_schema
-from cc_core.commons.schemas.cwl import URL_SCHEME_IDENTIFIER
+from cc_core.commons.schemas.cwl import cwl_job_listing_schema, URL_SCHEME_IDENTIFIER
 
 
-DEFAULT_DIRECTORY_MODE = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+DEFAULT_DIRECTORY_MODE = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH\
+                         | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
 
 def _http_method_func(access):
@@ -156,7 +156,6 @@ class Http:
 
         r.raise_for_status()
 
-
     @staticmethod
     def fetch_directory(listing, http_method, auth_method, verify=True):
         """
@@ -209,7 +208,7 @@ class Http:
     def receive_directory_validate(access, listing):
         try:
             jsonschema.validate(access, http_directory_schema)
-            jsonschema.validate(listing, listing_schema)
+            jsonschema.validate(listing, cwl_job_listing_schema)
         except ValidationError as e:
             raise Exception(e.context)
 

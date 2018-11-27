@@ -1,5 +1,6 @@
 import os
 import jsonschema
+from jsonschema import ValidationError
 from urllib.parse import urlparse
 from glob import glob
 from shutil import which
@@ -7,7 +8,7 @@ from operator import itemgetter
 
 from cc_core.commons.exceptions import exception_format
 from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError, DirectoryError
-from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema, URL_SCHEME_IDENTIFIER
+from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema, cwl_job_listing_schema, URL_SCHEME_IDENTIFIER
 
 ARGUMENT_TYPE_MAPPING = (
     ('string', str),
@@ -86,18 +87,22 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
     """
      Produces a directory description. A directory description is a dictionary containing the following information.
 
-     - 'path': An array containing the paths to the specified directories
-     - 'debugInfo': A field to possibly provide debug information
+     - 'path': An array containing the paths to the specified directories.
+     - 'debugInfo': A field to possibly provide debug information.
+     - 'found': A boolean that indicates, if the directory exists in the local filesystem.
+     - 'listing': A listing that shows which files are in the given directory. This could be None.
 
     :param input_identifier: The input identifier in the cwl description file
     :param arg_item: The corresponding job information
     :param input_dir: TODO
     :return: A directory description
+    :raise DirectoryError: If the given directory does not exists or is not a directory.
     """
     description = {
         'path': None,
         'found': False,
-        'debugInfo': None
+        'debugInfo': None,
+        'listing': None
     }
 
     try:
@@ -111,6 +116,8 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
             raise DirectoryError('path does not exist')
         if not os.path.isdir(file_path):
             raise DirectoryError('path is not a directory')
+
+        description['listing'] = arg_item.get('listing')
 
         description['found'] = True
     except:
@@ -135,17 +142,44 @@ def cwl_input_file_check(input_files):
         raise FileError('missing input files {}'.format(missing_files))
 
 
+def _check_input_directory_listing(base_directory, listing):
+    """
+    Raises an DirectoryError if files or directories, given in the listing, could not be found in the local filesystem.
+
+    :param base_directory: The path to the directory to check
+    :param listing: A listing given as dictionary
+    :raise DirectoryError: If the given base directory does not contain all of the subdirectories and subfiles given in
+    the listing.
+    """
+
+    for sub in listing:
+        path = os.path.join(base_directory, sub['basename'])
+        if sub['class'] == 'File':
+            if not os.path.isfile(path):
+                raise DirectoryError('File \'{}\' not found but specified in listing.'.format(path))
+        if sub['class'] == 'Directory':
+            if not os.path.isdir(path):
+                raise DirectoryError('Directory \'{}\' not found but specified in listing'.format(path))
+            sub_listing = sub.get('listing')
+            if sub_listing:
+                _check_input_directory_listing(path, sub_listing)
+
+
 def cwl_input_directories_check(input_directories):
     missing_directories = []
     for key, val in input_directories.items():
-        if val['directories'] is None and not val['isOptional']:
+        directories = val['directories']
+        if directories is None and not val['isOptional']:
             missing_directories.append(key)
             continue
 
-        for f in val['directories']:
-            if f['found'] is False:
+        for f in directories:
+            if not f['found']:
                 missing_directories.append(key)
                 continue
+            listing = f.get('listing')
+            if listing:
+                _check_input_directory_listing(f['path'], listing)
 
     if missing_directories:
         raise DirectoryError('missing input directories {}'.format(missing_directories))
@@ -361,6 +395,16 @@ def cwl_validation(cwl_data, job_data, docker_requirement=False):
         jsonschema.validate(job_data, cwl_job_schema)
     except:
         raise JobSpecificationError('job file does not comply with jsonschema')
+
+    # validate listings
+    for input_key, input_value in job_data.items():
+        listing = input_value.get('listing')
+        if listing:
+            try:
+                jsonschema.validate(listing, cwl_job_listing_schema)
+            except ValidationError as e:
+                raise JobSpecificationError('listing of \'{}\' does not comply with jsonschema:\n{}'
+                                            .format(input_key, e.context))
 
     for key, val in job_data.items():
         if key not in cwl_data['inputs']:

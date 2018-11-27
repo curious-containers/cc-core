@@ -116,7 +116,8 @@ _directory_location_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['Directory']},
-        'location': {'type': 'string'}
+        'location': {'type': 'string'},
+        'listing': {'type': 'array'}
     },
     'additionalProperties': False,
     'required': ['class', 'location']
@@ -126,7 +127,8 @@ _directory_path_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['Directory']},
-        URL_SCHEME_IDENTIFIER: {'type': 'string'}
+        URL_SCHEME_IDENTIFIER: {'type': 'string'},
+        'listing': {'type': 'array'}
     },
     'additionalProperties': False,
     'required': ['class', URL_SCHEME_IDENTIFIER]
@@ -161,3 +163,34 @@ cwl_job_schema = {
         }
     }
 }
+
+listing_sub_file_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['File']},
+        'basename': {'type': 'string'},
+    },
+    'required': ['class', 'basename'],
+    'additionalProperties': False
+}
+
+listing_sub_directory_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['Directory']},
+        'basename': {'type': 'string'},
+        'listing': {'$ref': '#/'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'basename']
+}
+
+# WARNING: Do not embed this schema into another schema,
+# because this breaks the '$ref' in listing_sub_directory_schema
+cwl_job_listing_schema = {
+    'type': 'array',
+    'items': {
+        'oneOf': [listing_sub_file_schema, listing_sub_directory_schema]
+    }
+}
+

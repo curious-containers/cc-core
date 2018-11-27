@@ -157,7 +157,7 @@ class ConnectorManager:
         try:
             connector.receive_directory(access, internal, listing)
         except:
-            raise # AccessError('could not access input file "{}"'.format(input_key))
+            raise AccessError('could not access input file "{}"'.format(input_key))
 
     def send(self, connector_data, output_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
