@@ -18,7 +18,7 @@ SEND_RECEIVE_VALIDATE_SPEC_KWARGS = []
 
 SEND_RECEIVE_DIRECTORY_SPEC_ARGS = ['access', 'internal', 'listing']
 SEND_RECEIVE_DIRECTORY_SPEC_KWARGS = []
-SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS = ['access', 'listing']
+SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS = ['access']
 SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS = []
 
 
@@ -80,7 +80,7 @@ class ConnectorManager:
         except:
             raise AccessValidationError('invalid access data for input file "{}"'.format(input_key))
 
-    def receive_directory_validate(self, connector_data, input_key, listing):
+    def receive_directory_validate(self, connector_data, input_key):
         py_module, py_class, access = self._cdata(connector_data)
         c_key = self._key(py_module, py_class)
 
@@ -99,7 +99,7 @@ class ConnectorManager:
                          SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS)
 
         try:
-            connector.receive_directory_validate(access, listing)
+            connector.receive_directory_validate(access)
         except Exception as e:
             raise AccessValidationError('invalid access data for input directory "{}":\n{}'.format(input_key, str(e)))
 
@@ -270,7 +270,7 @@ def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
             if connector_class == 'File':
                 connector_manager.receive_validate(connector_data, input_key)
             elif connector_class == 'Directory':
-                connector_manager.receive_directory_validate(connector_data, input_key, listing=i.get('listing'))
+                connector_manager.receive_directory_validate(connector_data, input_key)
             else:
                 raise ConnectorError('Unsupported class for connector object: "{}"'.format(connector_class))
 

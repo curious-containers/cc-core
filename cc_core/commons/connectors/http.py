@@ -188,6 +188,10 @@ class Http:
         :param listing: Listing of subfiles and subdirectories which are contained by the directory given in access.
                         Specified like a listing in the common workflow language.
         """
+        if not listing:
+            raise Exception('Connector "{}.{}" needs a not empty listing to work properly'
+                            .format(Http.__module__, Http.__name__))
+
         listing = deepcopy(listing)
 
         Http.build_path(access['url'], listing, 'complete_url')
@@ -205,15 +209,11 @@ class Http:
         Http.fetch_directory(listing, http_method_func, auth_method_obj, verify)
 
     @staticmethod
-    def receive_directory_validate(access, listing):
+    def receive_directory_validate(access):
         try:
             jsonschema.validate(access, http_directory_schema)
         except ValidationError as e:
             raise Exception(e.context)
-
-        if not listing:
-            raise Exception('Connector "{}.{}" needs a not empty listing to work properly'
-                            .format(Http.__module__, Http.__name__))
 
 
 class HttpJson:
