@@ -150,6 +150,30 @@ class ConnectorManager:
         except:
             raise AccessError('could not access input file "{}"'.format(input_key))
 
+    @staticmethod
+    def directory_listing_content_check(directory_path, listing):
+        """
+        Checks if a given listing is present under the given directory path.
+
+        :param directory_path: The path to the base directory
+        :param listing: The listing to check
+        :return: True, if the content matches the given listing, otherwise False
+        """
+        if listing:
+            for sub in listing:
+                path = os.path.join(directory_path, sub['basename'])
+                if sub['class'] == 'File':
+                    if not os.path.isfile(path):
+                        return False
+                elif sub['class'] == 'Directory':
+                    if not os.path.isdir(path):
+                        return False
+                    listing = sub.get('listing')
+                    if listing:
+                        return ConnectorManager.directory_listing_content_check(path, listing)
+
+        return True
+
     def receive_directory(self, connector_data, input_key, internal, listing=None):
         py_module, py_class, access = self._cdata(connector_data)
         key = ConnectorManager._key(py_module, py_class)
@@ -159,6 +183,9 @@ class ConnectorManager:
             connector.receive_directory(access, internal, listing)
         except:
             raise AccessError('could not access input directory "{}"'.format(input_key))
+
+        if not ConnectorManager.directory_listing_content_check(internal[URL_SCHEME_IDENTIFIER], listing):
+            raise ConnectorError('The listing of input directory "{}" is not fulfilled.'.format(input_key))
 
     def send(self, connector_data, output_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
@@ -295,7 +322,7 @@ def inputs_to_job(red_data, tmp_dir):
                 if isinstance(i, dict):
                     path = os.path.join(tmp_dir, '{}_{}'.format(key, index))
                     val.append({
-                        'class': 'File',
+                        'class': i['class'],
                         URL_SCHEME_IDENTIFIER: path
                     })
                 else:
@@ -303,7 +330,7 @@ def inputs_to_job(red_data, tmp_dir):
         elif isinstance(arg, dict):
             path = os.path.join(tmp_dir, key)
             val = {
-                'class': 'File',
+                'class': arg['class'],
                 URL_SCHEME_IDENTIFIER: path
             }
 
