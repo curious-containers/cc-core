@@ -101,7 +101,7 @@ class ConnectorManager:
         try:
             connector.receive_directory_validate(access, listing)
         except Exception as e:
-            raise AccessValidationError('invalid access data for input file "{}":\n{}'.format(input_key, str(e)))
+            raise AccessValidationError('invalid access data for input directory "{}":\n{}'.format(input_key, str(e)))
 
     def send_validate(self, connector_data, output_key):
         py_module, py_class, access = self._cdata(connector_data)
@@ -138,7 +138,7 @@ class ConnectorManager:
         try:
             connector.send_directory_validate(access)
         except:
-            raise AccessValidationError('invalid access data for output file "{}"'.format(output_key))
+            raise AccessValidationError('invalid access data for output directory "{}"'.format(output_key))
 
     def receive(self, connector_data, input_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
@@ -158,7 +158,7 @@ class ConnectorManager:
         try:
             connector.receive_directory(access, internal, listing)
         except:
-            raise AccessError('could not access input file "{}"'.format(input_key))
+            raise AccessError('could not access input directory "{}"'.format(input_key))
 
     def send(self, connector_data, output_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
