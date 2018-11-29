@@ -1,7 +1,7 @@
 from cc_core.commons.schemas.common import pattern_key
 
 
-URL_SCHEME_IDENTIFIER = 'file'
+URL_SCHEME_IDENTIFIER = 'path'
 
 
 CWL_INPUT_TYPES = ['File', 'Directory', 'string', 'int', 'long', 'float', 'double', 'boolean']

@@ -10,25 +10,24 @@ from cc_core.commons.exceptions import exception_format
 from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError, DirectoryError
 from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema, cwl_job_listing_schema, URL_SCHEME_IDENTIFIER
 
-ARGUMENT_TYPE_MAPPING = (
-    ('string', str),
-    ('int', int),
-    ('long', int),
-    ('float', float),
-    ('double', float),
-    ('boolean', bool),
-    ('File', dict),
-    ('Directory', dict)
-)
+ARGUMENT_TYPE_MAPPING = {
+    'string': str,
+    'int': int,
+    'long': int,
+    'float': float,
+    'double': float,
+    'boolean': bool,
+    'File': dict,
+    'Directory': dict
+}
 
 
 def _assert_type(key, cwl_type, arg):
-    for t, pyt in ARGUMENT_TYPE_MAPPING:
-        if t == cwl_type:
-            if isinstance(arg, pyt):
-                return
-            raise JobSpecificationError('"{}" argument "{}" has not been parsed to "{}"'.format(t, key, pyt))
-    raise CWLSpecificationError('argument "{}" has unknown type "{}"'.format(key, cwl_type))
+    pyt = ARGUMENT_TYPE_MAPPING.get(cwl_type)
+    if pyt is None:
+        raise CWLSpecificationError('argument "{}" has unknown type "{}"'.format(key, cwl_type))
+    if not isinstance(arg, pyt):
+        raise JobSpecificationError('"{}" argument "{}" has not been parsed to "{}"'.format(cwl_type, key, pyt))
 
 
 def location(key, arg_item):
@@ -38,9 +37,9 @@ def location(key, arg_item):
     p = arg_item['location']
     scheme = urlparse(p).scheme
 
-    if scheme != URL_SCHEME_IDENTIFIER:
-        raise JobSpecificationError('argument "{}" uses url scheme "{}"'
-                                    'other than "{}"'.format(key, scheme, URL_SCHEME_IDENTIFIER))
+    if scheme != 'file':
+        raise JobSpecificationError('argument "{}" uses url scheme "{}" '
+                                    'other than "{}"'.format(key, scheme, 'file'))
 
     return os.path.expanduser(p[5:])
 
