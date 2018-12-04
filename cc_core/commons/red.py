@@ -58,8 +58,8 @@ class ConnectorManager:
             mod = __import__(py_module, fromlist=[py_class])
             connector = getattr(mod, py_class)
             assert inspect.isclass(connector)
-        except:
-            raise ConnectorError('invalid connector "{}"'.format(key))
+        except Exception as e:
+            raise ConnectorError('invalid connector "{}:\n{}"'.format(key, str(e)))
 
         self._imported_connectors[key] = connector
 
