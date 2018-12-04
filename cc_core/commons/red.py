@@ -157,22 +157,21 @@ class ConnectorManager:
 
         :param directory_path: The path to the base directory
         :param listing: The listing to check
-        :return: True, if the content matches the given listing, otherwise False
+        :return: None if no errors could be found, otherwise a string describing the error
         """
         if listing:
             for sub in listing:
                 path = os.path.join(directory_path, sub['basename'])
                 if sub['class'] == 'File':
                     if not os.path.isfile(path):
-                        return False
+                        return 'listing contains "{}" but this file could not be found on disk.'.format(path)
                 elif sub['class'] == 'Directory':
                     if not os.path.isdir(path):
-                        return False
+                        return 'listing contains "{}" but this directory could not be found on disk'.format(path)
                     listing = sub.get('listing')
                     if listing:
                         return ConnectorManager.directory_listing_content_check(path, listing)
-
-        return True
+        return None
 
     def receive_directory(self, connector_data, input_key, internal, listing=None):
         py_module, py_class, access = self._cdata(connector_data)
@@ -181,11 +180,12 @@ class ConnectorManager:
 
         try:
             connector.receive_directory(access, internal, listing)
-        except:
-            raise AccessError('could not access input directory "{}"'.format(input_key))
+        except Exception as e:
+            raise AccessError('could not access input directory "{}":\n{}'.format(input_key, str(e)))
 
-        if not ConnectorManager.directory_listing_content_check(internal[URL_SCHEME_IDENTIFIER], listing):
-            raise ConnectorError('The listing of input directory "{}" is not fulfilled.'.format(input_key))
+        error = ConnectorManager.directory_listing_content_check(internal[URL_SCHEME_IDENTIFIER], listing)
+        if error:
+            raise ConnectorError('The listing of input directory "{}" is not fulfilled:\n{}'.format(input_key, error))
 
     def send(self, connector_data, output_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
