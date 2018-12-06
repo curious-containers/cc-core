@@ -3,6 +3,7 @@ import inspect
 import jsonschema
 from jsonschema.exceptions import ValidationError
 
+from cc_core.commons.files import make_file_read_only, for_each_file
 from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.version import RED_VERSION
 from cc_core.commons.cwl import URL_SCHEME_IDENTIFIER
@@ -150,6 +151,8 @@ class ConnectorManager:
         except:
             raise AccessError('could not access input file "{}"'.format(input_key))
 
+        make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
+
     @staticmethod
     def directory_listing_content_check(directory_path, listing):
         """
@@ -183,9 +186,13 @@ class ConnectorManager:
         except Exception as e:
             raise AccessError('could not access input directory "{}":\n{}'.format(input_key, str(e)))
 
-        error = ConnectorManager.directory_listing_content_check(internal[URL_SCHEME_IDENTIFIER], listing)
+        directory_path = internal[URL_SCHEME_IDENTIFIER]
+
+        error = ConnectorManager.directory_listing_content_check(directory_path, listing)
         if error:
             raise ConnectorError('The listing of input directory "{}" is not fulfilled:\n{}'.format(input_key, error))
+
+        for_each_file(directory_path, make_file_read_only)
 
     def send(self, connector_data, output_key, internal):
         py_module, py_class, access = self._cdata(connector_data)
