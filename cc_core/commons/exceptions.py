@@ -1,3 +1,5 @@
+import sys
+
 import re
 from traceback import format_exc
 
@@ -15,6 +17,17 @@ def exception_format(secret_values=None):
     if secret_values:
         exc_text = re.sub('|'.join(secret_values), '********', exc_text)
     return [_lstrip_quarter(l.replace('"', '').replace("'", '').rstrip()) for l in exc_text.split('\n') if l]
+
+
+def print_exception(exception):
+    """
+    Prints the exception message and the name of the exception class.
+
+    :param exception: The exception to print
+    """
+
+    print("[{}]".format(type(exception).__name__), file=sys.stderr)
+    print(str(exception), file=sys.stderr)
 
 
 class ArgumentError(Exception):

@@ -8,7 +8,7 @@ from cc_core.commons.red import red_validation, ConnectorManager, import_and_val
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
-from cc_core.commons.exceptions import exception_format, RedValidationError
+from cc_core.commons.exceptions import exception_format, RedValidationError, print_exception
 from cc_core.commons.templates import fill_validation, inspect_templates_and_secrets, fill_template
 
 
@@ -109,12 +109,14 @@ def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
 
         if not ignore_outputs and red_data.get('outputs'):
             send(connector_manager, output_files, red_data)
-    except RedValidationError:
+    except RedValidationError as e:
         result['debugInfo'] = exception_format(secret_values=secret_values)
         result['state'] = 'failed'
-    except Exception:
+        print_exception(e)
+    except Exception as e:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
+        print_exception(e)
     finally:
         shutil.rmtree(tmp_dir)
 

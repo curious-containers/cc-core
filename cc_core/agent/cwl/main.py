@@ -7,8 +7,7 @@ from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_fil
                                 cwl_input_directories, cwl_input_directories_check,\
                                 cwl_output_directories, cwl_output_directory_check
 from cc_core.commons.shell import execute, shell_result_check
-from cc_core.commons.exceptions import exception_format
-
+from cc_core.commons.exceptions import exception_format, print_exception
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE.'
 
@@ -91,8 +90,9 @@ def run(cwl_file, job_file, outdir, **_):
         result['outputDirectories'] = output_directories
         cwl_output_directory_check(output_directories)
 
-    except:
+    except Exception as e:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
+        print_exception(e)
 
     return result
