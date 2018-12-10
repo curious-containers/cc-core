@@ -82,7 +82,7 @@ def dump_print(stream, dump_format, error=False):
             yaml.dump(stream, sys.stderr)
         else:
             yaml.dump(stream, sys.stdout)
-    else:
+    elif dump_format != 'none':
         raise AgentError('invalid dump format "{}"'.format(dump_format))
 
 

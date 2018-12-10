@@ -28,7 +28,7 @@ def attach_args(parser):
     )
     parser.add_argument(
         '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml', 'yml'],
-        default='yaml', help='Dump format for data written to files or stdout, default is "yaml".'
+        help='Dump format for data written to files or stdout, default is no output.'
     )
 
 
@@ -38,7 +38,9 @@ def main():
     args = parser.parse_args()
 
     result = run(**args.__dict__)
-    dump_print(result, args.dump_format)
+    dump_format = args.__dict__.get('dump_format')
+    if dump_format:
+        dump_print(result, dump_format)
 
     if result['state'] == 'succeeded':
         return 0
