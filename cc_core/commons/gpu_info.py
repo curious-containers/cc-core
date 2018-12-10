@@ -58,7 +58,7 @@ def get_cuda_devices():
 
             devices.append(GPUDevice(device_id, vram))
     except ImportError:
-        raise InsufficientGPUError('No Nvidia-GPUs could be found, because \'pycuda\' could not be imported.')
+        raise InsufficientGPUError('No Nvidia-GPUs could be found, because "pycuda" could not be imported.')
 
     return devices
 
@@ -86,7 +86,10 @@ def get_devices(engine):
     :return: A list of available devices
     """
 
-    return DEVICE_INFORMATION_MAP[engine]()
+    if engine in DEVICE_INFORMATION_MAP:
+        return DEVICE_INFORMATION_MAP[engine]()
+    else:
+        return []
 
 
 def search_device(requirement, devices):
@@ -153,7 +156,7 @@ def get_gpu_requirements(gpus_reqs):
                     requirements.append(GPURequirement())
         elif type(gpus_reqs) is list:
             for gpu_req in gpus_reqs:
-                requirements.append(GPURequirement(**gpu_req))
+                requirements.append(GPURequirement(min_vram=gpu_req['minVram']))
         return requirements
     else:
         # If no requirements are supplied
