@@ -49,8 +49,8 @@ def main():
     attach_args(parser)
     args = parser.parse_args()
 
-    result = run(**args.__dict__)
     dump_format = args.__dict__.get('dump_format')
+    result = run(**args.__dict__, print_exceptions=dump_format is None)
     if dump_format:
         dump_print(result, dump_format)
 
@@ -60,7 +60,7 @@ def main():
     return 1
 
 
-def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
+def run(red_file, fill_file, batch, outdir, ignore_outputs, print_exceptions,  **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -112,11 +112,13 @@ def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
     except RedValidationError as e:
         result['debugInfo'] = exception_format(secret_values=secret_values)
         result['state'] = 'failed'
-        print_exception(e)
+        if print_exceptions:
+            print_exception(e)
     except Exception as e:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
-        print_exception(e)
+        if print_exceptions:
+            print_exception(e)
     finally:
         shutil.rmtree(tmp_dir)
 
