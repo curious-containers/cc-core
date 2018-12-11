@@ -36,8 +36,9 @@ def main():
     attach_args(parser)
     args = parser.parse_args()
 
+    result = run(**args.__dict__)
+
     dump_format = args.__dict__.get('dump_format')
-    result = run(**args.__dict__, print_exceptions=dump_format is None)
     if dump_format:
         dump_print(result, dump_format)
 
@@ -47,7 +48,7 @@ def main():
     return 1
 
 
-def run(cwl_file, job_file, outdir, print_exceptions, **_):
+def run(cwl_file, job_file, outdir, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -93,7 +94,6 @@ def run(cwl_file, job_file, outdir, print_exceptions, **_):
     except Exception as e:
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
-        if print_exceptions:
-            print_exception(e)
+        print_exception(e)
 
     return result

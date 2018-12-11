@@ -19,15 +19,22 @@ def exception_format(secret_values=None):
     return [_lstrip_quarter(l.replace('"', '').replace("'", '').rstrip()) for l in exc_text.split('\n') if l]
 
 
+def brief_exception_text(exception):
+    """
+    Returns the Exception class and the message of the exception as string.
+
+    :param exception: The exception to format
+    """
+    return '[{}]\n{}'.format(type(exception).__name__, str(exception))
+
+
 def print_exception(exception):
     """
-    Prints the exception message and the name of the exception class.
+    Prints the exception message and the name of the exception class to stderr.
 
     :param exception: The exception to print
     """
-
-    print("[{}]".format(type(exception).__name__), file=sys.stderr)
-    print(str(exception), file=sys.stderr)
+    print(brief_exception_text(exception), file=sys.stderr)
 
 
 class ArgumentError(Exception):
