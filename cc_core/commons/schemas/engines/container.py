@@ -69,7 +69,7 @@ nvidia_docker_schema = {
         'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
     },
     'additionalProperties': False,
-    'required': ['image']
+    'required': ['image', 'gpus']
 }
 
 
