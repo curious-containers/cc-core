@@ -112,7 +112,7 @@ def split_input_references(to_split):
             if p == INPUT_REFERENCE_START:
                 if part:
                     result.append(''.join(part))
-                part.append(INPUT_REFERENCE_START)
+                part = [INPUT_REFERENCE_START]
                 in_reference = True
             else:
                 part.append(p)
