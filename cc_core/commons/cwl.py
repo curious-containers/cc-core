@@ -108,7 +108,7 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
     :param arg_item: The corresponding job information
     :param input_dir: TODO
     :return: A directory description
-    :raise DirectoryError: If the given directory does not exists or is not a directory.
+    :raise DirectoryError: If the given directory does not exist or is not a directory.
     """
     description = {
         'path': None,
