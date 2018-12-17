@@ -1,13 +1,14 @@
 import os
 import jsonschema
+from glob import glob
 from jsonschema import ValidationError
 from urllib.parse import urlparse
-from glob import glob
 from shutil import which
 from operator import itemgetter
 
 from cc_core.commons.exceptions import exception_format
 from cc_core.commons.exceptions import CWLSpecificationError, JobSpecificationError, FileError, DirectoryError
+from cc_core.commons.input_references import resolve_input_references
 from cc_core.commons.schemas.cwl import cwl_schema, cwl_job_schema, cwl_job_listing_schema, URL_SCHEME_IDENTIFIER
 
 ARGUMENT_TYPE_MAPPING = {
@@ -302,7 +303,17 @@ def cwl_input_directories(cwl_data, job_data, input_dir=None):
     return results
 
 
-def cwl_output_files(cwl_data, output_dir=None):
+
+
+def cwl_output_files(cwl_data, inputs_to_reference, output_dir=None):
+    """
+    Returns a dictionary containing information about the output files given in cwl_data.
+
+    :param cwl_data: The cwl data from where to extract the output file information.
+    :param inputs_to_reference: Inputs which are used to resolve input references.
+    :param output_dir: TODO
+    :return: A dictionary containing information about every output file.
+    """
     results = {}
 
     for key, val in cwl_data['outputs'].items():
@@ -323,6 +334,7 @@ def cwl_output_files(cwl_data, output_dir=None):
         if output_dir and not os.path.isabs(glob_path):
             glob_path = os.path.join(os.path.expanduser(output_dir), glob_path)
 
+        glob_path = resolve_input_references(glob_path, inputs_to_reference)
         matches = glob(glob_path)
         try:
             if len(matches) != 1:
@@ -397,13 +409,14 @@ def cwl_validation(cwl_data, job_data, docker_requirement=False):
 
     # validate listings
     for input_key, input_value in job_data.items():
-        listing = input_value.get('listing')
-        if listing:
-            try:
-                jsonschema.validate(listing, cwl_job_listing_schema)
-            except ValidationError as e:
-                raise JobSpecificationError('listing of \'{}\' does not comply with jsonschema:\n{}'
-                                            .format(input_key, e.context))
+        if isinstance(input_value, dict):
+            listing = input_value.get('listing')
+            if listing:
+                try:
+                    jsonschema.validate(listing, cwl_job_listing_schema)
+                except ValidationError as e:
+                    raise JobSpecificationError('listing of \'{}\' does not comply with jsonschema:\n{}'
+                                                .format(input_key, e.context))
 
     for key, val in job_data.items():
         if key not in cwl_data['inputs']:

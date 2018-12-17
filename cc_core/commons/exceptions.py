@@ -37,6 +37,10 @@ def print_exception(exception):
     print(brief_exception_text(exception), file=sys.stderr)
 
 
+class InvalidInputReference(Exception):
+    pass
+
+
 class ArgumentError(Exception):
     pass
 

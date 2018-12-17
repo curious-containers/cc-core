@@ -1,11 +1,13 @@
 import os
 from argparse import ArgumentParser
+from pprint import pprint
 
 from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check,\
                                 cwl_input_directories, cwl_input_directories_check,\
                                 cwl_output_directories, cwl_output_directory_check
+from cc_core.commons.input_references import create_inputs_to_reference
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, print_exception
 
@@ -83,7 +85,9 @@ def run(cwl_file, job_file, outdir, **_):
         result['process'] = process_data
         shell_result_check(process_data)
 
-        output_files = cwl_output_files(cwl_data, output_dir=outdir)
+        inputs_to_reference = create_inputs_to_reference(job_data, input_files, input_directories)
+
+        output_files = cwl_output_files(cwl_data, inputs_to_reference, output_dir=outdir)
         result['outputFiles'] = output_files
         cwl_output_file_check(output_files)
 
