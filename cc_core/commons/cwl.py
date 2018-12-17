@@ -61,7 +61,10 @@ def _input_file_description(key, arg_item, input_dir):
     description = {
         'path': None,
         'size': None,
-        'debugInfo': None
+        'debugInfo': None,
+        'nameroot': None,
+        'nameext': None,
+        'dirname': None
     }
 
     try:
@@ -77,6 +80,15 @@ def _input_file_description(key, arg_item, input_dir):
             raise FileError('path is not a file')
 
         description['size'] = os.path.getsize(file_path) / (1024 * 1024)
+
+        basename = os.path.basename(file_path)
+        (nameroot, nameext) = os.path.splitext(basename)
+        dirname = os.path.dirname(file_path)
+
+        description['basename'] = basename
+        description['nameroot'] = nameroot
+        description['nameext'] = nameext
+        description['dirname'] = dirname
     except:
         description['debugInfo'] = exception_format()
 
@@ -102,22 +114,24 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
         'path': None,
         'found': False,
         'debugInfo': None,
-        'listing': None
+        'listing': None,
+        'basename': None
     }
 
     try:
-        file_path = location(input_identifier, arg_item)
+        path = location(input_identifier, arg_item)
 
-        if input_dir and not os.path.isabs(file_path):
-            file_path = os.path.join(os.path.expanduser(input_dir), file_path)
+        if input_dir and not os.path.isabs(path):
+            path = os.path.join(os.path.expanduser(input_dir), path)
 
-        description['path'] = file_path
-        if not os.path.exists(file_path):
+        description['path'] = path
+        if not os.path.exists(path):
             raise DirectoryError('path does not exist')
-        if not os.path.isdir(file_path):
+        if not os.path.isdir(path):
             raise DirectoryError('path is not a directory')
 
         description['listing'] = arg_item.get('listing')
+        description['basename'] = os.path.basename(path)
 
         description['found'] = True
     except:
@@ -301,8 +315,6 @@ def cwl_input_directories(cwl_data, job_data, input_dir=None):
             results[input_identifier] = result
 
     return results
-
-
 
 
 def cwl_output_files(cwl_data, inputs_to_reference, output_dir=None):

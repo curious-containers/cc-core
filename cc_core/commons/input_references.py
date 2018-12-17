@@ -127,7 +127,7 @@ def split_input_references(to_split):
 
 def is_input_reference(s):
     """
-    Returns True, if s is a input reference.
+    Returns True, if s is an input reference.
 
     :param s: The string to check if it starts with INPUT_REFERENCE_START and ends with INPUT_REFERENCE_END.
     :return: True, if s is an input reference otherwise False
@@ -157,8 +157,9 @@ def resolve_file(attributes, input_file, input_identifier, input_reference):
     :param input_reference: The reference string
     :return: The attribute in demand
     """
-    if len(input_file['files']) != 1:
-        raise InvalidInputReference('input file "{}" is an array of files and can not be resolved for input references:'
+    if input_file['isArray']:
+        raise InvalidInputReference('Input References to Arrays of input files are currently not supported.\n'
+                                    '"{}" is an array of files and can not be resolved for input references:'
                                     '\n{}'.format(input_identifier, input_reference))
     single_file = input_file['files'][0]
 
@@ -210,10 +211,6 @@ def resolve_input_reference(reference, inputs_to_reference):
     reference = reference[2:-1]
     parts = split_all(reference, ATTRIBUTE_SEPARATOR_SYMBOLS)
 
-    print("")
-    print("parts: {}".format(parts))
-    print("")
-
     if len(parts) < 2:
         raise InvalidInputReference('InputReference should at least contain "$(inputs.identifier)". The following input'
                                     'reference does not comply with it:\n{}'.format(reference))
@@ -262,7 +259,7 @@ def resolve_input_references(to_resolve, inputs_to_reference):
 
     for part in splitted:
         if is_input_reference(part):
-            result.append(resolve_input_reference(part, inputs_to_reference))
+            result.append(str(resolve_input_reference(part, inputs_to_reference)))
         else:
             result.append(part)
 
