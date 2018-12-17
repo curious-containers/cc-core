@@ -147,7 +147,7 @@ def split_all(reference, sep):
     return [p for p in parts if p not in sep]
 
 
-def resolve_file(attributes, input_file, input_identifier, input_reference):
+def _resolve_file(attributes, input_file, input_identifier, input_reference):
     """
     Returns the attributes in demand of the input file.
 
@@ -170,7 +170,7 @@ def resolve_file(attributes, input_file, input_identifier, input_reference):
                                     '\n{}'.format(attributes, input_identifier, input_reference))
 
 
-def resolve_directory(attributes, input_directory, input_identifier, input_reference):
+def _resolve_directory(attributes, input_directory, input_identifier, input_reference):
     """
     Returns the attributes in demand of the input directory.
 
@@ -180,8 +180,9 @@ def resolve_directory(attributes, input_directory, input_identifier, input_refer
     :param input_reference: The reference string
     :return: The attribute in demand
     """
-    if len(input_directory['directories']) != 1:
-        raise InvalidInputReference('input directory "{}" is an array of directory and can not be resolved for input'
+    if input_directory['isArray']:
+        raise InvalidInputReference('Input References to Arrays of input directories are currently not supported.\n'
+                                    'input directory "{}" is an array of directories and can not be resolved for input'
                                     'references:\n{}'.format(input_identifier, input_reference))
     single_directory = input_directory['directories'][0]
 
@@ -225,9 +226,9 @@ def resolve_input_reference(reference, inputs_to_reference):
                                         .format(input_identifier, reference))
         elif isinstance(input_to_reference, dict):
             if 'files' in input_to_reference:
-                return resolve_file(parts[2:], input_to_reference, input_identifier, reference)
+                return _resolve_file(parts[2:], input_to_reference, input_identifier, reference)
             elif 'directories' in input_to_reference:
-                return resolve_directory(parts[2:], input_to_reference, input_identifier, reference)
+                return _resolve_directory(parts[2:], input_to_reference, input_identifier, reference)
             else:
                 raise InvalidInputReference('Unknown input type for input identifier "{}"'.format(input_identifier))
         else:

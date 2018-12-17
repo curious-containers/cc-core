@@ -3,9 +3,10 @@ import tempfile
 from argparse import ArgumentParser
 
 from cc_core.commons.files import load_and_read, dump_print
+from cc_core.commons.input_references import create_inputs_to_reference
 from cc_core.commons.red import inputs_to_job, convert_batch_experiment
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
-from cc_core.commons.cwl import cwl_to_command
+from cc_core.commons.cwl import cwl_to_command, cwl_input_directories, cwl_input_directories_check
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, RedValidationError, print_exception
@@ -100,11 +101,19 @@ def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
         result['inputFiles'] = input_files
         cwl_input_file_check(input_files)
 
+        input_directories = cwl_input_directories(red_data['cli'], job_data)
+        result['inputDirectories'] = input_directories
+        cwl_input_directories_check(input_directories)
+
+
+
         process_data = execute(command)
         result['process'] = process_data
         shell_result_check(process_data)
 
-        output_files = cwl_output_files(red_data['cli'], output_dir=outdir)
+        inputs_to_reference = create_inputs_to_reference(job_data, input_files, input_directories)
+
+        output_files = cwl_output_files(red_data['cli'], inputs_to_reference, output_dir=outdir)
         result['outputFiles'] = output_files
         cwl_output_file_check(output_files)
 
