@@ -1,1 +1,4 @@
 /dist
+cc_core.egg-info
+.git
+.gitignore
