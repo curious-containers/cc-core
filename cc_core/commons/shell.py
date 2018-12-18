@@ -33,7 +33,8 @@ def execute(command):
 
 def shell_result_check(process_data):
     if process_data['returnCode'] != 0:
-        raise JobExecutionError('process returned non-zero exit code "{}"'.format(process_data['returnCode']))
+        raise JobExecutionError('process returned non-zero exit code "{}"\nProcess stderr:\n{}'
+                                .format(process_data['returnCode'], process_data['stdErr']))
 
 
 class ProcessMonitor:

@@ -105,8 +105,6 @@ def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
         result['inputDirectories'] = input_directories
         cwl_input_directories_check(input_directories)
 
-
-
         process_data = execute(command)
         result['process'] = process_data
         shell_result_check(process_data)
