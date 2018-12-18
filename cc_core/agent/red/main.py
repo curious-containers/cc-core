@@ -37,7 +37,7 @@ def attach_args(parser):
     )
     parser.add_argument(
         '--dump-format', action='store', type=str, metavar='DUMP_FORMAT', choices=['json', 'yaml', 'yml'],
-        help='Dump format for data written to files or stdout, default is no output.'
+        help='Dump format for data written to files or stdout. One of [json, yaml, yml], default is no output.'
     )
     parser.add_argument(
         '--ignore-outputs', action='store_true',
