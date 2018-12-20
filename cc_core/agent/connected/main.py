@@ -8,7 +8,7 @@ from cc_core.commons.red import ConnectorManager, import_and_validate_connectors
 from cc_core.commons.templates import inspect_templates_and_secrets, fill_template
 from cc_core.commons.cwl import cwl_to_command
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
-from cc_core.commons.shell import execute, shell_result_check
+from cc_core.commons.shell import execute, shell_result_check, prepare_outdir
 from cc_core.commons.exceptions import exception_format
 
 
@@ -80,7 +80,8 @@ def run(callback_url, outdir, inspect):
         result['inputFiles'] = input_files
         cwl_input_file_check(input_files)
 
-        process_data = execute(command)
+        prepare_outdir(outdir)
+        process_data = execute(command, outdir)
         result['process'] = process_data
         shell_result_check(process_data)
 

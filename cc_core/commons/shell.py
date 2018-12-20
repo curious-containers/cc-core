@@ -12,8 +12,26 @@ from cc_core.commons.exceptions import JobExecutionError
 SUPERVISION_INTERVAL_SECONDS = 1
 
 
-def execute(command):
-    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
+def prepare_outdir(outdir):
+    """
+    Creates the output directory if not existing.
+    If outdir is None or if no output_files are provided nothing happens.
+
+    :param outdir: The output directory to create.
+    """
+    if outdir:
+        outdir = os.path.expanduser(outdir)
+        if not os.path.isdir(outdir):
+            try:
+                os.makedirs(outdir)
+            except os.error as e:
+                raise JobExecutionError('Failed to create outdir "{}".\n{}'.format(outdir, str(e)))
+
+
+def execute(command, outdir=None):
+    if outdir and not os.path.isdir(outdir):
+        raise FileNotFoundError('outdir "{}" does not exists or is not a directory.'.format(outdir))
+    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True, cwd=outdir)
 
     monitor = ProcessMonitor(sp)
     t = Thread(target=monitor.start)

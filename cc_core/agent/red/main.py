@@ -8,7 +8,7 @@ from cc_core.commons.red import inputs_to_job, convert_batch_experiment
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command, cwl_input_directories, cwl_input_directories_check
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
-from cc_core.commons.shell import execute, shell_result_check
+from cc_core.commons.shell import execute, shell_result_check, prepare_outdir
 from cc_core.commons.exceptions import exception_format, RedValidationError, print_exception
 from cc_core.commons.templates import fill_validation, inspect_templates_and_secrets, fill_template
 
@@ -105,7 +105,8 @@ def run(red_file, fill_file, batch, outdir, ignore_outputs, **_):
         result['inputDirectories'] = input_directories
         cwl_input_directories_check(input_directories)
 
-        process_data = execute(command)
+        prepare_outdir(outdir)
+        process_data = execute(command, outdir)
         result['process'] = process_data
         shell_result_check(process_data)
 

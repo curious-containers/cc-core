@@ -1,6 +1,5 @@
 import os
 from argparse import ArgumentParser
-from pprint import pprint
 
 from cc_core.commons.files import load_and_read, dump_print
 from cc_core.commons.cwl import cwl_to_command, cwl_validation
@@ -8,7 +7,7 @@ from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_fil
                                 cwl_input_directories, cwl_input_directories_check,\
                                 cwl_output_directories, cwl_output_directory_check
 from cc_core.commons.input_references import create_inputs_to_reference
-from cc_core.commons.shell import execute, shell_result_check
+from cc_core.commons.shell import execute, shell_result_check, prepare_outdir
 from cc_core.commons.exceptions import exception_format, print_exception
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE.'
@@ -81,7 +80,8 @@ def run(cwl_file, job_file, outdir, **_):
         result['inputDirectories'] = input_directories
         cwl_input_directories_check(input_directories)
 
-        process_data = execute(command)
+        prepare_outdir(outdir)
+        process_data = execute(command, outdir=outdir)
         result['process'] = process_data
         shell_result_check(process_data)
 

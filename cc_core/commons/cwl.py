@@ -323,7 +323,7 @@ def cwl_output_files(cwl_data, inputs_to_reference, output_dir=None):
 
     :param cwl_data: The cwl data from where to extract the output file information.
     :param inputs_to_reference: Inputs which are used to resolve input references.
-    :param output_dir: TODO
+    :param output_dir: Path to the directory where output files are expected.
     :return: A dictionary containing information about every output file.
     """
     results = {}
