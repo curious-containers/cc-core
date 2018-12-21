@@ -9,15 +9,15 @@ from jsonschema.exceptions import ValidationError
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 
 from cc_core.commons.schemas.connectors import http_schema, http_directory_schema
-from cc_core.commons.schemas.cwl import cwl_job_listing_schema, URL_SCHEME_IDENTIFIER
+from cc_core.commons.schemas.cwl import URL_SCHEME_IDENTIFIER
 
 
 DEFAULT_DIRECTORY_MODE = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH\
                          | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
 
-def _http_method_func(access):
-    http_method = access['method'].lower()
+def _http_method_func(access, default):
+    http_method = access.get('method', default).lower()
 
     if http_method == 'get':
         return requests.get
@@ -53,7 +53,7 @@ def _auth_method_obj(access):
 class Http:
     @staticmethod
     def receive(access, internal):
-        http_method_func = _http_method_func(access)
+        http_method_func = _http_method_func(access, 'GET')
         auth_method_obj = _auth_method_obj(access)
 
         verify = True
@@ -84,7 +84,7 @@ class Http:
 
     @staticmethod
     def send(access, internal):
-        http_method_func = _http_method_func(access)
+        http_method_func = _http_method_func(access, 'POST')
         auth_method_obj = _auth_method_obj(access)
         
         verify = True
@@ -197,7 +197,7 @@ class Http:
         Http.build_path(access['url'], listing, 'complete_url')
         Http.build_path(internal[URL_SCHEME_IDENTIFIER], listing, 'complete_path')
 
-        http_method_func = _http_method_func(access)
+        http_method_func = _http_method_func(access, 'GET')
         auth_method_obj = _auth_method_obj(access)
 
         verify = True
@@ -219,7 +219,7 @@ class Http:
 class HttpJson:
     @staticmethod
     def receive(access, internal):
-        http_method_func = _http_method_func(access)
+        http_method_func = _http_method_func(access, 'GET')
         auth_method_obj = _auth_method_obj(access)
 
         verify = True
@@ -246,7 +246,7 @@ class HttpJson:
 
     @staticmethod
     def send(access, internal):
-        http_method_func = _http_method_func(access)
+        http_method_func = _http_method_func(access, 'POST')
         auth_method_obj = _auth_method_obj(access)
 
         with open(internal[URL_SCHEME_IDENTIFIER]) as f:

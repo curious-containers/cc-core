@@ -26,7 +26,7 @@ http_schema = {
         'mergeAgencyData':  {'type': 'boolean'}
     },
     'additionalProperties': False,
-    'required': ['url', 'method']
+    'required': ['url']
 }
 
 http_directory_schema = deepcopy(http_schema)
