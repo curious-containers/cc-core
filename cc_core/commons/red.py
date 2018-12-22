@@ -242,7 +242,8 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
                 if key not in red_data['cli']['inputs']:
                     raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
 
-                _red_listing_validation(key, val.get('listing'))
+                if isinstance(val, dict) and 'listing' in val:
+                    _red_listing_validation(key, val['listing'])
 
             if not ignore_outputs and batch.get('outputs'):
                 for key, val in batch['outputs'].items():
@@ -253,7 +254,8 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
             if key not in red_data['cli']['inputs']:
                 raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
 
-            _red_listing_validation(key, val.get('listing'))
+            if isinstance(val, dict) and 'listing' in val:
+                _red_listing_validation(key, val['listing'])
 
         if not ignore_outputs and red_data.get('outputs'):
             for key, val in red_data['outputs'].items():
@@ -350,14 +352,13 @@ def receive(connector_manager, red_data, tmp_dir):
     for key, arg in red_data['inputs'].items():
         val = arg
 
-        # connector_class should be one of 'File' or 'Directory'
-        connector_class = arg['class']
-
         if isinstance(arg, list):
             for index, i in enumerate(arg):
                 if not isinstance(i, dict):
                     continue
 
+                # connector_class should be one of 'File' or 'Directory'
+                connector_class = i['class']
                 input_key = '{}_{}'.format(key, index)
                 path = os.path.join(tmp_dir, input_key)
                 connector_data = i['connector']
@@ -370,6 +371,8 @@ def receive(connector_manager, red_data, tmp_dir):
                     connector_manager.receive_directory(connector_data, input_key, internal, listing)
 
         elif isinstance(arg, dict):
+            # connector_class should be one of 'File' or 'Directory'
+            connector_class = arg['class']
             path = os.path.join(tmp_dir, key)
             connector_data = val['connector']
             internal = {URL_SCHEME_IDENTIFIER: path}
