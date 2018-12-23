@@ -4,6 +4,7 @@ import sys
 import json
 import requests
 import textwrap
+import shutil
 from urllib.parse import urlparse
 from ruamel.yaml import YAML
 
@@ -16,6 +17,14 @@ yaml.default_flow_style = False
 
 
 WRITE_PERMISSIONS = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+
+
+def move_files(output_files):
+    for key, val in output_files.items():
+        path = val['path']
+        _, ext = os.path.splitext(path)
+        file_name = ''.join([key, ext])
+        shutil.move(path, file_name)
 
 
 def load_and_read(location, var_name):

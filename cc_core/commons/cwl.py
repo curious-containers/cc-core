@@ -33,7 +33,7 @@ def _assert_type(key, cwl_type, arg):
 
 def location(key, arg_item):
     if arg_item.get(URL_SCHEME_IDENTIFIER):
-        return os.path.expanduser(arg_item[URL_SCHEME_IDENTIFIER])
+        return os.path.abspath(os.path.expanduser(arg_item[URL_SCHEME_IDENTIFIER]))
 
     p = arg_item['location']
     scheme = urlparse(p).scheme
