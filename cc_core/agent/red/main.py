@@ -45,8 +45,8 @@ def attach_args(parser):
         help='Specify meta data FORMAT as one of [json, yaml, yml]. Default is yaml.'
     )
     parser.add_argument(
-        '--disable-rm', action='store_true',
-        help='Disable removal of temporary inputs and working directories.'
+        '--leave-directories', action='store_true',
+        help='Leave temporary inputs and working directories.'
     )
 
 
@@ -69,7 +69,7 @@ def main():
     return 1
 
 
-def run(red, variables, batch, outputs, disable_rm, **_):
+def run(red, variables, batch, outputs, leave_directories, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -145,7 +145,7 @@ def run(red, variables, batch, outputs, disable_rm, **_):
         result['state'] = 'failed'
         print_exception(e)
     finally:
-        if not disable_rm:
+        if not leave_directories:
             shutil.rmtree(tmp_inputs_dir)
             shutil.rmtree(tmp_working_dir)
 
