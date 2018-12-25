@@ -16,12 +16,12 @@ DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its correspo
 
 def attach_args(parser):
     parser.add_argument(
-        'cwl', action='store', type=str, metavar='FILE_PATH_OR_URL',
-        help='CWL FILE containing a CLI description (json/yaml) as local PATH or http URL.'
+        'cwl_file', action='store', type=str, metavar='CWL_FILE',
+        help='CWL_FILE containing a CLI description (json/yaml) as local PATH or http URL.'
     )
     parser.add_argument(
-        'job', action='store', type=str, metavar='FILE_PATH_OR_URL',
-        help='JOB FILE in the CWL job format (json/yaml) as local PATH or http URL.'
+        'job_file', action='store', type=str, metavar='JOB_FILE',
+        help='JOB_FILE in the CWL job format (json/yaml) as local PATH or http URL.'
     )
     parser.add_argument(
         '-m', '--meta', action='store_true',
@@ -55,7 +55,7 @@ def main():
     return 1
 
 
-def run(cwl, job, leave_directories, **_):
+def run(cwl_file, job_file, leave_directories, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -71,12 +71,12 @@ def run(cwl, job, leave_directories, **_):
     cwd = os.getcwd()
 
     try:
-        cwl_data = load_and_read(cwl, 'CWL FILE')
-        job_data = load_and_read(job, 'JOB FILE')
+        cwl_data = load_and_read(cwl_file, 'CWL_FILE')
+        job_data = load_and_read(job_file, 'JOB_FILE')
 
         cwl_validation(cwl_data, job_data)
 
-        input_dir = os.path.split(os.path.expanduser(job))[0]
+        input_dir = os.path.split(os.path.expanduser(job_file))[0]
 
         command = cwl_to_command(cwl_data, job_data, input_dir=input_dir)
         result['command'] = command

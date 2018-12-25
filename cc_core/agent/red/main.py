@@ -20,12 +20,12 @@ DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connecto
 
 def attach_args(parser):
     parser.add_argument(
-        'red', action='store', type=str, metavar='FILE_PATH_OR_URL',
-        help='RED FILE (json or yaml) containing an experiment description as local PATH or http URL.'
+        'red_file', action='store', type=str, metavar='RED_FILE',
+        help='RED_FILE (json or yaml) containing an experiment description as local PATH or http URL.'
     )
     parser.add_argument(
-        '-v', '--variables', action='store', type=str, metavar='FILE_PATH_OR_URL',
-        help='FILE (json or yaml) containing key-value pairs for variables in RED FILE as '
+        '-v', '--variables', action='store', type=str, metavar='VARIABLES_FILE',
+        help='VARIABLES_FILE (json or yaml) containing key-value pairs for variables in RED_FILE as '
              'local PATH or http URL.'
     )
     parser.add_argument(
@@ -69,7 +69,7 @@ def main():
     return 1
 
 
-def run(red, variables, batch, outputs, leave_directories, **_):
+def run(red_file, variables, batch, outputs, leave_directories, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -86,13 +86,13 @@ def run(red, variables, batch, outputs, leave_directories, **_):
     secret_values = None
 
     try:
-        red_data = load_and_read(red, 'RED FILE')
+        red_data = load_and_read(red_file, 'RED_FILE')
         ignore_outputs = not outputs
         red_validation(red_data, ignore_outputs)
 
         variables_data = None
         if variables:
-            variables_data = load_and_read(variables, 'VARIABLES FILE')
+            variables_data = load_and_read(variables, 'VARIABLES_FILE')
             fill_validation(variables_data)
 
         red_data = convert_batch_experiment(red_data, batch)
