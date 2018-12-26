@@ -14,18 +14,17 @@ from cc_core.commons.exceptions import exception_format, RedValidationError, pri
 from cc_core.commons.templates import fill_validation, inspect_templates_and_secrets, fill_template
 
 
-DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and RED connector files for remote inputs and ' \
-              'outputs respectively.'
+DESCRIPTION = 'Run an experiment as described in a REDFILE.'
 
 
 def attach_args(parser):
     parser.add_argument(
-        'red_file', action='store', type=str, metavar='RED_FILE',
-        help='RED_FILE (json or yaml) containing an experiment description as local PATH or http URL.'
+        'red_file', action='store', type=str, metavar='REDFILE',
+        help='REDFILE (json or yaml) containing an experiment description as local PATH or http URL.'
     )
     parser.add_argument(
-        '-v', '--variables', action='store', type=str, metavar='VARIABLES_FILE',
-        help='VARIABLES_FILE (json or yaml) containing key-value pairs for variables in RED_FILE as '
+        '-v', '--variables', action='store', type=str, metavar='VARFILE',
+        help='VARFILE (json or yaml) containing key-value pairs for variables in REDFILE as '
              'local PATH or http URL.'
     )
     parser.add_argument(
@@ -86,13 +85,13 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
     secret_values = None
 
     try:
-        red_data = load_and_read(red_file, 'RED_FILE')
+        red_data = load_and_read(red_file, 'REDFILE')
         ignore_outputs = not outputs
         red_validation(red_data, ignore_outputs)
 
         variables_data = None
         if variables:
-            variables_data = load_and_read(variables, 'VARIABLES_FILE')
+            variables_data = load_and_read(variables, 'VARFILE')
             fill_validation(variables_data)
 
         red_data = convert_batch_experiment(red_data, batch)

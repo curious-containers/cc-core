@@ -11,17 +11,17 @@ from cc_core.commons.input_references import create_inputs_to_reference
 from cc_core.commons.shell import execute, shell_result_check, prepare_outdir
 from cc_core.commons.exceptions import exception_format, print_exception
 
-DESCRIPTION = 'Run a CommandLineTool as described in a CWL_FILE and its corresponding JOB_FILE.'
+DESCRIPTION = 'Run a CommandLineTool as described in a CWLFILE and its corresponding JOBFILE.'
 
 
 def attach_args(parser):
     parser.add_argument(
-        'cwl_file', action='store', type=str, metavar='CWL_FILE',
-        help='CWL_FILE containing a CLI description (json/yaml) as local PATH or http URL.'
+        'cwl_file', action='store', type=str, metavar='CWLFILE',
+        help='CWLFILE containing a CLI description (json/yaml) as local PATH or http URL.'
     )
     parser.add_argument(
-        'job_file', action='store', type=str, metavar='JOB_FILE',
-        help='JOB_FILE in the CWL job format (json/yaml) as local PATH or http URL.'
+        'job_file', action='store', type=str, metavar='JOBFILE',
+        help='JOBFILE in the CWL job format (json/yaml) as local PATH or http URL.'
     )
     parser.add_argument(
         '-m', '--meta', action='store_true',
@@ -71,8 +71,8 @@ def run(cwl_file, job_file, leave_directories, **_):
     cwd = os.getcwd()
 
     try:
-        cwl_data = load_and_read(cwl_file, 'CWL_FILE')
-        job_data = load_and_read(job_file, 'JOB_FILE')
+        cwl_data = load_and_read(cwl_file, 'CWLFILE')
+        job_data = load_and_read(job_file, 'JOBFILE')
 
         cwl_validation(cwl_data, job_data)
 
