@@ -1,4 +1,4 @@
-FROM docker.io/debian:9.5-slim
+FROM docker.io/nvidia/cuda:9.0-base
 
 RUN apt-get update \
 && apt-get install -y curl python3-pip python3-venv \
