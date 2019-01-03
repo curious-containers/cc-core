@@ -24,7 +24,16 @@ def move_files(output_files):
         path = val['path']
         _, ext = os.path.splitext(path)
         file_name = ''.join([key, ext])
-        shutil.move(path, file_name)
+        try:
+            shutil.move(path, file_name)
+        except PermissionError:
+            if os.path.exists(file_name):
+                raise PermissionError('Cannot write output file "{}", because it already exists.\n'
+                                      'You may have used an output directory that still contains read-only files?'
+                                      .format(file_name))
+            else:
+                raise PermissionError('Cannot write output file "{}", because of insufficient permissions.\n'
+                                      'Maybe check write permissions of the output directory.'.format(file_name))
 
 
 def load_and_read(location, var_name):
