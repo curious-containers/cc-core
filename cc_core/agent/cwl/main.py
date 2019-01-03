@@ -90,7 +90,7 @@ def run(cwl_file, job_file, leave_directories, **_):
         cwl_input_directories_check(input_directories)
 
         os.chdir(tmp_working_dir)
-        process_data = execute(command, outdir=None)
+        process_data = execute(command)
         os.chdir(cwd)
         result['process'] = process_data
         shell_result_check(process_data)

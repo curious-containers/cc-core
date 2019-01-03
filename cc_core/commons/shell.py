@@ -28,10 +28,8 @@ def prepare_outdir(outdir):
                 raise JobExecutionError('Failed to create outdir "{}".\n{}'.format(outdir, str(e)))
 
 
-def execute(command, outdir=None):
-    if outdir and not os.path.isdir(outdir):
-        raise FileNotFoundError('outdir "{}" does not exists or is not a directory.'.format(outdir))
-    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True, cwd=outdir)
+def execute(command):
+    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
 
     monitor = ProcessMonitor(sp)
     t = Thread(target=monitor.start)

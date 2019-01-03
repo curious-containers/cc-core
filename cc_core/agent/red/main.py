@@ -115,9 +115,8 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
         result['inputDirectories'] = input_directories
         cwl_input_directories_check(input_directories)
 
-        # prepare_outdir(outdir)
         os.chdir(tmp_working_dir)
-        process_data = execute(command, None)
+        process_data = execute(command)
         os.chdir(cwd)
         result['process'] = process_data
         shell_result_check(process_data)

@@ -62,10 +62,11 @@ def read(raw_data, var_name):
         try:
             data = yaml.load(raw_data)
         except:
-            raise AgentError('data for argument "{}" is neither json nor yaml formatted'.format(var_name))
+            raise AgentError('data for argument "{}" is neither json nor yaml formatted.\ndata: {}'
+                             .format(var_name, raw_data))
 
     if not isinstance(data, dict):
-        raise AgentError('data for argument "{}" does not contain a dictionary'.format(var_name))
+        raise AgentError('data for argument "{}" does not contain a dictionary.\ndata: "{}"'.format(var_name, data))
 
     return data
 
