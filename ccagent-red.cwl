@@ -2,6 +2,8 @@ baseCommand:
 - ccagent
 - red
 - --outputs
+- --debug
+- --format=json
 class: CommandLineTool
 cwlVersion: v1.0
 doc: Run an experiment as described in a REDFILE.
@@ -14,18 +16,9 @@ inputs:
   variables:
     doc: VARFILE (json or yaml) containing key-value pairs for variables in REDFILE.
     inputBinding:
-      prefix: --variables
+      prefix: --variables=
+      separate: false
     type: File?
-  debug:
-    doc: Write debug info, including detailed exceptions, to stdout.
-    inputBinding:
-      prefix: --debug
-    type: boolean?
-  format:
-    doc: Specify FORMAT for generated data as one of [json, yaml, yml]. Default is yaml.
-      inputBinding:
-        prefix: --format
-      type: string?
   leave_directories:
     doc: Leave temporary inputs and working directories.
     inputBinding:
@@ -33,11 +26,7 @@ inputs:
     type: boolean?
 outputs:
   debug:
-    doc: Structured debug info in YAML or JSON format.
-    type: stdout?
-  error:
-    doc: Human readable error message.
-    type: stderr?
+    doc: Structured debug info in JSON format.
+    type: stdout
 
-stdout: debug.txt
-stderr: error.txt
+stdout: debug.json
