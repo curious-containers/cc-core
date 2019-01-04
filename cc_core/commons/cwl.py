@@ -1,5 +1,6 @@
 import os
 import jsonschema
+from jsonschema.exceptions import ValidationError
 from glob import glob
 from jsonschema import ValidationError
 from urllib.parse import urlparse
@@ -411,13 +412,13 @@ def cwl_output_directories(cwl_data, output_dir=None):
 def cwl_validation(cwl_data, job_data, docker_requirement=False):
     try:
         jsonschema.validate(cwl_data, cwl_schema)
-    except:
-        raise CWLSpecificationError('cwl file does not comply with jsonschema')
+    except ValidationError as e:
+        raise CWLSpecificationError('CWLFILE does not comply with jsonschema: {}'.format(e.context))
 
     try:
         jsonschema.validate(job_data, cwl_job_schema)
-    except:
-        raise JobSpecificationError('job file does not comply with jsonschema')
+    except ValidationError as e:
+        raise JobSpecificationError('JOBFILE does not comply with jsonschema: {}'.format(e.context))
 
     # validate listings
     for input_key, input_value in job_data.items():

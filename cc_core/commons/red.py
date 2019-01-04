@@ -219,7 +219,7 @@ def _red_listing_validation(key, listing):
         try:
             jsonschema.validate(listing, cwl_job_listing_schema)
         except ValidationError as e:
-            raise RedValidationError('red file listing of input "{}" does not comply with jsonschema: {}'
+            raise RedValidationError('REDFILE listing of input "{}" does not comply with jsonschema: {}'
                                      .format(key, e.context))
 
 
@@ -227,11 +227,11 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
     except ValidationError as e:
-        raise RedValidationError('red file does not comply with jsonschema: {}'.format(e.context))
+        raise RedValidationError('REDFILE does not comply with jsonschema: {}'.format(e.context))
 
     if not red_data['redVersion'] == RED_VERSION:
         raise RedSpecificationError(
-            'red version "{}" specified in RED_FILE is not compatible with red version "{}" of cc-faice'.format(
+            'red version "{}" specified in REDFILE is not compatible with red version "{}" of cc-faice'.format(
                 red_data['redVersion'], RED_VERSION
             )
         )
@@ -264,7 +264,7 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
 
     if container_requirement:
         if not red_data.get('container'):
-            raise RedSpecificationError('container engine description is missing in red file')
+            raise RedSpecificationError('container engine description is missing in REDFILE')
 
 
 def convert_batch_experiment(red_data, batch):
@@ -272,7 +272,7 @@ def convert_batch_experiment(red_data, batch):
         return red_data
 
     if batch is None:
-        raise ArgumentError('batches are specified in RED_FILE, but --batch argument is missing')
+        raise ArgumentError('batches are specified in REDFILE, but --batch argument is missing')
 
     try:
         batch_data = red_data['batches'][batch]
