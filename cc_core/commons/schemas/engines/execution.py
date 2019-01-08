@@ -15,8 +15,8 @@ ccagency_schema = {
             'additionalProperties': False,
             'required': ['url']
         },
-        'disablePull': {'type': 'boolean'},
-        'outdir': {'type': 'string'}
+        # disablePull might be data breach, if another users image has been pulled to host already
+        # 'disablePull': {'type': 'boolean'}
     },
     'additionalProperties': False
 }
