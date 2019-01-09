@@ -84,11 +84,15 @@ def inspect_templates_and_secrets(data, fill_data, non_interactive):
         else:
             undeclared_template_key_is_protected[key] = is_protected
 
+    incomplete_variables_file = False
+
     if undeclared_template_key_is_protected:
         if non_interactive:
             raise RedVariablesError('RED_FILE contains undeclared template variables: {}'.format(
                 list(undeclared_template_key_is_protected.keys())
             ))
+
+        incomplete_variables_file = True
 
         out = [
             'RED_FILE contains the following undeclared template variables:'
@@ -113,7 +117,7 @@ def inspect_templates_and_secrets(data, fill_data, non_interactive):
                 value = input('{}: '.format(key))
                 template_keys_and_values[key] = value
 
-    return template_keys_and_values, protected_values
+    return template_keys_and_values, protected_values, incomplete_variables_file
 
 
 def _fill_recursively(data, template_keys_and_values, allowed_section, remove_underscores):

@@ -107,7 +107,7 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
 
         red_data = convert_batch_experiment(red_data, batch)
 
-        template_keys_and_values, secret_values = inspect_templates_and_secrets(red_data, variables_data, True)
+        template_keys_and_values, secret_values, _ = inspect_templates_and_secrets(red_data, variables_data, True)
         red_data = fill_template(red_data, template_keys_and_values, False, True)
 
         connector_manager = ConnectorManager()
