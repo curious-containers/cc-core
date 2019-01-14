@@ -43,6 +43,14 @@ def load_and_read(location, var_name):
     return read(raw_data, var_name)
 
 
+def is_local(location):
+    scheme = urlparse(location).scheme
+    if scheme == 'http' or scheme == 'https':
+        return False
+
+    return True
+
+
 def load(location, var_name):
     scheme = urlparse(location).scheme
     if scheme == 'path':

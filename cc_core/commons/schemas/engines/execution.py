@@ -1,5 +1,12 @@
 from cc_core.commons.schemas.common import auth_schema
 
+ccfaice_schema = {
+    'type': 'object',
+    'properties': {
+        'doc': {'type': 'string'},
+    },
+    'additionalProperties': False
+}
 
 ccagency_schema = {
     'type': 'object',
@@ -14,13 +21,14 @@ ccagency_schema = {
             },
             'additionalProperties': False,
             'required': ['url']
-        },
-        'disablePull': {'type': 'boolean'},
-        'outdir': {'type': 'string'}
+        }
+        # disablePull might be data breach, if another users image has been pulled to host already
+        # 'disablePull': {'type': 'boolean'}
     },
     'additionalProperties': False
 }
 
 execution_engines = {
+    'ccfaice': ccfaice_schema,
     'ccagency': ccagency_schema
 }

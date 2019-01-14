@@ -8,7 +8,7 @@ from cc_core.commons.cwl import cwl_to_command, cwl_validation
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.cwl import cwl_input_directories, cwl_input_directories_check
 from cc_core.commons.input_references import create_inputs_to_reference
-from cc_core.commons.shell import execute, shell_result_check, prepare_outdir
+from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, print_exception
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWLFILE and its corresponding JOBFILE.'

@@ -10,7 +10,7 @@ from cc_core.commons.red import red_validation, ConnectorManager, import_and_val
 from cc_core.commons.cwl import cwl_to_command, cwl_input_directories, cwl_input_directories_check
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
-from cc_core.commons.exceptions import exception_format, RedValidationError, print_exception
+from cc_core.commons.exceptions import exception_format, RedValidationError, print_exception, ArgumentError
 from cc_core.commons.templates import fill_validation, inspect_templates_and_secrets, fill_template
 
 
@@ -89,6 +89,17 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
         ignore_outputs = not outputs
         red_validation(red_data, ignore_outputs)
 
+        # delete unused keys to avoid unnecessary variables handling
+        if 'execution' in red_data:
+            del red_data['execution']
+
+        if not outputs and 'outputs' in red_data:
+            del red_data['outputs']
+
+        if outputs and 'outputs' not in red_data:
+            raise ArgumentError('-o/--outputs argument is set, \
+            but no outputs section with RED connector settiings is defined in REDFILE')
+
         variables_data = None
         if variables:
             variables_data = load_and_read(variables, 'VARFILE')
@@ -96,7 +107,7 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
 
         red_data = convert_batch_experiment(red_data, batch)
 
-        template_keys_and_values, secret_values = inspect_templates_and_secrets(red_data, variables_data, True)
+        template_keys_and_values, secret_values, _ = inspect_templates_and_secrets(red_data, variables_data, True)
         red_data = fill_template(red_data, template_keys_and_values, False, True)
 
         connector_manager = ConnectorManager()
@@ -132,7 +143,6 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
                 send(connector_manager, output_files, red_data)
         else:
             move_files(output_files)
-
 
     except RedValidationError as e:
         result['debugInfo'] = exception_format(secret_values=secret_values)
