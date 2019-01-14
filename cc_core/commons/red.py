@@ -78,8 +78,9 @@ class ConnectorManager:
 
         try:
             connector.receive_validate(access)
-        except:
-            raise AccessValidationError('invalid access data for input file "{}"'.format(input_key))
+        except Exception as e:
+            raise AccessValidationError('invalid access data for input file "{}". Failed with the following message:\n'
+                                        '{}'.format(input_key, str(e)))
 
     def receive_directory_validate(self, connector_data, input_key):
         py_module, py_class, access = self._cdata(connector_data)
@@ -148,8 +149,9 @@ class ConnectorManager:
 
         try:
             connector.receive(access, internal)
-        except:
-            raise AccessError('could not access input file "{}"'.format(input_key))
+        except Exception as e:
+            raise AccessError('could not access input file "{}". Failed with the following message:\n'
+                              '{}'.format(input_key, str(e)))
 
         make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
 
