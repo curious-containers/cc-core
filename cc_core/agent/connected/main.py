@@ -62,7 +62,7 @@ def run(callback_url, inspect):
 
     try:
         red_validation(red_data, False)
-        _, secret_values = inspect_templates_and_secrets(red_data, None, True)
+        _, secret_values, _ = inspect_templates_and_secrets(red_data, None, True)
         red_data = fill_template(red_data, None, False, True)
 
         connector_manager = ConnectorManager()
