@@ -2,18 +2,18 @@ import os
 import sys
 import types
 
-import requests
-import jsonschema
-import psutil
-import ruamel.yaml
-import cc_core
-
-
-START_MODULES = [requests, jsonschema, psutil, ruamel.yaml, cc_core]
+import cc_core.agent.cwl.main
+import cc_core.agent.red.main
+import cc_core.agent.connected.main
 
 
 def module_dependencies():
-    d = {module.__name__: False for module in START_MODULES}
+    agent_modules = [
+        cc_core.agent.cwl.main,
+        cc_core.agent.red.main,
+        cc_core.agent.connected.main
+    ]
+    d = {m.__name__: False for m in agent_modules}
     _module_dependencies(d)
     return _valid_modules(d)
 
@@ -28,10 +28,8 @@ def _module_dependencies(d):
 
             for key, obj in sys.modules[module_name].__dict__.items():
                 if not isinstance(obj, types.ModuleType):
-                    if not isinstance(obj, types.FunctionType):
-                        continue
 
-                    if not (obj.__module__ and obj.__module__ in sys.modules):
+                    if not (hasattr(obj, '__module__') and obj.__module__ and obj.__module__ in sys.modules):
                         continue
 
                     obj = sys.modules[obj.__module__]
