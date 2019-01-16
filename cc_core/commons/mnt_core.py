@@ -5,8 +5,9 @@ from subprocess import Popen, PIPE
 
 
 MOD_DIR = '/cc/mod'
+PYMOD_DIR = '/cc/pymod'
 LIB_DIR = '/cc/lib'
-BIN_DIR = '/cc/bin'
+MNT_DIR = '/cc/mnt'
 
 
 def module_dependencies(modules):
@@ -94,9 +95,9 @@ def ldd(file_path):
             path = path.strip()
             path = path.split('(')[0].strip()
             result[name] = path
-        elif line.startswith('/') and 'ld-linux' in line:
+        elif line.startswith('/') and 'ld' in line:
             path = line.split('(')[0].strip()
-            result['ld-linux.so'] = path
+            result['ld.so'] = path
 
     return result
 
@@ -128,13 +129,3 @@ def _interpreter_dependencies(d):
 
     if found_new:
         _interpreter_dependencies(d)
-
-
-def ccagent_bin(local_path):
-    with open(local_path, 'w') as f:
-        print(
-            'LD_LIBRARY_PATH={lib} PYTHONPATH={mod} {lib}/ld-linux.so {lib}/python -m cc_core.agent $@'.format(
-                lib=LIB_DIR, mod=MOD_DIR
-            ),
-            file=f
-        )
