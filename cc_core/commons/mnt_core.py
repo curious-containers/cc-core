@@ -1,19 +1,16 @@
 import os
 import sys
 import types
-
-import cc_core.agent.cwl.main
-import cc_core.agent.red.main
-import cc_core.agent.connected.main
+from subprocess import Popen, PIPE
 
 
-def module_dependencies():
-    agent_modules = [
-        cc_core.agent.cwl.main,
-        cc_core.agent.red.main,
-        cc_core.agent.connected.main
-    ]
-    d = {m.__name__: False for m in agent_modules}
+MOD_DIR = '/cc/mod'
+LIB_DIR = '/cc/lib'
+BIN_DIR = '/cc/bin'
+
+
+def module_dependencies(modules):
+    d = {m.__name__: False for m in modules}
     _module_dependencies(d)
     return _valid_modules(d)
 
@@ -77,3 +74,67 @@ def _valid_modules(d):
         result.append(module_name)
 
     return result
+
+
+def ldd(file_path):
+    sp = Popen('ldd "{}"'.format(file_path), stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
+    std_out, std_err = sp.communicate()
+    return_code = sp.returncode
+
+    if return_code != 0:
+        raise Exception('External program ldd returned exit code {}: {}'.format(return_code, std_err))
+
+    result = {}
+
+    for line in std_out.split('\n'):
+        line = line.strip()
+        if '=>' in line:
+            name, path = line.split('=>')
+            name = name.strip()
+            path = path.strip()
+            path = path.split('(')[0].strip()
+            result[name] = path
+        elif line.startswith('/') and 'ld-linux' in line:
+            path = line.split('(')[0].strip()
+            result['ld-linux.so'] = path
+
+    return result
+
+
+def interpreter_dependencies():
+    d = {'python': (sys.executable, False)}
+    _interpreter_dependencies(d)
+    return {key: val for key, (val, _) in d.items()}
+
+
+def _interpreter_dependencies(d):
+    candidates = {}
+
+    for name, (path, checked) in d.items():
+        if checked:
+            continue
+
+        d[name] = (path, True)
+
+        links = ldd(path)
+
+        candidates = {**candidates, **links}
+
+    found_new = False
+    for name, path in candidates.items():
+        if name not in d:
+            d[name] = (path, False)
+            found_new = True
+
+    if found_new:
+        _interpreter_dependencies(d)
+
+
+def ccagent_bin(local_path):
+    with open(local_path, 'w') as f:
+        print(
+            'LD_LIBRARY_PATH={lib} PYTHONPATH={mod} {lib}/ld-linux.so {lib}/python -m cc_core.agent $@'.format(
+                lib=LIB_DIR, mod=MOD_DIR
+            ),
+            file=f
+        )
