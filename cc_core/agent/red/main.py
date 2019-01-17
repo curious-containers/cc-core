@@ -98,7 +98,7 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
 
         if outputs and 'outputs' not in red_data:
             raise ArgumentError('-o/--outputs argument is set, \
-            but no outputs section with RED connector settiings is defined in REDFILE')
+            but no outputs section with RED connector settings is defined in REDFILE')
 
         variables_data = None
         if variables:
