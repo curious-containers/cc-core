@@ -125,12 +125,13 @@ def ldd(file_path):
 
 def interpreter_dependencies():
     ldconfig_result = ldconfig()
-    libssl_dir = ldconfig_result['libssl.so']
+    libssl_names = [name for name in ldconfig_result if 'libssl.so' in name]
 
-    d = {
-        'python': (sys.executable, False),
-        'libssl.so': (libssl_dir, False)
-    }
+    d = {'python': (sys.executable, False)}
+
+    for name in libssl_names:
+        d[name] = (ldconfig_result[name], False)
+
     _interpreter_dependencies(d)
     return {key: val for key, (val, _) in d.items()}
 
