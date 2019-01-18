@@ -3,11 +3,10 @@ import sys
 import types
 from subprocess import Popen, PIPE
 
-
-MOD_DIR = '/cc/mod'
-PYMOD_DIR = '/cc/pymod'
-LIB_DIR = '/cc/lib'
-MNT_DIR = '/cc/mnt'
+CC_DIR = 'cc'
+MOD_DIR = os.path.join(CC_DIR, 'mod')
+PYMOD_DIR = os.path.join(CC_DIR, 'pymod')
+LIB_DIR = os.path.join(CC_DIR, 'lib')
 
 
 def module_dependencies(modules):
@@ -129,3 +128,38 @@ def _interpreter_dependencies(d):
 
     if found_new:
         _interpreter_dependencies(d)
+
+
+def module_destinations(dependencies, prefix='/'):
+    pymod_dir = os.path.join(prefix, PYMOD_DIR)
+    mod_dir = os.path.join(prefix, MOD_DIR)
+
+    stdlib_path = os.path.split(os.__file__)[0]
+    result = [[stdlib_path, pymod_dir]]
+
+    for module_name in dependencies:
+        module = sys.modules[module_name]
+        file_path = module.__file__
+        dir_path, file_name = os.path.split(file_path)
+        if file_name == '__init__.py':
+            last_part = None
+            n = len(module_name.split('.'))
+            for _ in range(n):
+                dir_path, last_part = os.path.split(dir_path)
+
+            if last_part is not None:
+                result.append([os.path.join(dir_path, last_part), os.path.join(mod_dir, last_part)])
+        else:
+            result.append([file_path, os.path.join(mod_dir, file_name)])
+
+    return result
+
+
+def interpreter_destinations(dependencies, prefix='/'):
+    lib_dir = os.path.join(prefix, LIB_DIR)
+    result = []
+
+    for name, path in dependencies.items():
+        result.append([path, os.path.join(lib_dir, name)])
+
+    return result
