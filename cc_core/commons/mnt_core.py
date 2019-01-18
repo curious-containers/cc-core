@@ -102,7 +102,10 @@ def ldd(file_path):
 
 
 def interpreter_dependencies():
-    d = {'python': (sys.executable, False)}
+    d = {
+        'python': (sys.executable, False),
+        'libssl.so': ('/lib64/libssl.so', False)
+    }
     _interpreter_dependencies(d)
     return {key: val for key, (val, _) in d.items()}
 
