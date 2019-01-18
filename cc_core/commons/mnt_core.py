@@ -76,6 +76,28 @@ def _valid_modules(d):
     return result
 
 
+def ldconfig():
+    sp = Popen('ldconfig -p', stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
+    std_out, std_err = sp.communicate()
+    return_code = sp.returncode
+
+    if return_code != 0:
+        raise Exception('External program ldconfig -p returned exit code {}: {}'.format(return_code, std_err))
+
+    result = {}
+
+    for line in std_out.split('\n'):
+        line = line.strip()
+        if '=>' in line:
+            name, path = line.split('=>')
+            name = name.strip()
+            name = name.split('(')[0].strip()
+            path = path.strip()
+            result[name] = path
+
+    return result
+
+
 def ldd(file_path):
     sp = Popen('ldd "{}"'.format(file_path), stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
     std_out, std_err = sp.communicate()
@@ -102,9 +124,12 @@ def ldd(file_path):
 
 
 def interpreter_dependencies():
+    ldconfig_result = ldconfig()
+    libssl_dir = ldconfig_result['libssl.so']
+
     d = {
         'python': (sys.executable, False),
-        'libssl.so': ('/lib64/libssl.so', False)
+        'libssl.so': (libssl_dir, False)
     }
     _interpreter_dependencies(d)
     return {key: val for key, (val, _) in d.items()}
