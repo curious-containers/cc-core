@@ -10,90 +10,71 @@ LIB_DIR = os.path.join(CC_DIR, 'lib')
 
 
 def module_dependencies(modules):
-    d = {m.__name__: False for m in modules}
+    d = {m.__name__: (m, False) for m in modules}
     _module_dependencies(d)
-    return _valid_modules(d)
+    file_modules = {module_name: m for module_name, (m, _) in d.items() if hasattr(m, '__file__') and m.__file__ is not None}
+    c_modules = {module_name: m for module_name, m in file_modules.items() if m.__file__.endswith('.so')}
+    modules = _valid_modules(file_modules)
+    return modules, c_modules
 
 
 def _module_dependencies(d):
     candidates = []
 
-    for module_name, checked in d.items():
+    for module_name, (m, checked) in d.items():
+        if checked:
+            continue
 
-        if not checked:
-            d[module_name] = True
+        d[module_name] = (m, True)
 
-            for key, obj in sys.modules[module_name].__dict__.items():
-                if not isinstance(obj, types.ModuleType):
+        for key, obj in m.__dict__.items():
+            if not isinstance(obj, types.ModuleType):
 
-                    if not (hasattr(obj, '__module__') and obj.__module__ and obj.__module__ in sys.modules):
-                        continue
+                if not (hasattr(obj, '__module__') and obj.__module__ and obj.__module__ in sys.modules):
+                    continue
 
-                    obj = sys.modules[obj.__module__]
+                obj = sys.modules[obj.__module__]
 
-                all_names = [obj.__name__]
+            all_names = [obj.__name__]
 
-                if '.' in obj.__name__:
-                    split = obj.__name__.split('.')
-                    for i in range(1, len(split)):
-                        all_names.append('.'.join(split[:i]))
+            if '.' in obj.__name__:
+                split = obj.__name__.split('.')
+                for i in range(1, len(split)):
+                    all_names.append('.'.join(split[:i]))
 
-                for name in all_names:
-                    if name in d:
-                        continue
+            for name in all_names:
+                if name in d:
+                    continue
 
-                    if name not in sys.modules:
-                        continue
+                if name not in sys.modules:
+                    continue
 
-                    candidates.append(name)
+                candidates.append(name)
 
     for module_name in candidates:
-        d[module_name] = False
+        d[module_name] = (sys.modules[module_name], False)
 
     if candidates:
         _module_dependencies(d)
 
 
-def _valid_modules(d):
+def _valid_modules(file_modules):
     stdlib_path = os.path.split(os.__file__)[0]
-    valid_modules = []
+    valid_modules = {}
 
-    for module_name in d:
-        module = sys.modules[module_name]
-        if hasattr(module, '__file__') and module.__file__ and not module.__file__.startswith(stdlib_path):
-            valid_modules.append(module_name)
+    for module_name, m in file_modules.items():
+        if not m.__file__.startswith(stdlib_path):
+            valid_modules[module_name] = m
 
-    result = []
-    for module_name in valid_modules:
+    result = {}
+    for module_name, m in valid_modules.items():
         if '.' in module_name:
             shorter_name = '.'.join(module_name.split('.')[:-1])
 
             if shorter_name in valid_modules:
                 continue
 
-        result.append(module_name)
-
-    return result
-
-
-def ldconfig():
-    sp = Popen('ldconfig -p', stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
-    std_out, std_err = sp.communicate()
-    return_code = sp.returncode
-
-    if return_code != 0:
-        raise Exception('External program ldconfig -p returned exit code {}: {}'.format(return_code, std_err))
-
-    result = {}
-
-    for line in std_out.split('\n'):
-        line = line.strip()
-        if '=>' in line:
-            name, path = line.split('=>')
-            name = name.strip()
-            name = name.split('(')[0].strip()
-            path = path.strip()
-            result[name] = path
+        result[module_name] = m
 
     return result
 
@@ -123,14 +104,19 @@ def ldd(file_path):
     return result
 
 
-def interpreter_dependencies():
-    ldconfig_result = ldconfig()
-    libssl_names = [name for name in ldconfig_result if 'libssl.so' in name]
+def interpreter_dependencies(c_module_deps):
+    candidates = {}
+
+    for _, m in c_module_deps.items():
+        links = ldd(m.__file__)
+
+        candidates = {**candidates, **links}
 
     d = {'python': (sys.executable, False)}
 
-    for name in libssl_names:
-        d[name] = (ldconfig_result[name], False)
+    for name, path in candidates.items():
+        if name not in d:
+            d[name] = (path, False)
 
     _interpreter_dependencies(d)
     return {key: val for key, (val, _) in d.items()}
@@ -166,10 +152,8 @@ def module_destinations(dependencies, prefix='/'):
     stdlib_path = os.path.split(os.__file__)[0]
     result = [[stdlib_path, pymod_dir]]
 
-    for module_name in dependencies:
-        module = sys.modules[module_name]
-        file_path = module.__file__
-        dir_path, file_name = os.path.split(file_path)
+    for module_name, m in dependencies.items():
+        dir_path, file_name = os.path.split(m.__file__)
         if file_name == '__init__.py':
             last_part = None
             n = len(module_name.split('.'))
@@ -179,7 +163,7 @@ def module_destinations(dependencies, prefix='/'):
             if last_part is not None:
                 result.append([os.path.join(dir_path, last_part), os.path.join(mod_dir, last_part)])
         else:
-            result.append([file_path, os.path.join(mod_dir, file_name)])
+            result.append([m.__file__, os.path.join(mod_dir, file_name)])
 
     return result
 
