@@ -29,17 +29,14 @@ def prepare_outdir(outdir):
 
 
 def execute(command):
-    if 'LD_LIBRARY_PATH_BAK' in os.environ:
-        os.environ['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH_BAK']
-        del os.environ['LD_LIBRARY_PATH_BAK']
-
-    if 'PYTHONPATH_BAK' in os.environ:
-        os.environ['PYTHONPATH'] = os.environ['PYTHONPATH_BAK']
-        del os.environ['PYTHONPATH_BAK']
-
-    if 'PYTHONHOME_BAK' in os.environ:
-        os.environ['PYTHONHOME'] = os.environ['PYTHONHOME_BAK']
-        del os.environ['PYTHONHOME_BAK']
+    # restore original environment
+    for envvar in ['LD_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME']:
+        envvar_bak = '{}_BAK'.format(envvar)
+        if envvar_bak in os.environ:
+            os.environ[envvar] = os.environ[envvar_bak]
+            del os.environ[envvar_bak]
+            if not os.environ[envvar]:
+                del os.environ[envvar]
 
     sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
 
