@@ -12,6 +12,7 @@ from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_fil
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, RedValidationError, print_exception, ArgumentError
 from cc_core.commons.templates import fill_validation, inspect_templates_and_secrets, fill_template
+from cc_core.commons.mnt_core import restore_original_environment
 
 
 DESCRIPTION = 'Run an experiment as described in a REDFILE.'
@@ -85,6 +86,8 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
     secret_values = None
 
     try:
+        restore_original_environment()
+
         red_data = load_and_read(red_file, 'REDFILE')
         ignore_outputs = not outputs
         red_validation(red_data, ignore_outputs)
@@ -92,6 +95,9 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
         # delete unused keys to avoid unnecessary variables handling
         if 'execution' in red_data:
             del red_data['execution']
+
+        if 'container' in red_data:
+            del red_data['container']
 
         if not outputs and 'outputs' in red_data:
             del red_data['outputs']

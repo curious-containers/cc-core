@@ -58,6 +58,34 @@ def _module_dependencies(d):
         _module_dependencies(d)
 
 
+def restore_original_environment():
+    for envvar in ['LD_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME']:
+        envvar_bak = '{}_BAK'.format(envvar)
+        if envvar_bak in os.environ:
+            os.environ[envvar] = os.environ[envvar_bak]
+            del os.environ[envvar_bak]
+            if not os.environ[envvar]:
+                del os.environ[envvar]
+
+
+def interpreter_command():
+    return [
+        'LD_LIBRARY_PATH_BAK=${LD_LIBRARY_PATH}',
+        'PYTHONPATH_BAK=${PYTHONPATH}',
+        'PYTHONHOME_BAK=${PYTHONHOME}',
+        'LD_LIBRARY_PATH={}'.format(os.path.join('/', LIB_DIR)),
+        'PYTHONPATH={}:{}:{}:{}'.format(
+            os.path.join('/', PYMOD_DIR),
+            os.path.join('/', PYMOD_DIR, 'lib-dynload'),
+            os.path.join('/', PYMOD_DIR, 'site-packages'),
+            os.path.join('/', MOD_DIR)
+        ),
+        'PYTHONHOME={}'.format(os.path.join('/', PYMOD_DIR)),
+        os.path.join('/', LIB_DIR, 'ld.so'),
+        os.path.join('/', LIB_DIR, 'python')
+    ]
+
+
 def _valid_modules(file_modules):
     stdlib_path = os.path.split(os.__file__)[0]
     valid_modules = {}

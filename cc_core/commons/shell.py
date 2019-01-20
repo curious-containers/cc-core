@@ -29,15 +29,6 @@ def prepare_outdir(outdir):
 
 
 def execute(command):
-    # restore original environment
-    for envvar in ['LD_LIBRARY_PATH', 'PYTHONPATH', 'PYTHONHOME']:
-        envvar_bak = '{}_BAK'.format(envvar)
-        if envvar_bak in os.environ:
-            os.environ[envvar] = os.environ[envvar_bak]
-            del os.environ[envvar_bak]
-            if not os.environ[envvar]:
-                del os.environ[envvar]
-
     sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
 
     monitor = ProcessMonitor(sp)

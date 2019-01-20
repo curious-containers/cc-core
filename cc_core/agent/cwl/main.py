@@ -10,6 +10,7 @@ from cc_core.commons.cwl import cwl_input_directories, cwl_input_directories_che
 from cc_core.commons.input_references import create_inputs_to_reference
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format, print_exception
+from cc_core.commons.mnt_core import restore_original_environment
 
 DESCRIPTION = 'Run a CommandLineTool as described in a CWLFILE and its corresponding JOBFILE.'
 
@@ -71,6 +72,8 @@ def run(cwl_file, job_file, leave_directories, **_):
     cwd = os.getcwd()
 
     try:
+        restore_original_environment()
+
         cwl_data = load_and_read(cwl_file, 'CWLFILE')
         job_data = load_and_read(job_file, 'JOBFILE')
 
