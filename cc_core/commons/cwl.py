@@ -144,8 +144,9 @@ def _input_directory_description(input_identifier, arg_item, input_dir):
 def cwl_input_file_check(input_files):
     missing_files = []
     for key, val in input_files.items():
-        if val['files'] is None and not val['isOptional']:
-            missing_files.append(key)
+        if val['files'] is None:
+            if not val['isOptional']:
+                missing_files.append(key)
             continue
 
         for f in val['files']:
