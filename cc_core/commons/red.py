@@ -68,64 +68,52 @@ class ConnectorManager:
 
         return result['returnCode'], result['stdErr']
 
-    @staticmethod
-    def _execute_and_validate_connector(connector_command,
-                                        top_level_argument,
-                                        input_or_output,
-                                        key,
-                                        *file_contents):
-        """
-        Executes a connector by executing the given connector_command. The content of args will be the content of the
-        files handed to the connector cli.
-        If the connector returns with a different return code than 0 a AccessValidationError is raised.
-
-        :param connector_command: The connector command to execute.
-        :param top_level_argument: The top level command line argument for the connector cli.
-        (Like 'receive' or 'send_validate')
-        :param input_or_output: A string containing 'input' for input connectors and 'output' for output connectors,
-        followed by 'file' for file operations or 'directory' for directory operations.
-        :param key: The red input identifier for debug information.
-        :param file_contents: A list of information handed over to the connector cli.
-        :raise AccessValidationError: If the executed connector exited with a non zero return code.
-        :return: A tuple containing the return code of the connector and the stderr of the command as str.
-        """
-        return_code, std_err = ConnectorManager._execute_connector(connector_command,
-                                                                   top_level_argument,
-                                                                   *file_contents)
-
-        if return_code != 0:
-            raise AccessValidationError('invalid access data for {} "{}". Failed with the following message:\n'
-                                        '{}'.format(input_or_output, key, str(std_err)))
-
     def receive_validate(self, connector_data, input_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-validate', 'input file',
-                                                         input_key, access)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'receive-validate', access)
+
+        if return_code != 0:
+            raise AccessValidationError('invalid access data for input file "{}". Failed with the following message:\n'
+                                        '{}'.format(input_key, str(std_err)))
 
     def receive_directory_validate(self, connector_data, input_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory-validate',
-                                                         'input directory', input_key, access)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command,
+                                                                   'receive-directory-validate',
+                                                                   access)
+
+        if return_code != 0:
+            raise AccessValidationError('invalid access data for input directory "{}". Failed with the following '
+                                        'message:\n{}'.format(input_key, str(std_err)))
 
     def send_validate(self, connector_data, output_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'send-validate', 'output file',
-                                                         output_key, access)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'send-validate', access)
+
+        if return_code != 0:
+            raise AccessValidationError('invalid access data for output file "{}". Failed with the following message:\n'
+                                        '{}'.format(output_key, str(std_err)))
 
     def send_directory_validate(self, connector_data, output_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'send-directory-validate',
-                                                         'output directory', output_key, access)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'send-directory-validate', access)
+
+        if return_code != 0:
+            raise AccessValidationError('invalid access data for output directory "{}". Failed with the following '
+                                        'message:\n{}'.format(output_key, str(std_err)))
 
     def receive(self, connector_data, input_key, internal):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive', 'input file', input_key,
-                                                         access, internal)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'receive', access, internal)
+
+        if return_code != 0:
+            raise AccessError('invalid access data for input file "{}". Failed with the following message:\n'
+                              '{}'.format(input_key, str(std_err)))
 
         make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
 
@@ -155,8 +143,12 @@ class ConnectorManager:
     def receive_directory(self, connector_data, input_key, internal, listing=None):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory', 'input directory',
-                                                         input_key, access, internal, listing)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'receive-directory', access,
+                                                         internal, listing)
+
+        if return_code != 0:
+            raise AccessError('invalid access data for input directory "{}". Failed with the following '
+                              'message:\n{}'.format(input_key, str(std_err)))
 
         directory_path = internal[URL_SCHEME_IDENTIFIER]
 
@@ -169,8 +161,11 @@ class ConnectorManager:
     def send(self, connector_data, output_key, internal):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'send', 'output file', output_key,
-                                                         access, internal)
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'send', access, internal)
+
+        if return_code != 0:
+            raise AccessValidationError('invalid access data for output file "{}". Failed with the following message:\n'
+                                        '{}'.format(output_key, str(std_err)))
 
 
 def _red_listing_validation(key, listing):
