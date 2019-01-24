@@ -1,6 +1,5 @@
 import json
 import os
-import inspect
 import jsonschema
 import tempfile
 from jsonschema.exceptions import ValidationError

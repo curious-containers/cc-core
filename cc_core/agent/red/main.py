@@ -99,19 +99,19 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
         if 'container' in red_data:
             del red_data['container']
 
-        if not outputs and 'outputs' in red_data:
-            del red_data['outputs']
-
-        if outputs and 'outputs' not in red_data:
-            raise ArgumentError('-o/--outputs argument is set, \
-            but no outputs section with RED connector settings is defined in REDFILE')
-
         variables_data = None
         if variables:
             variables_data = load_and_read(variables, 'VARFILE')
             fill_validation(variables_data)
 
         red_data = convert_batch_experiment(red_data, batch)
+
+        if not outputs and 'outputs' in red_data:
+            del red_data['outputs']
+
+        if outputs and 'outputs' not in red_data:
+            raise ArgumentError('-o/--outputs argument is set, \
+            but no outputs section with RED connector settings is defined in REDFILE')
 
         template_keys_and_values, secret_values, _ = inspect_templates_and_secrets(red_data, variables_data, True)
         red_data = fill_template(red_data, template_keys_and_values, False, True)
