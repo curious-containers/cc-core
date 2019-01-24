@@ -56,7 +56,6 @@ class ConnectorManager:
             tmp_file.flush()
             temp_files.append(tmp_file)
 
-        # create command by chaining <connector_command>, <top_level_argument>, <temp_files>
         command = [connector_command, top_level_argument]
         command.extend([t.name for t in temp_files])
 
@@ -144,7 +143,7 @@ class ConnectorManager:
         connector_command, access = self._cdata(connector_data)
 
         return_code, std_err = ConnectorManager._execute_connector(connector_command, 'receive-directory', access,
-                                                         internal, listing)
+                                                                   internal, listing)
 
         if return_code != 0:
             raise AccessError('invalid access data for input directory "{}". Failed with the following '
