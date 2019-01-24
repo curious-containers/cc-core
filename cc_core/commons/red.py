@@ -1,10 +1,13 @@
+import json
 import os
 import inspect
 import jsonschema
+import tempfile
 from jsonschema.exceptions import ValidationError
 
 from cc_core.commons.files import make_file_read_only, for_each_file
 from cc_core.commons.schemas.cwl import cwl_job_listing_schema
+from cc_core.commons.shell import execute
 from cc_core.version import RED_VERSION
 from cc_core.commons.cwl import URL_SCHEME_IDENTIFIER
 from cc_core.commons.schemas.red import red_schema
@@ -25,133 +28,103 @@ SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS = []
 
 class ConnectorManager:
     def __init__(self):
-        self._imported_connectors = {}
-
-    @staticmethod
-    def _key(py_module, py_class):
-        return '{}.{}'.format(py_module, py_class)
+        pass
 
     @staticmethod
     def _cdata(connector_data):
-        return connector_data['pyModule'], connector_data['pyClass'], connector_data['access']
+        return connector_data['command'], connector_data['access']
 
-    def _check_func(self, connector_key, funcname, spec_args, spec_kwargs):
-        connector = self._imported_connectors[connector_key]
-        try:
-            func = getattr(connector, funcname)
-            assert callable(func)
-            spec = inspect.getfullargspec(func)
-            assert spec.args == spec_args
-            assert spec.kwonlyargs == spec_kwargs
-        except:
-            raise ConnectorError(
-                'imported connector "{}" does not support "{}" function'.format(connector_key, funcname)
-            )
+    @staticmethod
+    def _execute_connector(connector_command, top_level_argument, *file_contents):
+        """
+        Executes a connector by executing the given connector_command. The content of args will be the content of the
+        files handed to the connector cli.
 
-    def import_connector(self, connector_data):
-        py_module, py_class, _ = self._cdata(connector_data)
-        key = ConnectorManager._key(py_module, py_class)
+        :param connector_command: The connector command to execute.
+        :param top_level_argument: The top level command line argument for the connector cli.
+        (Like 'receive' or 'send_validate')
+        :param file_contents: A list of information handed over to the connector cli.
+        :return: A tuple containing the return code of the connector and the stderr of the command as str.
+        """
+        # create temp_files for every file_content
+        temp_files = []
+        for file_content in file_contents:
+            if file_content is None:
+                continue
+            tmp_file = tempfile.NamedTemporaryFile('w')
+            json.dump(file_content, tmp_file)
+            tmp_file.flush()
+            temp_files.append(tmp_file)
 
-        if key in self._imported_connectors:
-            return
+        # create command by chaining <connector_command>, <top_level_argument>, <temp_files>
+        command = [connector_command, top_level_argument]
+        command.extend([t.name for t in temp_files])
 
-        try:
-            mod = __import__(py_module, fromlist=[py_class])
-            connector = getattr(mod, py_class)
-            assert inspect.isclass(connector)
-        except Exception as e:
-            raise ConnectorError('invalid connector "{}:\n{}"'.format(key, str(e)))
+        result = execute(' '.join(command))
 
-        self._imported_connectors[key] = connector
+        # close temp_files
+        for temp_file in temp_files:
+            temp_file.close()
+
+        return result['returnCode'], result['stdErr']
+
+    @staticmethod
+    def _execute_and_validate_connector(connector_command,
+                                        top_level_argument,
+                                        input_or_output,
+                                        key,
+                                        *file_contents):
+        """
+        Executes a connector by executing the given connector_command. The content of args will be the content of the
+        files handed to the connector cli.
+        If the connector returns with a different return code than 0 a AccessValidationError is raised.
+
+        :param connector_command: The connector command to execute.
+        :param top_level_argument: The top level command line argument for the connector cli.
+        (Like 'receive' or 'send_validate')
+        :param input_or_output: The string 'input' for input connectors or 'output' for output connectors.
+        :param key: The red input identifier for debug information.
+        :param file_contents: A list of information handed over to the connector cli.
+        :raise AccessValidationError: If the executed connector exited with a non zero return code.
+        :return: A tuple containing the return code of the connector and the stderr of the command as str.
+        """
+        return_code, std_err = ConnectorManager._execute_connector(connector_command,
+                                                                   top_level_argument,
+                                                                   *file_contents)
+
+        if return_code != 0:
+            raise AccessValidationError('invalid access data for {} file "{}". Failed with the following message:\n'
+                                        '{}'.format(input_or_output, key, str(std_err)))
 
     def receive_validate(self, connector_data, input_key):
-        py_module, py_class, access = self._cdata(connector_data)
-        c_key = self._key(py_module, py_class)
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector = self._imported_connectors[c_key]
-        except:
-            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
-
-        self._check_func(c_key, 'receive', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
-        self._check_func(c_key, 'receive_validate', SEND_RECEIVE_VALIDATE_SPEC_ARGS, SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
-
-        try:
-            connector.receive_validate(access)
-        except Exception as e:
-            raise AccessValidationError('invalid access data for input file "{}". Failed with the following message:\n'
-                                        '{}'.format(input_key, str(e)))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-validate', 'input',
+                                                         input_key, access)
 
     def receive_directory_validate(self, connector_data, input_key):
-        py_module, py_class, access = self._cdata(connector_data)
-        c_key = self._key(py_module, py_class)
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector = self._imported_connectors[c_key]
-        except:
-            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
-
-        self._check_func(c_key,
-                         'receive_directory',
-                         SEND_RECEIVE_DIRECTORY_SPEC_ARGS,
-                         SEND_RECEIVE_DIRECTORY_SPEC_KWARGS)
-        self._check_func(c_key,
-                         'receive_directory_validate',
-                         SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS,
-                         SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS)
-
-        try:
-            connector.receive_directory_validate(access)
-        except Exception as e:
-            raise AccessValidationError('invalid access data for input directory "{}":\n{}'.format(input_key, str(e)))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory-validate', 'input',
+                                                         input_key, access)
 
     def send_validate(self, connector_data, output_key):
-        py_module, py_class, access = self._cdata(connector_data)
-        c_key = ConnectorManager._key(py_module, py_class)
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector = self._imported_connectors[c_key]
-        except:
-            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
-
-        self._check_func(c_key, 'send', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
-        self._check_func(c_key, 'send_validate', SEND_RECEIVE_VALIDATE_SPEC_ARGS, SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
-
-        try:
-            connector.send_validate(access)
-        except:
-            raise AccessValidationError('invalid access data for output file "{}"'.format(output_key))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'send-validate', 'output',
+                                                         output_key, access)
 
     def send_directory_validate(self, connector_data, output_key):
-        py_module, py_class, access = self._cdata(connector_data)
-        c_key = ConnectorManager._key(py_module, py_class)
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector = self._imported_connectors[c_key]
-        except:
-            raise ConnectorError('connector "{}" has not been imported'.format(c_key))
-
-        self._check_func(c_key, 'send_directory', SEND_RECEIVE_SPEC_ARGS, SEND_RECEIVE_SPEC_KWARGS)
-        self._check_func(c_key,
-                         'send_directory_validate',
-                         SEND_RECEIVE_VALIDATE_SPEC_ARGS,
-                         SEND_RECEIVE_VALIDATE_SPEC_KWARGS)
-
-        try:
-            connector.send_directory_validate(access)
-        except:
-            raise AccessValidationError('invalid access data for output directory "{}"'.format(output_key))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'send-directory-validate', 'output',
+                                                         output_key, access)
 
     def receive(self, connector_data, input_key, internal):
-        py_module, py_class, access = self._cdata(connector_data)
-        key = ConnectorManager._key(py_module, py_class)
-        connector = self._imported_connectors[key]
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector.receive(access, internal)
-        except Exception as e:
-            raise AccessError('could not access input file "{}". Failed with the following message:\n'
-                              '{}'.format(input_key, str(e)))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive', 'input', input_key,
+                                                         access, internal)
 
         make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
 
@@ -179,14 +152,10 @@ class ConnectorManager:
         return None
 
     def receive_directory(self, connector_data, input_key, internal, listing=None):
-        py_module, py_class, access = self._cdata(connector_data)
-        key = ConnectorManager._key(py_module, py_class)
-        connector = self._imported_connectors[key]
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector.receive_directory(access, internal, listing)
-        except Exception as e:
-            raise AccessError('could not access input directory "{}":\n{}'.format(input_key, str(e)))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory', 'input', input_key,
+                                                         access, internal, listing)
 
         directory_path = internal[URL_SCHEME_IDENTIFIER]
 
@@ -197,14 +166,10 @@ class ConnectorManager:
         for_each_file(directory_path, make_file_read_only)
 
     def send(self, connector_data, output_key, internal):
-        py_module, py_class, access = self._cdata(connector_data)
-        key = ConnectorManager._key(py_module, py_class)
-        connector = self._imported_connectors[key]
+        connector_command, access = self._cdata(connector_data)
 
-        try:
-            connector.send(access, internal)
-        except:
-            raise AccessError('could not access output file "{}"'.format(output_key))
+        ConnectorManager._execute_and_validate_connector(connector_command, 'send', 'output', output_key,
+                                                         access, internal)
 
 
 def _red_listing_validation(key, listing):
@@ -303,7 +268,6 @@ def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
         for i in arg_items:
             connector_class = i['class']
             connector_data = i['connector']
-            connector_manager.import_connector(connector_data)
 
             if connector_class == 'File':
                 connector_manager.receive_validate(connector_data, input_key)

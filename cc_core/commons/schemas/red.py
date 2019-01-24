@@ -6,12 +6,11 @@ from cc_core.commons.schemas.cwl import cwl_schema
 _connector_schema = {
     'type': 'object',
     'properties': {
-        'pyModule': {'type': 'string'},
-        'pyClass': {'type': 'string'},
+        'command': {'type': 'string'},
         'access': {'type': 'object'}
     },
     'additionalProperties': False,
-    'required': ['pyModule', 'pyClass', 'access']
+    'required': ['command', 'access']
 }
 
 _file_schema = {
