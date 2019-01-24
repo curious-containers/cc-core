@@ -82,7 +82,8 @@ class ConnectorManager:
         :param connector_command: The connector command to execute.
         :param top_level_argument: The top level command line argument for the connector cli.
         (Like 'receive' or 'send_validate')
-        :param input_or_output: The string 'input' for input connectors or 'output' for output connectors.
+        :param input_or_output: A string containing 'input' for input connectors and 'output' for output connectors,
+        followed by 'file' for file operations or 'directory' for directory operations.
         :param key: The red input identifier for debug information.
         :param file_contents: A list of information handed over to the connector cli.
         :raise AccessValidationError: If the executed connector exited with a non zero return code.
@@ -93,37 +94,37 @@ class ConnectorManager:
                                                                    *file_contents)
 
         if return_code != 0:
-            raise AccessValidationError('invalid access data for {} file "{}". Failed with the following message:\n'
+            raise AccessValidationError('invalid access data for {} "{}". Failed with the following message:\n'
                                         '{}'.format(input_or_output, key, str(std_err)))
 
     def receive_validate(self, connector_data, input_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-validate', 'input',
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-validate', 'input file',
                                                          input_key, access)
 
     def receive_directory_validate(self, connector_data, input_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory-validate', 'input',
-                                                         input_key, access)
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory-validate',
+                                                         'input directory', input_key, access)
 
     def send_validate(self, connector_data, output_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'send-validate', 'output',
+        ConnectorManager._execute_and_validate_connector(connector_command, 'send-validate', 'output file',
                                                          output_key, access)
 
     def send_directory_validate(self, connector_data, output_key):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'send-directory-validate', 'output',
-                                                         output_key, access)
+        ConnectorManager._execute_and_validate_connector(connector_command, 'send-directory-validate',
+                                                         'output directory', output_key, access)
 
     def receive(self, connector_data, input_key, internal):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive', 'input', input_key,
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive', 'input file', input_key,
                                                          access, internal)
 
         make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
@@ -154,8 +155,8 @@ class ConnectorManager:
     def receive_directory(self, connector_data, input_key, internal, listing=None):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory', 'input', input_key,
-                                                         access, internal, listing)
+        ConnectorManager._execute_and_validate_connector(connector_command, 'receive-directory', 'input directory',
+                                                         input_key, access, internal, listing)
 
         directory_path = internal[URL_SCHEME_IDENTIFIER]
 
@@ -168,7 +169,7 @@ class ConnectorManager:
     def send(self, connector_data, output_key, internal):
         connector_command, access = self._cdata(connector_data)
 
-        ConnectorManager._execute_and_validate_connector(connector_command, 'send', 'output', output_key,
+        ConnectorManager._execute_and_validate_connector(connector_command, 'send', 'output file', output_key,
                                                          access, internal)
 
 
