@@ -276,7 +276,6 @@ def import_and_validate_connectors(connector_manager, red_data, ignore_outputs):
                 continue
 
             connector_data = arg['connector']
-            connector_manager.import_connector(connector_data)
             connector_manager.send_validate(connector_data, output_key)
 
 

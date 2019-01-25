@@ -1,6 +1,5 @@
 import os
 import jsonschema
-from jsonschema.exceptions import ValidationError
 from glob import glob
 from jsonschema import ValidationError
 from urllib.parse import urlparse
