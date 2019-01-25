@@ -11,6 +11,7 @@ from cc_core.commons.cwl import cwl_to_command, cwl_input_directories, cwl_input
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
 from cc_core.commons.shell import execute, shell_result_check
 from cc_core.commons.exceptions import exception_format
+from cc_core.commons.mnt_core import restore_original_environment
 
 
 DESCRIPTION = 'In order to run an application container with Curious Containers, CC-Agency will launch ccagent in ' \
@@ -61,6 +62,8 @@ def run(callback_url, inspect):
     secret_values = None
 
     try:
+        restore_original_environment()
+
         red_validation(red_data, False)
         _, secret_values, _ = inspect_templates_and_secrets(red_data, None, True)
         red_data = fill_template(red_data, None, False, True)
