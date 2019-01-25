@@ -122,6 +122,8 @@ def ldd(file_path):
         if '=>' in line:
             name, path = line.split('=>')
             name = name.strip()
+            if os.path.isabs(name):
+                continue
             path = path.strip()
             path = path.split('(')[0].strip()
             result[name] = path
