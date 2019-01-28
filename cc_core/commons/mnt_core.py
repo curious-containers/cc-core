@@ -1,6 +1,8 @@
 import os
 import sys
 import types
+import inspect
+from pprint import pprint
 from subprocess import Popen, PIPE
 
 CC_DIR = 'cc'
@@ -10,52 +12,56 @@ LIB_DIR = os.path.join(CC_DIR, 'lib')
 
 
 def module_dependencies(modules):
-    d = {m.__name__: (m, False) for m in modules}
+    d = {}
+    for m in modules:
+        if not inspect.ismodule(m):
+            raise Exception('Not a module: {}'.format(m))
+        try:
+            source_path = inspect.getabsfile(m)
+        except Exception:
+            source_path = None
+
+        d[m] = (False, source_path)
+
     _module_dependencies(d)
-    file_modules = {module_name: m for module_name, (m, _) in d.items() if hasattr(m, '__file__') and m.__file__ is not None}
-    c_modules = {module_name: m for module_name, m in file_modules.items() if m.__file__.endswith('.so')}
-    modules = _valid_modules(file_modules)
-    return modules, c_modules
+    file_modules = {m: source_path for m, (_, source_path) in d.items() if source_path is not None}
+    c_modules = {m: source_path for m, source_path in file_modules.items() if source_path.endswith('.so')}
+    return file_modules, c_modules
 
 
 def _module_dependencies(d):
-    candidates = []
+    candidates = {}
 
-    for module_name, (m, checked) in d.items():
+    for m, (checked, sp) in d.items():
         if checked:
             continue
 
-        d[module_name] = (m, True)
+        d[m] = (True, sp)
 
         for key, obj in m.__dict__.items():
-            if not isinstance(obj, types.ModuleType):
-
+            if not inspect.ismodule(obj):
                 if not (hasattr(obj, '__module__') and obj.__module__ and obj.__module__ in sys.modules):
                     continue
 
                 obj = sys.modules[obj.__module__]
 
-            all_names = [obj.__name__]
+            if obj in d:
+                continue
 
-            if '.' in obj.__name__:
-                split = obj.__name__.split('.')
-                for i in range(1, len(split)):
-                    all_names.append('.'.join(split[:i]))
+            try:
+                source_path = inspect.getabsfile(obj)
+            except Exception:
+                source_path = None
 
-            for name in all_names:
-                if name in d:
-                    continue
+            candidates[obj] = (False, source_path)
 
-                if name not in sys.modules:
-                    continue
+    for m, t in candidates.items():
+        d[m] = t
 
-                candidates.append(name)
-
-    for module_name in candidates:
-        d[module_name] = (sys.modules[module_name], False)
-
-    if candidates:
-        _module_dependencies(d)
+    for m, (checked, sp) in d.items():
+        if not checked:
+            _module_dependencies(d)
+            break
 
 
 def restore_original_environment():
@@ -74,37 +80,13 @@ def interpreter_command():
         'PYTHONPATH_BAK=${PYTHONPATH}',
         'PYTHONHOME_BAK=${PYTHONHOME}',
         'LD_LIBRARY_PATH={}'.format(os.path.join('/', LIB_DIR)),
-        'PYTHONPATH={}:{}:{}:{}'.format(
-            os.path.join('/', PYMOD_DIR),
-            os.path.join('/', PYMOD_DIR, 'lib-dynload'),
-            os.path.join('/', PYMOD_DIR, 'site-packages'),
+        'PYTHONPATH={}'.format(
             os.path.join('/', MOD_DIR)
         ),
-        'PYTHONHOME={}'.format(os.path.join('/', PYMOD_DIR)),
+        'PYTHONHOME={}'.format(os.path.join('/', MOD_DIR)),
         os.path.join('/', LIB_DIR, 'ld.so'),
         os.path.join('/', LIB_DIR, 'python')
     ]
-
-
-def _valid_modules(file_modules):
-    stdlib_path = os.path.split(os.__file__)[0]
-    valid_modules = {}
-
-    for module_name, m in file_modules.items():
-        if not m.__file__.startswith(stdlib_path):
-            valid_modules[module_name] = m
-
-    result = {}
-    for module_name, m in valid_modules.items():
-        if '.' in module_name:
-            shorter_name = '.'.join(module_name.split('.')[:-1])
-
-            if shorter_name in valid_modules:
-                continue
-
-        result[module_name] = m
-
-    return result
 
 
 def ldd(file_path):
@@ -137,8 +119,8 @@ def ldd(file_path):
 def interpreter_dependencies(c_module_deps):
     candidates = {}
 
-    for _, m in c_module_deps.items():
-        links = ldd(m.__file__)
+    for m, _ in c_module_deps.items():
+        links = ldd(inspect.getabsfile(m))
 
         candidates = {**candidates, **links}
 
@@ -175,25 +157,37 @@ def _interpreter_dependencies(d):
         _interpreter_dependencies(d)
 
 
-def module_destinations(dependencies, prefix='/'):
-    pymod_dir = os.path.join(prefix, PYMOD_DIR)
+def _dir_path_len(dir_path):
+    i = 0
+    while True:
+        front, back = os.path.split(dir_path)
+        dir_path = front
+        if not back:
+            break
+        i += 1
+    return i
+
+
+def module_destinations(file_modules, prefix='/'):
+    sys_paths = [os.path.abspath(p) for p in sys.path if os.path.isdir(p)]
     mod_dir = os.path.join(prefix, MOD_DIR)
 
-    stdlib_path = os.path.split(os.__file__)[0]
-    result = [[stdlib_path, pymod_dir]]
+    result = []
 
-    for module_name, m in dependencies.items():
-        dir_path, file_name = os.path.split(m.__file__)
-        if file_name == '__init__.py':
-            last_part = None
-            n = len(module_name.split('.'))
-            for _ in range(n):
-                dir_path, last_part = os.path.split(dir_path)
+    for _, source_path in file_modules.items():
+        common_path_size = -1
+        common_path = None
 
-            if last_part is not None:
-                result.append([os.path.join(dir_path, last_part), os.path.join(mod_dir, last_part)])
-        else:
-            result.append([m.__file__, os.path.join(mod_dir, file_name)])
+        for sys_path in sys_paths:
+            cp = os.path.commonpath([source_path, sys_path])
+            cp_size = _dir_path_len(cp)
+            if cp_size > common_path_size:
+                common_path_size = cp_size
+                common_path = cp
+
+        rel_source_path = source_path[len(common_path):].lstrip('/')
+
+        result.append((source_path, os.path.join(mod_dir, rel_source_path)))
 
     return result
 
