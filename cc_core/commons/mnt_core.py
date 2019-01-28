@@ -3,7 +3,6 @@ import sys
 import inspect
 import pkgutil
 from subprocess import Popen, PIPE
-from pprint import pprint
 
 CC_DIR = 'cc'
 MOD_DIR = os.path.join(CC_DIR, 'mod')
@@ -220,7 +219,10 @@ def module_destinations(source_paths, prefix='/'):
 
         rel_source_path = source_path[len(common_path):].lstrip('/')
 
-        result.append((source_path, os.path.join(mod_dir, rel_source_path)))
+        result.append([
+            os.path.realpath(source_path),
+            os.path.join(mod_dir, rel_source_path)
+        ])
 
     return result
 
@@ -230,6 +232,9 @@ def interpreter_destinations(dependencies, prefix='/'):
     result = []
 
     for name, path in dependencies.items():
-        result.append([path, os.path.join(lib_dir, name)])
+        result.append([
+            os.path.realpath(path),
+            os.path.join(lib_dir, name)
+        ])
 
     return result
