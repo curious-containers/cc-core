@@ -1,13 +1,12 @@
 import os
 import sys
-import types
 import inspect
-from pprint import pprint
+import pkgutil
 from subprocess import Popen, PIPE
+from pprint import pprint
 
 CC_DIR = 'cc'
 MOD_DIR = os.path.join(CC_DIR, 'mod')
-PYMOD_DIR = os.path.join(CC_DIR, 'pymod')
 LIB_DIR = os.path.join(CC_DIR, 'lib')
 
 
@@ -22,11 +21,45 @@ def module_dependencies(modules):
             source_path = None
 
         d[m] = (False, source_path)
-
     _module_dependencies(d)
-    file_modules = {m: source_path for m, (_, source_path) in d.items() if source_path is not None}
-    c_modules = {m: source_path for m, source_path in file_modules.items() if source_path.endswith('.so')}
-    return file_modules, c_modules
+
+    all_packages = set([module_name for _, module_name, is_pkg in pkgutil.walk_packages(sys.path) if is_pkg])
+    required_packages = set(
+        [m.__package__ for m in d if hasattr(m, '__package__') and m.__package__ in all_packages]
+    )
+
+    source_paths = [source_path for _, (_, source_path) in d.items() if source_path is not None]
+
+    for loader, module_name, is_pkg in pkgutil.walk_packages(sys.path):
+        if not (is_pkg and module_name in required_packages):
+            continue
+
+        source_path = loader.find_module(module_name).path
+        if os.path.isdir(source_path):
+            source_dir = source_path
+        else:
+            source_dir, _ = os.path.split(source_path)
+
+        for dir_path, _, file_names in os.walk(source_dir):
+            is_pycache = False
+            front = dir_path
+            while True:
+                front, back = os.path.split(front)
+                if back == '__pycache__':
+                    is_pycache = True
+                    break
+                elif not back:
+                    break
+
+            if is_pycache:
+                continue
+
+            for file_name in file_names:
+                source_paths.append(os.path.join(dir_path, file_name))
+
+    source_paths = list(set(source_paths))
+    c_source_paths = [source_path for source_path in source_paths if source_path.endswith('.so')]
+    return source_paths, c_source_paths
 
 
 def _module_dependencies(d):
@@ -116,11 +149,11 @@ def ldd(file_path):
     return result
 
 
-def interpreter_dependencies(c_module_deps):
+def interpreter_dependencies(c_source_paths):
     candidates = {}
 
-    for m, _ in c_module_deps.items():
-        links = ldd(inspect.getabsfile(m))
+    for source_path in c_source_paths:
+        links = ldd(source_path)
 
         candidates = {**candidates, **links}
 
@@ -168,13 +201,13 @@ def _dir_path_len(dir_path):
     return i
 
 
-def module_destinations(file_modules, prefix='/'):
+def module_destinations(source_paths, prefix='/'):
     sys_paths = [os.path.abspath(p) for p in sys.path if os.path.isdir(p)]
     mod_dir = os.path.join(prefix, MOD_DIR)
 
     result = []
 
-    for _, source_path in file_modules.items():
+    for source_path in source_paths:
         common_path_size = -1
         common_path = None
 
