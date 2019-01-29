@@ -32,8 +32,10 @@ def module_dependencies(modules):
     for m in d:
         if hasattr(m, '__name__') and isinstance(m.__name__, str):
             split_name = m.__name__.split('.')
-            for part in split_name:
-                if part and part in all_packages:
+
+            for i in range(len(split_name) + 1):
+                part = '.'.join(split_name[:i])
+                if part in all_packages:
                     required_packages.append(part)
 
     required_packages = list(set(required_packages))
