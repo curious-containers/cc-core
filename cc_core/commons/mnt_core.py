@@ -10,6 +10,7 @@ LIB_DIR = os.path.join(CC_DIR, 'lib')
 
 
 def module_dependencies(modules):
+    # find modules recursively
     d = {}
     for m in modules:
         if not inspect.ismodule(m):
@@ -21,14 +22,23 @@ def module_dependencies(modules):
 
         d[m] = (False, source_path)
     _module_dependencies(d)
-
-    all_packages = set([module_name for _, module_name, is_pkg in pkgutil.walk_packages(sys.path) if is_pkg])
-    required_packages = set(
-        [m.__package__ for m in d if hasattr(m, '__package__') and m.__package__ in all_packages]
-    )
-
     source_paths = [source_path for _, (_, source_path) in d.items() if source_path is not None]
 
+    # get packages of found modules
+    all_packages = set([module_name for _, module_name, is_pkg in pkgutil.walk_packages(sys.path) if is_pkg])
+    required_packages = [m.__package__ for m in d if hasattr(m, '__package__') and m.__package__ in all_packages]
+
+    # guess more package names
+    for m in d:
+        if hasattr(m, '__name__') and isinstance(m.__name__, str):
+            split_name = m.__name__.split('.')
+            for part in split_name:
+                if part and part in all_packages:
+                    required_packages.append(part)
+
+    required_packages = list(set(required_packages))
+
+    # get additional files (data or hidden modules) from packages
     for loader, module_name, is_pkg in pkgutil.walk_packages(sys.path):
         if not (is_pkg and module_name in required_packages):
             continue
@@ -57,6 +67,8 @@ def module_dependencies(modules):
                 source_paths.append(os.path.join(dir_path, file_name))
 
     source_paths = list(set(source_paths))
+
+    # get C dependencies by filename
     c_source_paths = [source_path for source_path in source_paths if source_path.endswith('.so')]
     return source_paths, c_source_paths
 
@@ -72,10 +84,10 @@ def _module_dependencies(d):
 
         for key, obj in m.__dict__.items():
             if not inspect.ismodule(obj):
-                if not (hasattr(obj, '__module__') and obj.__module__ and obj.__module__ in sys.modules):
-                    continue
+                obj = inspect.getmodule(obj)
 
-                obj = sys.modules[obj.__module__]
+                if obj is None:
+                    continue
 
             if obj in d:
                 continue
