@@ -2,6 +2,7 @@ import os
 import sys
 import inspect
 import pkgutil
+from glob import glob
 from subprocess import Popen, PIPE
 
 CC_DIR = 'cc'
@@ -68,6 +69,7 @@ def module_dependencies(modules):
             for file_name in file_names:
                 source_paths.append(os.path.join(dir_path, file_name))
 
+    source_paths += _additional_files()
     source_paths = list(set(source_paths))
 
     # get C dependencies by filename
@@ -133,6 +135,20 @@ def interpreter_command():
         os.path.join('/', LIB_DIR, 'ld.so'),
         os.path.join('/', LIB_DIR, 'python')
     ]
+
+
+def _additional_files():
+    sys_paths = [os.path.abspath(p) for p in sys.path if os.path.isdir(p)]
+
+    result = []
+
+    for sys_path in sys_paths:
+        txt_files = glob(os.path.join(sys_path, '*.txt'))
+        for txt_file in txt_files:
+            if os.path.isfile(txt_file):
+                result.append(txt_file)
+
+    return result
 
 
 def ldd(file_path):
