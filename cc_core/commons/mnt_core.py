@@ -2,7 +2,6 @@ import os
 import sys
 import inspect
 import pkgutil
-from glob import glob
 from subprocess import Popen, PIPE
 
 CC_DIR = 'cc'
@@ -42,6 +41,8 @@ def module_dependencies(modules):
     required_packages = list(set(required_packages))
 
     # get additional files (data or hidden modules) from packages
+    site_source_dir = None
+
     for loader, module_name, is_pkg in pkgutil.walk_packages(sys.path):
         if not (is_pkg and module_name in required_packages):
             continue
@@ -51,6 +52,9 @@ def module_dependencies(modules):
             source_dir = source_path
         else:
             source_dir, _ = os.path.split(source_path)
+
+        if module_name == 'site':
+            site_source_dir = source_dir
 
         for dir_path, _, file_names in os.walk(source_dir):
             is_pycache = False
@@ -69,7 +73,9 @@ def module_dependencies(modules):
             for file_name in file_names:
                 source_paths.append(os.path.join(dir_path, file_name))
 
-    source_paths += _additional_files()
+    if site_source_dir is not None:
+        source_paths += _site_files(site_source_dir)
+    
     source_paths = list(set(source_paths))
 
     # get C dependencies by filename
@@ -137,16 +143,15 @@ def interpreter_command():
     ]
 
 
-def _additional_files():
-    sys_paths = [os.path.abspath(p) for p in sys.path if os.path.isdir(p)]
+def _site_files(site_source_dir):
+    file_names = ['orig-prefix.txt', 'no-global-site-packages.txt']
 
     result = []
 
-    for sys_path in sys_paths:
-        txt_files = glob(os.path.join(sys_path, '*.txt'))
-        for txt_file in txt_files:
-            if os.path.isfile(txt_file):
-                result.append(txt_file)
+    for file_name in file_names:
+        file_path = os.path.join(site_source_dir, file_name)
+        if os.path.exists(file_path):
+            result.append(file_path)
 
     return result
 
