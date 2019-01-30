@@ -44,9 +44,6 @@ def module_dependencies(modules):
     site_source_dir = None
 
     for loader, module_name, is_pkg in pkgutil.walk_packages(sys.path):
-        if not (is_pkg and module_name in required_packages):
-            continue
-
         source_path = loader.find_module(module_name).path
         if os.path.isdir(source_path):
             source_dir = source_path
@@ -55,6 +52,9 @@ def module_dependencies(modules):
 
         if module_name == 'site':
             site_source_dir = source_dir
+
+        if not (is_pkg and module_name in required_packages):
+            continue
 
         for dir_path, _, file_names in os.walk(source_dir):
             is_pycache = False
@@ -75,7 +75,7 @@ def module_dependencies(modules):
 
     if site_source_dir is not None:
         source_paths += _site_files(site_source_dir)
-    
+
     source_paths = list(set(source_paths))
 
     # get C dependencies by filename
