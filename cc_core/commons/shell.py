@@ -29,7 +29,7 @@ def prepare_outdir(outdir):
 
 
 def execute(command):
-    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
+    sp = Popen(command, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True, encoding='utf-8')
 
     monitor = ProcessMonitor(sp)
     t = Thread(target=monitor.start)
