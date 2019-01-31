@@ -1,4 +1,4 @@
-pattern_key = '^[a-zA-Z0-9_-]+$'
+pattern_key = r'^[a-zA-Z0-9._-]+$'
 
 
 auth_schema = {
