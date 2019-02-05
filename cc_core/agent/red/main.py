@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 
 from cc_core.commons.files import load_and_read, dump_print, move_files
 from cc_core.commons.input_references import create_inputs_to_reference
-from cc_core.commons.red import inputs_to_job, convert_batch_experiment
+from cc_core.commons.red import inputs_to_job, convert_batch_experiment, cleanup
 from cc_core.commons.red import red_validation, ConnectorManager, import_and_validate_connectors, receive, send
 from cc_core.commons.cwl import cwl_to_command, cwl_input_directories, cwl_input_directories_check
 from cc_core.commons.cwl import cwl_input_files, cwl_output_files, cwl_input_file_check, cwl_output_file_check
@@ -84,6 +84,8 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
     cwd = os.getcwd()
 
     secret_values = None
+    connector_manager = None
+    red_data = None
 
     try:
         restore_original_environment()
@@ -160,7 +162,8 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
         print_exception(e)
     finally:
         if not leave_directories:
-            shutil.rmtree(tmp_inputs_dir)
+            if connector_manager and red_data:
+                cleanup(connector_manager, red_data, tmp_inputs_dir)
             shutil.rmtree(tmp_working_dir)
 
     return result

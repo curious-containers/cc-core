@@ -178,6 +178,26 @@ class ConnectorManager:
             raise AccessValidationError('invalid access data for output file "{}". Failed with the following message:\n'
                                         '{}'.format(output_key, str(std_err)))
 
+    def receive_cleanup(self, connector_data, input_key, internal):
+        connector_command, _ = self._cdata(connector_data)
+
+        return_code, std_err = ConnectorManager._execute_connector(connector_command, 'receive-cleanup', internal)
+
+        if return_code != 0:
+            raise AccessError('cleanup for input file "{}" failed:\n'
+                              '{}'.format(input_key, str(std_err)))
+
+    def receive_directory_cleanup(self, connector_data, input_key, internal):
+        connector_command, _ = self._cdata(connector_data)
+
+        return_code, std_err = ConnectorManager._execute_connector(connector_command,
+                                                                   'receive-directory-cleanup',
+                                                                   internal)
+
+        if return_code != 0:
+            raise AccessError('cleanup for input directory "{}" failed:\n'
+                              '{}'.format(input_key, str(std_err)))
+
 
 def _red_listing_validation(key, listing):
     """
@@ -354,6 +374,49 @@ def receive(connector_manager, red_data, tmp_dir):
             elif connector_class == 'Directory':
                 listing = arg.get('listing')
                 connector_manager.receive_directory(connector_data, key, internal, listing)
+
+
+def cleanup(connector_manager, red_data, tmp_dir):
+    """
+    Invokes the cleanup functions for all inputs.
+    """
+    for key, arg in red_data['inputs'].items():
+        val = arg
+
+        if isinstance(arg, list):
+            for index, i in enumerate(arg):
+                if not isinstance(i, dict):
+                    continue
+
+                # connector_class should be one of 'File' or 'Directory'
+                connector_class = i['class']
+                input_key = '{}_{}'.format(key, index)
+                path = os.path.join(tmp_dir, input_key)
+                connector_data = i['connector']
+                internal = {URL_SCHEME_IDENTIFIER: path}
+
+                if connector_class == 'File':
+                    connector_manager.receive_cleanup(connector_data, input_key, internal)
+                elif connector_class == 'Directory':
+                    connector_manager.receive_directory_cleanup(connector_data, input_key, internal)
+
+        elif isinstance(arg, dict):
+            # connector_class should be one of 'File' or 'Directory'
+            connector_class = arg['class']
+            path = os.path.join(tmp_dir, key)
+            connector_data = val['connector']
+            internal = {URL_SCHEME_IDENTIFIER: path}
+
+            if connector_class == 'File':
+                connector_manager.receive_cleanup(connector_data, key, internal)
+            elif connector_class == 'Directory':
+                connector_manager.receive_directory_cleanup(connector_data, key, internal)
+
+    try:
+        os.removedirs(tmp_dir)
+    except OSError:
+        # Maybe, raise a warning here, because not all connectors have cleaned up their contents correctly.
+        pass
 
 
 def send(connector_manager, output_files, red_data, agency_data=None):
