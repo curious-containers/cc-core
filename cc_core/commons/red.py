@@ -413,8 +413,8 @@ def cleanup(connector_manager, red_data, tmp_dir):
                 connector_manager.receive_directory_cleanup(connector_data, key, internal)
 
     try:
-        os.removedirs(tmp_dir)
-    except OSError:
+        os.rmdir(tmp_dir)
+    except (OSError, FileNotFoundError):
         # Maybe, raise a warning here, because not all connectors have cleaned up their contents correctly.
         pass
 
