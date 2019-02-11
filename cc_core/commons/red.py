@@ -217,14 +217,16 @@ def _red_listing_validation(key, listing):
                                      .format(key, e.context))
 
 
-def red_is_connector_mounting(red_data, ignore_outputs):
+def red_get_mount_connectors(red_data, ignore_outputs):
     """
     Returns if a connector is mounting
 
     :param red_data: The red data to be searched
     :param ignore_outputs: If outputs should be ignored
-    :return: True, if at least one connector has activated the mount option, otherwise False
+    :return: A list of connectors with active mount option.
     """
+
+    keys = []
 
     for input_key, arg in red_data['inputs'].items():
         arg_items = []
@@ -238,7 +240,7 @@ def red_is_connector_mounting(red_data, ignore_outputs):
         for i in arg_items:
             connector_data = i['connector']
             if connector_data.get('mount'):
-                return True
+                keys.append(input_key)
 
     if not ignore_outputs and red_data.get('outputs'):
         for output_key, arg in red_data['outputs'].items():
@@ -247,8 +249,9 @@ def red_is_connector_mounting(red_data, ignore_outputs):
 
             connector_data = arg['connector']
             if connector_data.get('mount'):
-                return True
-    return False
+                keys.append(output_key)
+
+    return keys
 
 
 def red_validation(red_data, ignore_outputs, container_requirement=False):
