@@ -217,6 +217,40 @@ def _red_listing_validation(key, listing):
                                      .format(key, e.context))
 
 
+def red_is_connector_mounting(red_data, ignore_outputs):
+    """
+    Returns if a connector is mounting
+
+    :param red_data: The red data to be searched
+    :param ignore_outputs: If outputs should be ignored
+    :return: True, if at least one connector has activated the mount option, otherwise False
+    """
+
+    for input_key, arg in red_data['inputs'].items():
+        arg_items = []
+
+        if isinstance(arg, dict):
+            arg_items.append(arg)
+
+        elif isinstance(arg, list):
+            arg_items += [i for i in arg if isinstance(i, dict)]
+
+        for i in arg_items:
+            connector_data = i['connector']
+            if connector_data.get('mount'):
+                return True
+
+    if not ignore_outputs and red_data.get('outputs'):
+        for output_key, arg in red_data['outputs'].items():
+            if not isinstance(arg, dict):
+                continue
+
+            connector_data = arg['connector']
+            if connector_data.get('mount'):
+                return True
+    return False
+
+
 def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)

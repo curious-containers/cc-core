@@ -7,7 +7,8 @@ _connector_schema = {
     'type': 'object',
     'properties': {
         'command': {'type': 'string'},
-        'access': {'type': 'object'}
+        'access': {'type': 'object'},
+        'mount': {'type': 'boolean'}
     },
     'additionalProperties': False,
     'required': ['command', 'access']
