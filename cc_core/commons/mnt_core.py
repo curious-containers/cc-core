@@ -216,7 +216,7 @@ def _libc_dir(deps):
 
 
 def _additional_dependencies_from(libc_dir):
-    file_patterns = ['libnss_dns.so', 'libnss_resolv.so']
+    file_patterns = ['libnss_dns.so', 'libresolv.so']
     result = {}
 
     for file_name in os.listdir(libc_dir):
