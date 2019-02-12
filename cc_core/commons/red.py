@@ -217,18 +217,9 @@ def _red_listing_validation(key, listing):
                                      .format(key, e.context))
 
 
-def red_get_mount_connectors(red_data, ignore_outputs):
-    """
-    Returns if a connector is mounting
-
-    :param red_data: The red data to be searched
-    :param ignore_outputs: If outputs should be ignored
-    :return: A list of connectors with active mount option.
-    """
-
+def red_get_mount_connectors_from_inputs(inputs):
     keys = []
-
-    for input_key, arg in red_data['inputs'].items():
+    for input_key, arg in inputs.items():
         arg_items = []
 
         if isinstance(arg, dict):
@@ -241,6 +232,28 @@ def red_get_mount_connectors(red_data, ignore_outputs):
             connector_data = i['connector']
             if connector_data.get('mount'):
                 keys.append(input_key)
+
+    return keys
+
+
+def red_get_mount_connectors(red_data, ignore_outputs):
+    """
+    Returns a list of mounting connectors
+
+    :param red_data: The red data to be searched
+    :param ignore_outputs: If outputs should be ignored
+    :return: A list of connectors with active mount option.
+    """
+
+    keys = []
+
+    batches = red_data.get('batches')
+    inputs = red_data.get('inputs')
+    if batches:
+        for batch in batches:
+            keys.extend(red_get_mount_connectors_from_inputs(batch['inputs']))
+    elif inputs:
+        keys.extend(red_get_mount_connectors_from_inputs(inputs))
 
     if not ignore_outputs and red_data.get('outputs'):
         for output_key, arg in red_data['outputs'].items():
