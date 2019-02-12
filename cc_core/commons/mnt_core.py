@@ -198,7 +198,36 @@ def interpreter_dependencies(c_source_paths):
             d[name] = (path, False)
 
     _interpreter_dependencies(d)
-    return {key: val for key, (val, _) in d.items()}
+    deps = {name: path for name, (path, _) in d.items()}
+
+    libc_dir = _libc_dir(deps)
+    if libc_dir is not None:
+        additional_dependencies = _additional_dependencies_from(libc_dir)
+        deps = {**deps, **additional_dependencies}
+
+    return deps
+
+
+def _libc_dir(deps):
+    for name, path in deps.items():
+        file_dir, file_name = os.path.split(path)
+        if file_name.startswith('libc.so'):
+            return file_dir
+
+
+def _additional_dependencies_from(libc_dir):
+    file_patterns = ['libnss_dns.so', 'libnss_resolv.so']
+    result = {}
+
+    for file_name in os.listdir(libc_dir):
+        file_path = os.path.join(libc_dir, file_name)
+        if not os.path.isfile(file_path):
+            continue
+        for file_pattern in file_patterns:
+            if file_name.startswith(file_pattern):
+                result[file_name] = file_path
+
+    return result
 
 
 def _interpreter_dependencies(d):
