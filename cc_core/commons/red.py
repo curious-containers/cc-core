@@ -217,6 +217,71 @@ def _red_listing_validation(key, listing):
                                      .format(key, e.context))
 
 
+def red_get_mount_connectors_from_inputs(inputs):
+    keys = []
+    for input_key, arg in inputs.items():
+        arg_items = []
+
+        if isinstance(arg, dict):
+            arg_items.append(arg)
+
+        elif isinstance(arg, list):
+            arg_items += [i for i in arg if isinstance(i, dict)]
+
+        for i in arg_items:
+            connector_data = i['connector']
+            if connector_data.get('mount'):
+                keys.append(input_key)
+
+    return keys
+
+
+def red_get_mount_connectors_from_outputs(outputs):
+    keys = []
+    for output_key, arg in outputs.items():
+        if not isinstance(arg, dict):
+            continue
+
+        connector_data = arg['connector']
+        if connector_data.get('mount'):
+            keys.append(output_key)
+
+    return keys
+
+
+def red_get_mount_connectors(red_data, ignore_outputs):
+    """
+    Returns a list of mounting connectors
+
+    :param red_data: The red data to be searched
+    :param ignore_outputs: If outputs should be ignored
+    :return: A list of connectors with active mount option.
+    """
+
+    keys = []
+
+    batches = red_data.get('batches')
+    inputs = red_data.get('inputs')
+    if batches:
+        for batch in batches:
+            keys.extend(red_get_mount_connectors_from_inputs(batch['inputs']))
+    elif inputs:
+        keys.extend(red_get_mount_connectors_from_inputs(inputs))
+
+    if not ignore_outputs:
+        outputs = red_data.get('outputs')
+        if batches:
+            for batch in batches:
+                batch_outputs = batch.get('outputs')
+                if batch_outputs:
+                    keys.extend(red_get_mount_connectors_from_outputs(batch_outputs))
+
+        elif outputs:
+            keys.extend(red_get_mount_connectors_from_outputs(outputs))
+
+    return keys
+
+
 def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
@@ -413,8 +478,8 @@ def cleanup(connector_manager, red_data, tmp_dir):
                 connector_manager.receive_directory_cleanup(connector_data, key, internal)
 
     try:
-        os.removedirs(tmp_dir)
-    except OSError:
+        os.rmdir(tmp_dir)
+    except (OSError, FileNotFoundError):
         # Maybe, raise a warning here, because not all connectors have cleaned up their contents correctly.
         pass
 
