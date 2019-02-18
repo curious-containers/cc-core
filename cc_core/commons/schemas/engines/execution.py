@@ -4,6 +4,7 @@ ccfaice_schema = {
     'type': 'object',
     'properties': {
         'doc': {'type': 'string'},
+        'insecure': {'type': 'boolean'}
     },
     'additionalProperties': False
 }
