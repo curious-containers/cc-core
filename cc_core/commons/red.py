@@ -27,7 +27,7 @@ SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS = []
 
 class ConnectorManager:
     def __init__(self):
-        pass
+        self._successfully_received = []
 
     @staticmethod
     def _cdata(connector_data):
@@ -125,6 +125,8 @@ class ConnectorManager:
         if return_code != 0:
             raise AccessError('invalid access data for input file "{}". Failed with the following message:\n'
                               '{}'.format(input_key, str(std_err)))
+        else:
+            self._successfully_received.append(input_key)
 
         make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
 
@@ -160,6 +162,8 @@ class ConnectorManager:
         if return_code != 0:
             raise AccessError('invalid access data for input directory "{}". Failed with the following '
                               'message:\n{}'.format(input_key, str(std_err)))
+        else:
+            self._successfully_received.append(input_key)
 
         directory_path = internal[URL_SCHEME_IDENTIFIER]
 
@@ -179,6 +183,9 @@ class ConnectorManager:
                                         '{}'.format(output_key, str(std_err)))
 
     def receive_cleanup(self, connector_data, input_key, internal):
+        if input_key not in self._successfully_received:
+            return
+
         connector_command, _ = self._cdata(connector_data)
 
         return_code, std_err = ConnectorManager._execute_connector(connector_command, 'receive-cleanup', internal)
@@ -188,6 +195,9 @@ class ConnectorManager:
                               '{}'.format(input_key, str(std_err)))
 
     def receive_directory_cleanup(self, connector_data, input_key, internal):
+        if input_key not in self._successfully_received:
+            return
+
         connector_command, _ = self._cdata(connector_data)
 
         return_code, std_err = ConnectorManager._execute_connector(connector_command,
@@ -430,15 +440,16 @@ def receive(connector_manager, red_data, tmp_dir):
         elif isinstance(arg, dict):
             # connector_class should be one of 'File' or 'Directory'
             connector_class = arg['class']
-            path = os.path.join(tmp_dir, key)
+            input_key = key
+            path = os.path.join(tmp_dir, input_key)
             connector_data = val['connector']
             internal = {URL_SCHEME_IDENTIFIER: path}
 
             if connector_class == 'File':
-                connector_manager.receive(connector_data, key, internal)
+                connector_manager.receive(connector_data, input_key, internal)
             elif connector_class == 'Directory':
                 listing = arg.get('listing')
-                connector_manager.receive_directory(connector_data, key, internal, listing)
+                connector_manager.receive_directory(connector_data, input_key, internal, listing)
 
 
 def cleanup(connector_manager, red_data, tmp_dir):
@@ -468,14 +479,15 @@ def cleanup(connector_manager, red_data, tmp_dir):
         elif isinstance(arg, dict):
             # connector_class should be one of 'File' or 'Directory'
             connector_class = arg['class']
-            path = os.path.join(tmp_dir, key)
+            input_key = key
+            path = os.path.join(tmp_dir, input_key)
             connector_data = val['connector']
             internal = {URL_SCHEME_IDENTIFIER: path}
 
             if connector_class == 'File':
-                connector_manager.receive_cleanup(connector_data, key, internal)
+                connector_manager.receive_cleanup(connector_data, input_key, internal)
             elif connector_class == 'Directory':
-                connector_manager.receive_directory_cleanup(connector_data, key, internal)
+                connector_manager.receive_directory_cleanup(connector_data, input_key, internal)
 
     try:
         os.rmdir(tmp_dir)
