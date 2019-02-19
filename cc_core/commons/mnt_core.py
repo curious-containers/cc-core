@@ -10,6 +10,39 @@ LIB_DIR = os.path.join(CC_DIR, 'lib')
 
 
 def module_dependencies(modules):
+    # additional modules
+    modules = modules[:]
+    try:
+        import runpy
+        modules.append(runpy)
+    except ImportError:
+        pass
+    try:
+        import keyword
+        modules.append(keyword)
+    except ImportError:
+        pass
+    try:
+        import opcode
+        modules.append(opcode)
+    except ImportError:
+        pass
+    try:
+        import sysconfig
+        modules.append(sysconfig)
+    except ImportError:
+        pass
+    try:
+        import _sysconfigdata
+        modules.append(_sysconfigdata)
+    except ImportError:
+        pass
+    try:
+        import _sysconfigdata_m
+        modules.append(_sysconfigdata_m)
+    except ImportError:
+        pass
+
     # find modules recursively
     d = {}
     for m in modules:
@@ -43,35 +76,42 @@ def module_dependencies(modules):
     # get additional files (data or hidden modules) from packages
     site_source_dir = None
 
-    for loader, module_name, is_pkg in pkgutil.walk_packages(sys.path):
-        source_path = loader.find_module(module_name).path
-        if os.path.isdir(source_path):
-            source_dir = source_path
-        else:
-            source_dir, _ = os.path.split(source_path)
+    for sys_path in sys.path:
+        for loader, module_name, is_pkg in pkgutil.walk_packages([sys_path]):
+            found_module = loader.find_module(module_name)
+            try:
+                source_path = inspect.getabsfile(found_module)
+            except TypeError:
+                module_dir = os.path.join(*module_name.split('.'))
+                source_path = os.path.join(sys_path, module_dir)
 
-        if module_name == 'site':
-            site_source_dir = source_dir
+            if os.path.isdir(source_path):
+                source_dir = source_path
+            else:
+                source_dir, _ = os.path.split(source_path)
 
-        if not (is_pkg and module_name in required_packages):
-            continue
+            if module_name == 'site':
+                site_source_dir = source_dir
 
-        for dir_path, _, file_names in os.walk(source_dir):
-            is_pycache = False
-            front = dir_path
-            while True:
-                front, back = os.path.split(front)
-                if back == '__pycache__':
-                    is_pycache = True
-                    break
-                elif not back:
-                    break
-
-            if is_pycache:
+            if not (is_pkg and module_name in required_packages):
                 continue
 
-            for file_name in file_names:
-                source_paths.append(os.path.join(dir_path, file_name))
+            for dir_path, _, file_names in os.walk(source_dir):
+                is_pycache = False
+                front = dir_path
+                while True:
+                    front, back = os.path.split(front)
+                    if back == '__pycache__':
+                        is_pycache = True
+                        break
+                    elif not back:
+                        break
+
+                if is_pycache:
+                    continue
+
+                for file_name in file_names:
+                    source_paths.append(os.path.join(dir_path, file_name))
 
     if site_source_dir is not None:
         source_paths += _site_files(site_source_dir)
