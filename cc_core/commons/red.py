@@ -4,7 +4,6 @@ import jsonschema
 import tempfile
 from jsonschema.exceptions import ValidationError
 
-from cc_core.commons.files import make_file_read_only, for_each_file
 from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.commons.shell import execute
 from cc_core.version import RED_VERSION
@@ -128,7 +127,7 @@ class ConnectorManager:
         else:
             self._successfully_received.append(input_key)
 
-        make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
+        # make_file_read_only(internal[URL_SCHEME_IDENTIFIER])
 
     @staticmethod
     def directory_listing_content_check(directory_path, listing):
@@ -171,7 +170,7 @@ class ConnectorManager:
         if error:
             raise ConnectorError('The listing of input directory "{}" is not fulfilled:\n{}'.format(input_key, error))
 
-        for_each_file(directory_path, make_file_read_only)
+        # for_each_file(directory_path, make_file_read_only)
 
     def send(self, connector_data, output_key, internal):
         connector_command, access = self._cdata(connector_data)
