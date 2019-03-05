@@ -152,10 +152,6 @@ def run(red_file, variables, batch, outputs, leave_directories, **_):
         else:
             move_files(output_files)
 
-    except RedValidationError as e:
-        result['debugInfo'] = exception_format(secret_values=secret_values)
-        result['state'] = 'failed'
-        print_exception(e, secret_values)
     except Exception as e:
         result['debugInfo'] = exception_format(secret_values=secret_values)
         result['state'] = 'failed'
