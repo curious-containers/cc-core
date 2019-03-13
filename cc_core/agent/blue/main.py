@@ -29,10 +29,6 @@ def attach_args(parser):
         '-d', '--debug', action='store_true',
         help='Write debug info, including detailed exceptions, to stdout.'
     )
-    parser.add_argument(
-        '--leave-directories', action='store_true',
-        help='Leave temporary inputs and working directories.'
-    )
 
 
 def main():
@@ -51,8 +47,7 @@ def main():
     return 1
 
 
-def run(blue_file, outputs, leave_directories, **_):
-    del leave_directories
+def run(blue_file, outputs, **_):
     result = {
         'command': None,
         'inputFiles': None,
@@ -99,13 +94,15 @@ def run(blue_file, outputs, leave_directories, **_):
         print_exception(e)
         result['debugInfo'] = exception_format()
         result['state'] = 'failed'
-        for i in result['debugInfo']:
-            print(i, file=sys.stderr)
-        print('', file=sys.stderr)
-        sys.stderr.flush()
     finally:
         # umount directories
-        connector_manager.umount_connectors()
+        umount_errors = connector_manager.umount_connectors()
+        errors_len = len(umount_errors)
+        umount_errors = [str(e) for e in umount_errors]
+        if errors_len == 1:
+            result['debugInfo'] += '\n{}'.format(umount_errors[0])
+        elif errors_len > 1:
+            result['debugInfo'] += '\n{}'.format('\n'.join(umount_errors))
 
     return result
 
@@ -353,6 +350,7 @@ class InputConnectorRunner:
     def try_umount(self):
         """
         Executes umount, if connector is mounting and has mounted, otherwise does nothing.
+        :raise ConnectorError: If the Connector fails to umount the directory
         """
         if self._has_mounted:
             self.umount_dir()
@@ -862,9 +860,16 @@ class ConnectorManager:
     def umount_connectors(self):
         """
         Tries to execute umount for every connector.
+        :return: The errors that occurred during execution
         """
+        errors = []
         for runner in self._input_runners:
-            runner.try_umount()
+            try:
+                runner.try_umount()
+            except ConnectorError as e:
+                errors.append(e)
+
+        return errors
 
 
 def exception_format():
