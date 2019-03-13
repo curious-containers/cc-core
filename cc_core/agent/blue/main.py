@@ -50,9 +50,7 @@ def main():
 def run(args):
     result = {
         'command': None,
-        'inputFiles': None,
         'process': None,
-        'outputFiles': None,
         'debugInfo': None,
         'state': 'succeeded'
     }
@@ -71,10 +69,9 @@ def run(args):
         # import, validate and execute connectors
         connector_manager.import_input_connectors(blue_data['inputs'])
 
-        outputs = blue_data.get('outputs')
-        if outputs:
-            cli_outputs = blue_data['cli'].get('outputs')
-            connector_manager.import_output_connectors(outputs, cli_outputs)
+        outputs = blue_data.get('outputs', {})
+        cli_outputs = blue_data['cli'].get('outputs', {})
+        connector_manager.import_output_connectors(outputs, cli_outputs)
         connector_manager.prepare_directories()
 
         connector_manager.validate_connectors(validate_outputs=use_outputs)
@@ -82,7 +79,9 @@ def run(args):
 
         # execute command
         command = blue_data['command']
+        result['command'] = command
         execution_result = execute(command, work_dir=working_dir)
+        result['process'] = execution_result.to_dict()
         if not execution_result.successful():
             raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
                                  .format(' '.join(command), execution_result.get_std_err()))
@@ -735,6 +734,11 @@ class ExecutionResult:
 
     def successful(self):
         return self.return_code == 0
+
+    def to_dict(self):
+        return {'stdErr': self.std_err,
+                'stdOut': self.std_out,
+                'returnCode': self.return_code}
 
 
 def _exec(command, shell, work_dir):
