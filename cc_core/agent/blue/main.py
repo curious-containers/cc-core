@@ -87,6 +87,9 @@ def run(blue_file, outputs, leave_directories, **_):
         # execute command
         command = blue_data['command']
         execution_result = execute(command, work_dir=working_dir)
+        if not execution_result.successful():
+            raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
+                                 .format(' '.join(command), execution_result.get_std_err()))
 
         # send files and directories
         connector_manager.send_connectors(working_dir)
@@ -157,13 +160,11 @@ def resolve_connector_cli_version(connector_command):
     except FileNotFoundError:
         raise ConnectorError('Could not find connector "{}"'.format(connector_command))
 
-    std_out = result['stdOut']
-    if (result['returnCode'] == 0) and isinstance(std_out, list) and len(std_out) == 1:
+    std_out = result.std_out
+    if result.successful() and len(std_out) == 1:
         return std_out[0]
     else:
-        std_err = result['stdErr']
-        if isinstance(std_err, list):
-            std_err = '\n'.join(std_err)
+        std_err = result.get_std_err()
         raise ConnectorError('Could not detect cli version for connector "{}". Failed with following message:\n{}'
                              .format(connector_command, std_err))
 
@@ -385,9 +386,9 @@ class OutputConnectorRunner:
     def try_send(self, working_dir):
         """
         Executes send_file or send_dir depending on input_class.
-        Does nothing, if the associated connector is mounting.
         :param working_dir: The working dir from where to access output files
-        :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous
+        :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous.
+                               Or if the executed connector fails.
         """
         path = self._resolve_glob_pattern(working_dir)
         if self._output_class == 'File':
@@ -414,43 +415,77 @@ class InputConnectorRunner01(InputConnectorRunner):
     """
 
     def receive_file(self):
-        execute_connector(self._connector_command,
-                          'receive-file',
-                          access=self._access,
-                          path=self._path)
+        execution_result = execute_connector(self._connector_command,
+                                             'receive-file',
+                                             access=self._access,
+                                             path=self._path)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to receive file for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.get_std_err()))
 
     def receive_file_validate(self):
-        execute_connector(self._connector_command,
-                          'receive-file-validate',
-                          access=self._access)
+        execution_result = execute_connector(self._connector_command,
+                                             'receive-file-validate',
+                                             access=self._access)
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to validate receive file for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.std_err))
 
     def receive_dir(self):
-        execute_connector(self._connector_command,
-                          'receive-dir',
-                          access=self._access,
-                          path=self._path,
-                          listing=self._listing)
+        execution_result = execute_connector(self._connector_command,
+                                             'receive-dir',
+                                             access=self._access,
+                                             path=self._path,
+                                             listing=self._listing)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to receive directory for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.get_std_err()))
 
     def receive_dir_validate(self):
-        execute_connector(self._connector_command,
-                          'receive-dir-validate',
-                          access=self._access,
-                          listing=self._listing)
+        execution_result = execute_connector(self._connector_command,
+                                             'receive-dir-validate',
+                                             access=self._access,
+                                             listing=self._listing)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to validate receive directory for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.get_std_err()))
 
     def mount_dir(self):
-        execute_connector(self._connector_command,
-                          'mount-dir',
-                          access=self._access,
-                          path=self._path)
+        execution_result = execute_connector(self._connector_command,
+                                             'mount-dir',
+                                             access=self._access,
+                                             path=self._path)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to mount directory for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.get_std_err()))
 
     def mount_dir_validate(self):
-        execute_connector(self._connector_command,
-                          'mount-dir-validate',
-                          access=self._access)
+        execution_result = execute_connector(self._connector_command,
+                                             'mount-dir-validate',
+                                             access=self._access)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to validate mount directory for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.get_std_err()))
 
     def umount_dir(self):
-        execute_connector(self._connector_command,
-                          'umount-dir', path=self._path)
+        execution_result = execute_connector(self._connector_command,
+                                             'umount-dir', path=self._path)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to umount directory for input key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._input_key, execution_result.get_std_err()))
 
 
 class OutputConnectorRunner01(OutputConnectorRunner):
@@ -459,28 +494,48 @@ class OutputConnectorRunner01(OutputConnectorRunner):
     """
 
     def send_file(self, path):
-        execute_connector(self._connector_command,
-                          'send-file',
-                          access=self._access,
-                          path=path)
+        execution_result = execute_connector(self._connector_command,
+                                             'send-file',
+                                             access=self._access,
+                                             path=path)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to send file for output key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._output_key, execution_result.get_std_err()))
 
     def send_file_validate(self):
-        execute_connector(self._connector_command,
-                          'send-file-validate',
-                          access=self._access)
+        execution_result = execute_connector(self._connector_command,
+                                             'send-file-validate',
+                                             access=self._access)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to validate send file for output key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._output_key, execution_result.get_std_err()))
 
     def send_dir(self, path):
-        execute_connector(self._connector_command,
-                          'send-dir',
-                          access=self._access,
-                          path=path,
-                          listing=self._listing)
+        execution_result = execute_connector(self._connector_command,
+                                             'send-dir',
+                                             access=self._access,
+                                             path=path,
+                                             listing=self._listing)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to validate send file for output key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._output_key, execution_result.get_std_err()))
 
     def send_dir_validate(self):
-        execute_connector(self._connector_command,
-                          'send-dir-validate',
-                          access=self._access,
-                          listing=self._listing)
+        execution_result = execute_connector(self._connector_command,
+                                             'send-dir-validate',
+                                             access=self._access,
+                                             listing=self._listing)
+
+        if not execution_result.successful():
+            raise ConnectorError('Connector failed to validate send directory for output key "{}".\n'
+                                 'Failed with the following message:\n{}'
+                                 .format(self._output_key, execution_result.get_std_err()))
 
 
 CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING = {
@@ -571,14 +626,29 @@ def create_output_connector_runner(output_key, output_value, cli_output_value):
     return connector_runner
 
 
-def execute(command, shell=False, work_dir=None):
-    """
-    Executes a given commandline command and returns a dictionary with keys: 'returnCode', 'stdOut', 'stdErr'
-    :param command: The command to execute as list of strings.
-    :param shell: Execute command as string
-    :param work_dir: The working directory for the executed command
-    :return: A dictionary with keys 'returnCode', 'stdOut', 'stdErr'
-    """
+class ExecutionResult:
+    def __init__(self, std_out, std_err, return_code):
+        """
+        Initializes a new ExecutionResult
+        :param std_out: The std_err of the execution as list of strings
+        :param std_err: The std_out of the execution as list of strings
+        :param return_code: The return code of the execution
+        """
+        self.std_out = std_out
+        self.std_err = std_err
+        self.return_code = return_code
+
+    def get_std_err(self):
+        return '\n'.join(self.std_err)
+
+    def get_std_out(self):
+        return '\n'.join(self.std_out)
+
+    def successful(self):
+        return self.return_code == 0
+
+
+def _exec(command, shell, work_dir):
     try:
         sp = subprocess.Popen(command,
                               stdout=subprocess.PIPE,
@@ -594,15 +664,26 @@ def execute(command, shell=False, work_dir=None):
                               shell=shell,
                               cwd=work_dir,
                               universal_newlines=True)
+    return sp
+
+
+def execute(command, shell=False, work_dir=None):
+    """
+    Executes a given commandline command and returns a dictionary with keys: 'returnCode', 'stdOut', 'stdErr'
+    :param command: The command to execute as list of strings.
+    :param shell: Execute command as string
+    :param work_dir: The working directory for the executed command
+    :return: An ExecutionResult
+    """
+    try:
+        sp = _exec(command, shell, work_dir)
+    except FileNotFoundError as e:
+        return ExecutionResult([], _split_lines(str(e)), 1)
 
     std_out, std_err = sp.communicate()
     return_code = sp.returncode
 
-    return {
-        'stdOut': [l for l in std_out.split(os.linesep) if l],
-        'stdErr': [l for l in std_err.split(os.linesep) if l],
-        'returnCode': return_code,
-    }
+    return ExecutionResult(_split_lines(std_out), _split_lines(std_err), return_code)
 
 
 class ConnectorManager:
@@ -667,11 +748,24 @@ class ConnectorManager:
 
     def send_connectors(self, working_dir):
         """
-        Tries to executes send for all output connectors
-        :param working_dir: The working dir where is command is executed
+        Tries to executes send for all output connectors.
+        If a send runner fails, will try to send the other runners and fails afterwards.
+        :param working_dir: The working dir where command is executed
+        :raise ConnectorError: If one ore more OutputRunners fail to send.
         """
+        errors = []
         for runner in self._output_runners:
-            runner.try_send(working_dir)
+            try:
+                runner.try_send(working_dir)
+            except ConnectorError as e:
+                errors.append(e)
+
+        errors_len = len(errors)
+        if errors_len == 1:
+            raise errors[0]
+        elif errors_len > 1:
+            error_strings = [_format_exception(e) for e in errors]
+            raise ConnectorError('{} output connectors failed:\n{}'.format(errors_len, '\n'.join(error_strings)))
 
     def umount_connectors(self):
         """
@@ -694,16 +788,28 @@ def _lstrip_quarter(s):
     return ' ' * quarter + s
 
 
+def _format_exception(exception):
+    return '[{}]\n{}\n'.format(type(exception).__name__, str(exception))
+
+
 def print_exception(exception):
     """
     Prints the exception message and the name of the exception class to stderr.
 
     :param exception: The exception to print
     """
-    print('[{}]\n{}\n'.format(type(exception).__name__, str(exception)), file=sys.stderr)
+    print(_format_exception(exception), file=sys.stderr)
+
+
+def _split_lines(lines):
+    return [l for l in lines.split(os.linesep) if l]
 
 
 class ConnectorError(Exception):
+    pass
+
+
+class ExecutionError(Exception):
     pass
 
 
