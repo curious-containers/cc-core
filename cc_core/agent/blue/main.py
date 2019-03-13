@@ -2,6 +2,7 @@ import glob
 import os
 import sys
 
+import shutil
 import stat
 import subprocess
 import json
@@ -12,6 +13,7 @@ from traceback import format_exc
 
 DESCRIPTION = 'Run an experiment as described in a BLUEFILE.'
 JSON_INDENT = 2
+OUTPUT_DIRECTORY = '/outputs'
 
 
 def attach_args(parser):
@@ -21,7 +23,7 @@ def attach_args(parser):
     )
     parser.add_argument(
         '-o', '--outputs', action='store_true',
-        help='Enable connectors specified in the RED FILE outputs section.'
+        help='Enable connectors specified in the BLUEFILE outputs section.'
     )
     parser.add_argument(
         '-d', '--debug', action='store_true',
@@ -68,20 +70,16 @@ def run(blue_file, outputs, leave_directories, **_):
         working_dir = blue_data['workDir']
         create_working_dir(working_dir)
 
-        if not outputs and 'outputs' in blue_data:
-            del blue_data['outputs']
-
         if outputs and 'outputs' not in blue_data:
             raise AssertionError('-o/--outputs argument is set, \
             but no outputs section with RED connector settings is defined in REDFILE')
 
         # import, validate and execute connectors
         connector_manager.import_input_connectors(blue_data['inputs'])
-        if outputs:
-            connector_manager.import_output_connectors(blue_data['outputs'], blue_data['cli']['outputs'])
+        connector_manager.import_output_connectors(blue_data['outputs'], blue_data['cli']['outputs'])
 
         connector_manager.prepare_directories()
-        connector_manager.validate_connectors()
+        connector_manager.validate_connectors(validate_outputs=outputs)
         connector_manager.receive_connectors()
 
         # execute command
@@ -92,7 +90,10 @@ def run(blue_file, outputs, leave_directories, **_):
                                  .format(' '.join(command), execution_result.get_std_err()))
 
         # send files and directories
-        connector_manager.send_connectors(working_dir)
+        if outputs:
+            connector_manager.send_connectors(working_dir)
+        else:
+            connector_manager.move_output_files(working_dir, OUTPUT_DIRECTORY)
 
     except Exception as e:
         print_exception(e)
@@ -447,6 +448,33 @@ class OutputConnectorRunner:
         elif self._output_class == 'Directory':
             self.send_dir(path)
 
+    def try_move(self, working_dir, output_dir):
+        """
+        Tries to move the associated output file into the output_dir.
+
+        :param working_dir: The working directory from where to glob the output file
+        :param output_dir: The directory to move the output files to.
+        :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous.
+        """
+        working_path = self._resolve_glob_pattern(working_dir)
+
+        # create output path
+        output_dir = os.path.join(output_dir, self._output_key)
+        output_path = os.path.join(output_dir, os.path.basename(working_path))
+        try:
+            ensure_directory(output_dir)
+        except FileExistsError:
+            raise FileExistsError('Could not create path for output key "{}", because path "{}" already exists and is '
+                                  'not empty.'.format(self._output_key, output_dir))
+        except PermissionError as e:
+            raise PermissionError('Failed to create path "{}" for output key "{}", because of insufficient permissions.'
+                                  '\n{}'.format(output_dir, self._output_key, str(e)))
+
+        if self._output_class == 'File':
+            shutil.copy2(working_path, output_path)
+        elif self._output_class == 'Directory':
+            shutil.copytree(working_path, output_path)
+
     def send_file_validate(self):
         raise NotImplementedError()
 
@@ -770,15 +798,18 @@ class ConnectorManager:
         for runner in self._input_runners:
             runner.prepare_directory()
 
-    def validate_connectors(self):
+    def validate_connectors(self, validate_outputs):
         """
         Validates connectors.
+
+        :param validate_outputs: If True, output runners are validated
         """
         for runner in self._input_runners:
             runner.validate_receive()
 
-        for runner in self._output_runners:
-            runner.validate_send()
+        if validate_outputs:
+            for runner in self._output_runners:
+                runner.validate_send()
 
     def receive_connectors(self):
         """
@@ -817,6 +848,16 @@ class ConnectorManager:
         elif errors_len > 1:
             error_strings = [_format_exception(e) for e in errors]
             raise ConnectorError('{} output connectors failed:\n{}'.format(errors_len, '\n'.join(error_strings)))
+
+    def move_output_files(self, working_dir, output_dir):
+        """
+        Moves the output files to output directory.
+
+        :param working_dir: The directory from where to search the output files/directories
+        :param output_dir: The directory where the output files/directories should be moved to
+        """
+        for runner in self._output_runners:
+            runner.try_move(working_dir, output_dir)
 
     def umount_connectors(self):
         """
