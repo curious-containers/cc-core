@@ -36,7 +36,7 @@ def main():
     attach_args(parser)
     args = parser.parse_args()
 
-    result = run(**args.__dict__)
+    result = run(args)
 
     if args.__dict__.get('debug'):
         print(json.dumps(result, indent=JSON_INDENT))
@@ -47,7 +47,7 @@ def main():
     return 1
 
 
-def run(blue_file, outputs, **_):
+def run(args):
     result = {
         'command': None,
         'inputFiles': None,
@@ -59,22 +59,25 @@ def run(blue_file, outputs, **_):
 
     connector_manager = ConnectorManager()
     try:
+        blue_file = args.blue_file
+        use_outputs = args.outputs
+
         with open(blue_file, 'r') as f:
             blue_data = json.load(f)
 
         working_dir = blue_data['workDir']
         create_working_dir(working_dir)
 
-        if outputs and 'outputs' not in blue_data:
-            raise AssertionError('-o/--outputs argument is set, \
-            but no outputs section with RED connector settings is defined in REDFILE')
-
         # import, validate and execute connectors
         connector_manager.import_input_connectors(blue_data['inputs'])
-        connector_manager.import_output_connectors(blue_data['outputs'], blue_data['cli']['outputs'])
+
+        outputs = blue_data.get('outputs')
+        if outputs:
+            cli_outputs = blue_data['cli'].get('outputs')
+            connector_manager.import_output_connectors(outputs, cli_outputs)
         connector_manager.prepare_directories()
 
-        connector_manager.validate_connectors(validate_outputs=outputs)
+        connector_manager.validate_connectors(validate_outputs=use_outputs)
         connector_manager.receive_connectors()
 
         # execute command
@@ -85,7 +88,7 @@ def run(blue_file, outputs, **_):
                                  .format(' '.join(command), execution_result.get_std_err()))
 
         # send files and directories
-        if outputs:
+        if use_outputs:
             connector_manager.send_connectors(working_dir)
         else:
             connector_manager.move_output_files(working_dir, OUTPUT_DIRECTORY)
