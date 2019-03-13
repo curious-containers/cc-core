@@ -63,14 +63,25 @@ def run(args):
         with open(blue_file, 'r') as f:
             blue_data = json.load(f)
 
-        working_dir = blue_data['workDir']
+        working_dir = blue_data.get('workDir')
+        if working_dir is None:
+            raise KeyError('Invalid BLUE file. "workDir" is required.')
         create_working_dir(working_dir)
 
+        # validate command
+        command = blue_data.get('command')
+        _validate_command(command)
+        result['command'] = command
+
         # import, validate and execute connectors
-        connector_manager.import_input_connectors(blue_data['inputs'])
+        inputs = blue_data.get('inputs')
+        if inputs is None:
+            raise KeyError('Invalid BLUE file. "inputs" is not specified.')
+        connector_manager.import_input_connectors(inputs)
 
         outputs = blue_data.get('outputs', {})
-        cli_outputs = blue_data['cli'].get('outputs', {})
+        cli = blue_data.get('cli', {})
+        cli_outputs = cli.get('outputs', {})
         connector_manager.import_output_connectors(outputs, cli_outputs)
         connector_manager.prepare_directories()
 
@@ -78,8 +89,6 @@ def run(args):
         connector_manager.receive_connectors()
 
         # execute command
-        command = blue_data['command']
-        result['command'] = command
         execution_result = execute(command, work_dir=working_dir)
         result['process'] = execution_result.to_dict()
         if not execution_result.successful():
@@ -107,6 +116,21 @@ def run(args):
             result['debugInfo'] += '\n{}'.format('\n'.join(umount_errors))
 
     return result
+
+
+def _validate_command(command):
+    if command is None:
+        raise ExecutionError('Invalid BLUE File. "command" is not specified.')
+
+    if not isinstance(command, list):
+        raise ExecutionError('Invalid BLUE File. "command" has to be a list of strings.\n'
+                             'command: "{}"'.format(command))
+
+    for s in command:
+        if not isinstance(s, str):
+            raise ExecutionError('Invalid BLUE File. "command" has to be a list of strings.\n'
+                                 'command: "{}"\n'
+                                 '"{}" is not a string'.format(command, s))
 
 
 def create_working_dir(working_dir):
@@ -638,15 +662,22 @@ def create_input_connector_runner(input_key, input_value, connector_cli_version_
     :param connector_cli_version_cache: Cache for connector cli version
     :return: A ConnectorRunner
     """
-    connector_data = input_value['connector']
-    connector_command = connector_data['command']
-    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
-    mount = connector_data.get('mount', False)
-    access = connector_data['access']
+    try:
+        connector_data = input_value['connector']
+        connector_command = connector_data['command']
+        access = connector_data['access']
 
-    input_class = input_value['class']
-    path = input_value['path']
+        input_class = input_value['class']
+        path = input_value['path']
+    except KeyError as e:
+        raise ConnectorError('Could not create connector for input key "{}".\n'
+                             'The following property was not found: "{}"'
+                             .format(input_key, str(e)))
+
+    mount = connector_data.get('mount', False)
     listing = input_value.get('listing')
+
+    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
 
     if mount and input_class != 'Directory':
         raise ConnectorError('Connector for input key "{}" has mount flag set but class is "{}". '
@@ -684,15 +715,22 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     :param connector_cli_version_cache: Cache for connector cli version
     :return: A ConnectorRunner
     """
-    connector_data = output_value['connector']
-    connector_command = connector_data['command']
-    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
-    mount = connector_data.get('mount', False)
-    access = connector_data['access']
+    try:
+        connector_data = output_value['connector']
+        connector_command = connector_data['command']
+        access = connector_data['access']
 
-    output_class = output_value['class']
-    glob_pattern = cli_output_value['outputBinding']['glob']
+        output_class = output_value['class']
+        glob_pattern = cli_output_value['outputBinding']['glob']
+    except KeyError as e:
+        raise ConnectorError('Could not create connector for output key "{}".\n'
+                             'The following property was not found: "{}"'
+                             .format(output_key, str(e)))
+
+    mount = connector_data.get('mount', False)
     listing = output_value.get('listing')
+
+    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
 
     if mount and output_class != 'Directory':
         raise ConnectorError('Connector for input key "{}" has mount flag set but class is "{}". '
@@ -741,12 +779,11 @@ class ExecutionResult:
                 'returnCode': self.return_code}
 
 
-def _exec(command, shell, work_dir):
+def _exec(command, work_dir):
     try:
         sp = subprocess.Popen(command,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
-                              shell=shell,
                               cwd=work_dir,
                               universal_newlines=True,
                               encoding='utf-8')
@@ -754,24 +791,24 @@ def _exec(command, shell, work_dir):
         sp = subprocess.Popen(command,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
-                              shell=shell,
                               cwd=work_dir,
                               universal_newlines=True)
     return sp
 
 
-def execute(command, shell=False, work_dir=None):
+def execute(command, work_dir=None):
     """
     Executes a given commandline command and returns a dictionary with keys: 'returnCode', 'stdOut', 'stdErr'
     :param command: The command to execute as list of strings.
-    :param shell: Execute command as string
     :param work_dir: The working directory for the executed command
     :return: An ExecutionResult
     """
     try:
-        sp = _exec(command, shell, work_dir)
+        sp = _exec(command, work_dir)
     except FileNotFoundError as e:
-        return ExecutionResult([], _split_lines(str(e)), 1)
+        error_msg = ['Command "{}" not found.'.format(command[0])]
+        error_msg.extend(_split_lines(str(e)))
+        return ExecutionResult([], error_msg, 127)
 
     std_out, std_err = sp.communicate()
     return_code = sp.returncode
@@ -789,9 +826,13 @@ class ConnectorManager:
 
     def import_input_connectors(self, inputs):
         for input_key, input_value in inputs.items():
-            if input_value['class'] in ConnectorManager.CONNECTOR_CLASSES:
+            input_class = input_value['class']
+            if input_class in ConnectorManager.CONNECTOR_CLASSES:
                 runner = create_input_connector_runner(input_key, input_value, self._connector_cli_version_cache)
                 self._input_runners.append(runner)
+            else:
+                raise ConnectorError('input class "{}" for input key "{}" is not one of {}'
+                                     .format(input_class, input_key, ConnectorManager.CONNECTOR_CLASSES))
 
     def import_output_connectors(self, outputs, cli_outputs):
         """
@@ -800,13 +841,22 @@ class ConnectorManager:
         :param cli_outputs: The output cli description.
         """
         for output_key, output_value in outputs.items():
-            if output_value['class'] in ConnectorManager.CONNECTOR_CLASSES:
-                cli_output_value = cli_outputs[output_key]
+            output_class = output_value['class']
+            if output_class in ConnectorManager.CONNECTOR_CLASSES:
+
+                cli_output_value = cli_outputs.get(output_key)
+                if cli_output_value is None:
+                    raise KeyError('Could not find output key "{}" in cli description, but was given in "outputs".'
+                                   .format(output_key))
+
                 runner = create_output_connector_runner(output_key,
                                                         output_value,
                                                         cli_output_value,
                                                         self._connector_cli_version_cache)
                 self._output_runners.append(runner)
+            else:
+                raise ConnectorError('output class "{}" for output key "{}" is not one of {}'
+                                     .format(output_class, output_key, ConnectorManager.CONNECTOR_CLASSES))
 
     def prepare_directories(self):
         """
