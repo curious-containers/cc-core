@@ -273,6 +273,54 @@ class InputConnectorRunner:
                                  'Directory already exists and is not empty.\n{}'
                                  .format(self._input_key, path_to_create, str(e)))
 
+    def _receive_directory_content_check(self):
+        """
+        Checks if the given directory exists and if listing is set, if the listing is fulfilled.
+        :raise ConnectorError: If the directory content is not as expected.
+        """
+        if not os.path.isdir(self._path):
+            raise ConnectorError('Content check for input directory "{}" failed. Path "{}" does not exist.'
+                                 .format(self._input_key, self._path))
+
+        if self._listing:
+            listing_check_result = InputConnectorRunner.directory_listing_content_check(self._path, self._listing)
+            if listing_check_result is not None:
+                raise ConnectorError('Content check for input key "{}" failed. Listing is not fulfilled:\n{}'
+                                     .format(self._input_key, listing_check_result))
+
+    @staticmethod
+    def directory_listing_content_check(directory_path, listing):
+        """
+        Checks if a given listing is present under the given directory path.
+
+        :param directory_path: The path to the base directory
+        :param listing: The listing to check
+        :return: None if no errors could be found, otherwise a string describing the error
+        """
+        for sub in listing:
+            path = os.path.join(directory_path, sub['basename'])
+            if sub['class'] == 'File':
+                if not os.path.isfile(path):
+                    return 'listing contains "{}" but this file could not be found on disk.'.format(path)
+            elif sub['class'] == 'Directory':
+                if not os.path.isdir(path):
+                    return 'listing contains "{}" but this directory could not be found on disk'.format(path)
+                listing = sub.get('listing')
+                if listing:
+                    res = InputConnectorRunner.directory_listing_content_check(path, listing)
+                    if res is not None:
+                        return res
+        return None
+
+    def _receive_file_content_check(self):
+        """
+        Checks if the given file exists.
+        :raise ConnectorError: If the given file does not exist
+        """
+        if not os.path.isfile(self._path):
+            raise ConnectorError('Content check for input file "{}" failed. Path "{}" does not exist.'
+                                 .format(self._input_key, self._path))
+
     def validate_receive(self):
         """
         Executes receive_file_validate, receive_dir_validate or mount_dir_validate depending on input_class and mount
@@ -292,17 +340,20 @@ class InputConnectorRunner:
         if self._input_class == 'Directory':
             if self._mount:
                 self.mount_dir()
+                self._receive_directory_content_check()
                 self._has_mounted = True
             else:
                 self.receive_dir()
+                self._receive_directory_content_check()
         elif self._input_class == 'File':
             self.receive_file()
+            self._receive_file_content_check()
 
     def try_umount(self):
         """
         Executes umount, if connector is mounting and has mounted, otherwise does nothing.
         """
-        if self._mount and self._has_mounted:
+        if self._has_mounted:
             self.umount_dir()
 
     def receive_file(self):
