@@ -72,8 +72,8 @@ def run(blue_file, outputs, **_):
         # import, validate and execute connectors
         connector_manager.import_input_connectors(blue_data['inputs'])
         connector_manager.import_output_connectors(blue_data['outputs'], blue_data['cli']['outputs'])
-
         connector_manager.prepare_directories()
+
         connector_manager.validate_connectors(validate_outputs=outputs)
         connector_manager.receive_connectors()
 
@@ -98,7 +98,7 @@ def run(blue_file, outputs, **_):
         # umount directories
         umount_errors = connector_manager.umount_connectors()
         errors_len = len(umount_errors)
-        umount_errors = [str(e) for e in umount_errors]
+        umount_errors = [_format_exception(e) for e in umount_errors]
         if errors_len == 1:
             result['debugInfo'] += '\n{}'.format(umount_errors[0])
         elif errors_len > 1:
@@ -146,13 +146,18 @@ def ensure_directory(d):
         raise PermissionError('Directory "{}" is not writable.'.format(d))
 
 
-def resolve_connector_cli_version(connector_command):
+def resolve_connector_cli_version(connector_command, connector_cli_version_cache):
     """
     Returns the cli-version of the given connector.
     :param connector_command: The connector command to resolve the cli-version for.
+    :param connector_cli_version_cache: Cache for connector cli version
     :return: The cli version string of the given connector
     :raise ConnectorError: If the cli-version could not be resolved.
     """
+    cache_value = connector_cli_version_cache.get(connector_command)
+    if cache_value:
+        return cache_value
+
     try:
         result = execute([connector_command, 'cli-version'])
     except FileNotFoundError:
@@ -160,7 +165,9 @@ def resolve_connector_cli_version(connector_command):
 
     std_out = result.std_out
     if result.successful() and len(std_out) == 1:
-        return std_out[0]
+        cli_version = std_out[0]
+        connector_cli_version_cache[connector_command] = cli_version
+        return cli_version
     else:
         std_err = result.get_std_err()
         raise ConnectorError('Could not detect cli version for connector "{}". Failed with following message:\n{}'
@@ -620,17 +627,18 @@ CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING = {
 }
 
 
-def create_input_connector_runner(input_key, input_value):
+def create_input_connector_runner(input_key, input_value, connector_cli_version_cache):
     """
     Creates a proper InputConnectorRunner instance for the given connector command.
 
     :param input_key: The input key of the runner
     :param input_value: The input to create an runner for
+    :param connector_cli_version_cache: Cache for connector cli version
     :return: A ConnectorRunner
     """
     connector_data = input_value['connector']
     connector_command = connector_data['command']
-    cli_version = resolve_connector_cli_version(connector_command)
+    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
     mount = connector_data.get('mount', False)
     access = connector_data['access']
 
@@ -664,18 +672,19 @@ CONNECTOR_CLI_VERSION_OUTPUT_RUNNER_MAPPING = {
 }
 
 
-def create_output_connector_runner(output_key, output_value, cli_output_value):
+def create_output_connector_runner(output_key, output_value, cli_output_value, connector_cli_version_cache):
     """
     Creates a proper OutputConnectorRunner instance for the given connector command.
 
     :param output_key: The output key of the runner
     :param output_value: The output to create a runner for
     :param cli_output_value: The cli description for the runner
+    :param connector_cli_version_cache: Cache for connector cli version
     :return: A ConnectorRunner
     """
     connector_data = output_value['connector']
     connector_command = connector_data['command']
-    cli_version = resolve_connector_cli_version(connector_command)
+    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
     mount = connector_data.get('mount', False)
     access = connector_data['access']
 
@@ -769,11 +778,12 @@ class ConnectorManager:
     def __init__(self):
         self._input_runners = []
         self._output_runners = []
+        self._connector_cli_version_cache = {}
 
     def import_input_connectors(self, inputs):
         for input_key, input_value in inputs.items():
             if input_value['class'] in ConnectorManager.CONNECTOR_CLASSES:
-                runner = create_input_connector_runner(input_key, input_value)
+                runner = create_input_connector_runner(input_key, input_value, self._connector_cli_version_cache)
                 self._input_runners.append(runner)
 
     def import_output_connectors(self, outputs, cli_outputs):
@@ -785,7 +795,10 @@ class ConnectorManager:
         for output_key, output_value in outputs.items():
             if output_value['class'] in ConnectorManager.CONNECTOR_CLASSES:
                 cli_output_value = cli_outputs[output_key]
-                runner = create_output_connector_runner(output_key, output_value, cli_output_value)
+                runner = create_output_connector_runner(output_key,
+                                                        output_value,
+                                                        cli_output_value,
+                                                        self._connector_cli_version_cache)
                 self._output_runners.append(runner)
 
     def prepare_directories(self):
@@ -874,7 +887,7 @@ class ConnectorManager:
 
 def exception_format():
     exc_text = format_exc()
-    return [_lstrip_quarter(l.replace('"', '').replace("'", '').rstrip()) for l in exc_text.split('\n') if l]
+    return [_lstrip_quarter(l.replace("'", '').rstrip()) for l in exc_text.split('\n') if l]
 
 
 def _lstrip_quarter(s):
