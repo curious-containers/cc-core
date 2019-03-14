@@ -2,6 +2,7 @@ import glob
 import os
 import sys
 
+import enum
 import shutil
 import stat
 import subprocess
@@ -67,6 +68,9 @@ def run(args):
         if working_dir is None:
             raise KeyError('Invalid BLUE file. "workDir" is required.')
         create_working_dir(working_dir)
+
+        if use_outputs and not 'outputs' not in blue_data:
+            raise AssertionError('--outputs/-o argument is set but no outputs section is defined in BLUE file.')
 
         # validate command
         command = blue_data.get('command')
@@ -257,11 +261,12 @@ class InputConnectorRunner:
     For every blue input, that uses a connector a new ConnectorRunner instance is created.
     """
 
-    def __init__(self, input_key, connector_command, input_class, mount, access, path, listing=None):
+    def __init__(self, input_key, input_index, connector_command, input_class, mount, access, path, listing=None):
         """
         Initiates an InputConnectorRunner.
 
         :param input_key: The blue input key
+        :param input_index: The input index in case of File/Directory lists
         :param connector_command: The connector command to execute
         :param input_class: Either 'File' or 'Directory'
         :param mount: Whether the associated connector mounts or not
@@ -270,6 +275,7 @@ class InputConnectorRunner:
         :param listing: An optional listing for the associated connector
         """
         self._input_key = input_key
+        self._input_index = input_index
         self._connector_command = connector_command
         self._input_class = input_class
         self._mount = mount
@@ -292,17 +298,17 @@ class InputConnectorRunner:
         In case of input_class == 'File' creates os.path.dirname(path).
         :raise ConnectorError: If the directory could not be created or if the path already exist.
         """
-        path_to_create = self._path if self._input_class == 'Directory' else os.path.dirname(self._path)
+        path_to_create = self._path if self._input_class.is_directory() else os.path.dirname(self._path)
 
         try:
             ensure_directory(path_to_create)
         except PermissionError as e:
             raise ConnectorError('Could not prepare directory for input key "{}" with path "{}". PermissionError:\n{}'
-                                 .format(self._input_key, path_to_create, str(e)))
+                                 .format(self.format_input_key(), path_to_create, str(e)))
         except FileExistsError as e:
             raise ConnectorError('Could not prepare directory for input key "{}" with path "{}". '
                                  'Directory already exists and is not empty.\n{}'
-                                 .format(self._input_key, path_to_create, str(e)))
+                                 .format(self.format_input_key(), path_to_create, str(e)))
 
     def _receive_directory_content_check(self):
         """
@@ -311,13 +317,13 @@ class InputConnectorRunner:
         """
         if not os.path.isdir(self._path):
             raise ConnectorError('Content check for input directory "{}" failed. Path "{}" does not exist.'
-                                 .format(self._input_key, self._path))
+                                 .format(self.format_input_key(), self._path))
 
         if self._listing:
             listing_check_result = InputConnectorRunner.directory_listing_content_check(self._path, self._listing)
             if listing_check_result is not None:
                 raise ConnectorError('Content check for input key "{}" failed. Listing is not fulfilled:\n{}'
-                                     .format(self._input_key, listing_check_result))
+                                     .format(self.format_input_key(), listing_check_result))
 
     @staticmethod
     def directory_listing_content_check(directory_path, listing):
@@ -350,25 +356,25 @@ class InputConnectorRunner:
         """
         if not os.path.isfile(self._path):
             raise ConnectorError('Content check for input file "{}" failed. Path "{}" does not exist.'
-                                 .format(self._input_key, self._path))
+                                 .format(self.format_input_key(), self._path))
 
     def validate_receive(self):
         """
         Executes receive_file_validate, receive_dir_validate or mount_dir_validate depending on input_class and mount
         """
-        if self._input_class == 'Directory':
+        if self._input_class.is_directory():
             if self._mount:
                 self.mount_dir_validate()
             else:
                 self.receive_dir_validate()
-        elif self._input_class == 'File':
+        elif self._input_class.is_file():
             self.receive_file_validate()
 
     def receive(self):
         """
         Executes receive_file, receive_directory or receive_mount depending on input_class and mount
         """
-        if self._input_class == 'Directory':
+        if self._input_class.is_directory():
             if self._mount:
                 self.mount_dir()
                 self._receive_directory_content_check()
@@ -376,7 +382,7 @@ class InputConnectorRunner:
             else:
                 self.receive_dir()
                 self._receive_directory_content_check()
-        elif self._input_class == 'File':
+        elif self._input_class.is_file():
             self.receive_file()
             self._receive_file_content_check()
 
@@ -387,6 +393,9 @@ class InputConnectorRunner:
         """
         if self._has_mounted:
             self.umount_dir()
+
+    def format_input_key(self):
+        return format_key_index(self._input_key, self._input_index)
 
     def receive_file(self):
         raise NotImplementedError()
@@ -427,7 +436,7 @@ class OutputConnectorRunner:
 
         :param output_key: The blue output key
         :param connector_command: The connector command to execute
-        :param output_class: Either 'File' or 'Directory'
+        :param output_class: The ConnectorClass for this output
         :param access: The access information for the connector
         :param glob_pattern: The glob_pattern to match
         :param listing: An optional listing for the associated connector
@@ -443,9 +452,9 @@ class OutputConnectorRunner:
         """
         Executes send_file_validate, send_dir_validate or send_mount_validate depending on input_class and mount
         """
-        if self._output_class == 'Directory':
+        if self._output_class.is_directory():
             self.send_dir_validate()
-        elif self._output_class == 'File':
+        elif self._output_class.is_file():
             self.send_file_validate()
 
     def _resolve_glob_pattern(self, working_dir):
@@ -474,9 +483,9 @@ class OutputConnectorRunner:
                                Or if the executed connector fails.
         """
         path = self._resolve_glob_pattern(working_dir)
-        if self._output_class == 'File':
+        if self._output_class.is_file():
             self.send_file(path)
-        elif self._output_class == 'Directory':
+        elif self._output_class.is_directory():
             self.send_dir(path)
 
     def try_move(self, working_dir, output_dir):
@@ -501,9 +510,9 @@ class OutputConnectorRunner:
             raise PermissionError('Failed to create path "{}" for output key "{}", because of insufficient permissions.'
                                   '\n{}'.format(output_dir, self._output_key, str(e)))
 
-        if self._output_class == 'File':
+        if self._output_class.is_file():
             shutil.copy2(working_path, output_path)
-        elif self._output_class == 'Directory':
+        elif self._output_class.is_directory():
             shutil.copytree(working_path, output_path)
 
     def send_file_validate(self):
@@ -533,7 +542,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to receive file for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.get_std_err()))
+                                 .format(self.format_input_key(), execution_result.get_std_err()))
 
     def receive_file_validate(self):
         execution_result = execute_connector(self._connector_command,
@@ -542,7 +551,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to validate receive file for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.std_err))
+                                 .format(self.format_input_key(), execution_result.std_err))
 
     def receive_dir(self):
         execution_result = execute_connector(self._connector_command,
@@ -554,7 +563,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to receive directory for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.get_std_err()))
+                                 .format(self.format_input_key(), execution_result.get_std_err()))
 
     def receive_dir_validate(self):
         execution_result = execute_connector(self._connector_command,
@@ -565,7 +574,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to validate receive directory for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.get_std_err()))
+                                 .format(self.format_input_key(), execution_result.get_std_err()))
 
     def mount_dir(self):
         execution_result = execute_connector(self._connector_command,
@@ -576,7 +585,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to mount directory for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.get_std_err()))
+                                 .format(self.format_input_key(), execution_result.get_std_err()))
 
     def mount_dir_validate(self):
         execution_result = execute_connector(self._connector_command,
@@ -586,7 +595,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to validate mount directory for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.get_std_err()))
+                                 .format(self.format_input_key(), execution_result.get_std_err()))
 
     def umount_dir(self):
         execution_result = execute_connector(self._connector_command,
@@ -595,7 +604,7 @@ class InputConnectorRunner01(InputConnectorRunner):
         if not execution_result.successful():
             raise ConnectorError('Connector failed to umount directory for input key "{}".\n'
                                  'Failed with the following message:\n{}'
-                                 .format(self._input_key, execution_result.get_std_err()))
+                                 .format(self.format_input_key(), execution_result.get_std_err()))
 
 
 class OutputConnectorRunner01(OutputConnectorRunner):
@@ -653,12 +662,14 @@ CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING = {
 }
 
 
-def create_input_connector_runner(input_key, input_value, connector_cli_version_cache):
+def create_input_connector_runner(input_key, input_value, input_index, assert_list, connector_cli_version_cache):
     """
     Creates a proper InputConnectorRunner instance for the given connector command.
 
     :param input_key: The input key of the runner
     :param input_value: The input to create an runner for
+    :param input_index: The index of the input in case of File/Directory lists
+    :param assert_list: Assert the input class to be a list of Files or Directories. Otherwise fail.
     :param connector_cli_version_cache: Cache for connector cli version
     :return: A ConnectorRunner
     """
@@ -667,22 +678,32 @@ def create_input_connector_runner(input_key, input_value, connector_cli_version_
         connector_command = connector_data['command']
         access = connector_data['access']
 
-        input_class = input_value['class']
+        input_class = ConnectorClass.from_string(input_value['class'])
         path = input_value['path']
     except KeyError as e:
         raise ConnectorError('Could not create connector for input key "{}".\n'
                              'The following property was not found: "{}"'
-                             .format(input_key, str(e)))
+                             .format(format_key_index(input_key, input_index), str(e)))
 
     mount = connector_data.get('mount', False)
     listing = input_value.get('listing')
 
-    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
+    try:
+        cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
+    except ConnectorError:
+        raise ConnectorError('Could not resolve connector cli version for connector "{}" in input key "{}"'
+                             .format(connector_command, format_key_index(input_key, input_index)))
 
-    if mount and input_class != 'Directory':
+    if mount and not input_class.is_directory():
         raise ConnectorError('Connector for input key "{}" has mount flag set but class is "{}". '
                              'Unable to mount if class is different from "Directory"'
-                             .format(input_key, input_class))
+                             .format(format_key_index(input_key, input_index), input_class.to_string()))
+
+    # check if is list
+    if assert_list and not input_class.is_array():
+        raise ConnectorError('Connector for input key "{}" is given as list, but input class is not list.')
+    if not assert_list and input_class.is_array():
+        raise ConnectorError('Connector for input key "{}" is not given as list, but input class is list.')
 
     connector_runner_class = CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING.get(cli_version)
     if connector_runner_class is None:
@@ -690,6 +711,7 @@ def create_input_connector_runner(input_key, input_value, connector_cli_version_
                         .format(cli_version, connector_command))
 
     connector_runner = connector_runner_class(input_key,
+                                              input_index,
                                               connector_command,
                                               input_class,
                                               mount,
@@ -720,7 +742,7 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
         connector_command = connector_data['command']
         access = connector_data['access']
 
-        output_class = output_value['class']
+        output_class = ConnectorClass.from_string(output_value['class'])
         glob_pattern = cli_output_value['outputBinding']['glob']
     except KeyError as e:
         raise ConnectorError('Could not create connector for output key "{}".\n'
@@ -730,12 +752,16 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     mount = connector_data.get('mount', False)
     listing = output_value.get('listing')
 
-    cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
+    try:
+        cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
+    except ConnectorError:
+        raise ConnectorError('Could not resolve connector cli version for connector "{}" in output key "{}"'
+                             .format(connector_command, output_key))
 
-    if mount and output_class != 'Directory':
+    if mount and not output_class.is_directory():
         raise ConnectorError('Connector for input key "{}" has mount flag set but class is "{}". '
                              'Unable to mount if class is different from "Directory"'
-                             .format(output_key, output_class))
+                             .format(output_key, output_class.to_string()))
 
     connector_runner_class = CONNECTOR_CLI_VERSION_OUTPUT_RUNNER_MAPPING.get(cli_version)
     if connector_runner_class is None:
@@ -816,47 +842,106 @@ def execute(command, work_dir=None):
     return ExecutionResult(_split_lines(std_out), _split_lines(std_err), return_code)
 
 
-class ConnectorManager:
-    CONNECTOR_CLASSES = {'File', 'Directory'}
+class ConnectorType(enum.Enum):
+    File = 0
+    Directory = 1
 
+
+class ConnectorClass:
+    def __init__(self, connector_type, is_array):
+        self.connector_type = connector_type
+        self._is_array = is_array
+
+    @staticmethod
+    def from_string(s):
+        is_array = s.endswith('[]')
+        if is_array:
+            s = s[:-2]
+
+        connector_type = None
+        for ct in ConnectorType:
+            if s == ct.name:
+                connector_type = ct
+
+        if connector_type is None:
+            raise ConnectorError('Could not extract connector class from string "{}".'
+                                 'Connector classes should start with "File" or "Directory" and optionally stop '
+                                 'with brackets'.format(s))
+
+        return ConnectorClass(connector_type, is_array)
+
+    def to_string(self):
+        if self._is_array:
+            return '{}[]'.format(self.connector_type.name)
+        else:
+            return self.connector_type.name
+
+    def is_file(self):
+        return self.connector_type == ConnectorType.File
+
+    def is_directory(self):
+        return self.connector_type == ConnectorType.Directory
+
+    def is_array(self):
+        return self._is_array
+
+
+def format_key_index(input_key, input_index=None):
+    if input_index is None:
+        return input_key
+    return '{}:{}'.format(input_key, input_index)
+
+
+class ConnectorManager:
     def __init__(self):
         self._input_runners = []
         self._output_runners = []
         self._connector_cli_version_cache = {}
 
+    def _import_input_connector(self, input_key, input_value, input_index=None, assert_list=False):
+        """
+        Creates a InputConnectorRunner for input key
+        :param input_key: The input key to create a runner for
+        :param input_value: The value from where to extract information about the Connector.
+        :param input_index: index in case of File/Directory lists
+        :param assert_list: Assert the input class to be a list of Files or Directories. Otherwise fail.
+        """
+        runner = create_input_connector_runner(input_key,
+                                               input_value,
+                                               input_index,
+                                               assert_list,
+                                               self._connector_cli_version_cache)
+        self._input_runners.append(runner)
+
     def import_input_connectors(self, inputs):
+        """
+        Creates InputConnectorRunner for every key in inputs (or more Runners for File/Directory lists).
+        :param inputs: The inputs to create Runner for
+        """
         for input_key, input_value in inputs.items():
-            input_class = input_value['class']
-            if input_class in ConnectorManager.CONNECTOR_CLASSES:
-                runner = create_input_connector_runner(input_key, input_value, self._connector_cli_version_cache)
-                self._input_runners.append(runner)
-            else:
-                raise ConnectorError('input class "{}" for input key "{}" is not one of {}'
-                                     .format(input_class, input_key, ConnectorManager.CONNECTOR_CLASSES))
+            if isinstance(input_value, dict):
+                self._import_input_connector(input_key, input_value)
+            elif isinstance(input_value, list):
+                for index, sub_input in enumerate(input_value):
+                    self._import_input_connector(input_key, sub_input, input_index=index, assert_list=True)
 
     def import_output_connectors(self, outputs, cli_outputs):
         """
-        Creates ConnectorRunner for every key in outputs.
+        Creates OutputConnectorRunner for every key in outputs.
         :param outputs: The outputs to create runner for.
         :param cli_outputs: The output cli description.
         """
         for output_key, output_value in outputs.items():
-            output_class = output_value['class']
-            if output_class in ConnectorManager.CONNECTOR_CLASSES:
+            cli_output_value = cli_outputs.get(output_key)
+            if cli_output_value is None:
+                raise KeyError('Could not find output key "{}" in cli description, but was given in "outputs".'
+                               .format(output_key))
 
-                cli_output_value = cli_outputs.get(output_key)
-                if cli_output_value is None:
-                    raise KeyError('Could not find output key "{}" in cli description, but was given in "outputs".'
-                                   .format(output_key))
-
-                runner = create_output_connector_runner(output_key,
-                                                        output_value,
-                                                        cli_output_value,
-                                                        self._connector_cli_version_cache)
-                self._output_runners.append(runner)
-            else:
-                raise ConnectorError('output class "{}" for output key "{}" is not one of {}'
-                                     .format(output_class, output_key, ConnectorManager.CONNECTOR_CLASSES))
+            runner = create_output_connector_runner(output_key,
+                                                    output_value,
+                                                    cli_output_value,
+                                                    self._connector_cli_version_cache)
+            self._output_runners.append(runner)
 
     def prepare_directories(self):
         """
