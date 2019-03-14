@@ -3,8 +3,7 @@ from cc_core.commons.schemas.common import auth_schema
 ccfaice_schema = {
     'type': 'object',
     'properties': {
-        'doc': {'type': 'string'},
-        'insecure': {'type': 'boolean'}
+        'doc': {'type': 'string'}
     },
     'additionalProperties': False
 }
