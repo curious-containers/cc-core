@@ -2,6 +2,11 @@ from copy import deepcopy
 
 
 def transform(schema):
+    """
+    Transform a jsonschema by recursively adding optional doc keys and allowing null for optional keys
+    :param schema: jsonschema dict, will not be transformed inplace
+    :return: transformed jsonschema dict
+    """
     schema = deepcopy(schema)
     _transform(schema)
     return schema
