@@ -16,6 +16,7 @@ psutil = "^5.4"
 "ruamel.yaml" = "^0.15"
 
 [tool.poetry.dev-dependencies]
+pytest = "^4.3"
 
 [tool.poetry.scripts]
 ccagent = 'cc_core.agent.main:main'
