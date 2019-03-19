@@ -8,9 +8,12 @@ import stat
 import subprocess
 import json
 import tempfile
+import urllib.request
 
 from argparse import ArgumentParser
+from json import JSONDecodeError
 from traceback import format_exc
+from urllib.error import URLError
 
 DESCRIPTION = 'Run an experiment as described in a BLUEFILE.'
 JSON_INDENT = 2
@@ -58,11 +61,10 @@ def run(args):
 
     connector_manager = ConnectorManager()
     try:
-        blue_file = args.blue_file
+        blue_location = args.blue_file
         use_outputs = args.outputs
 
-        with open(blue_file, 'r') as f:
-            blue_data = json.load(f)
+        blue_data = get_blue_data(blue_location)
 
         working_dir = blue_data.get('workDir')
         if working_dir is None:
@@ -120,6 +122,30 @@ def run(args):
             result['debugInfo'] += '\n{}'.format('\n'.join(umount_errors))
 
     return result
+
+
+def get_blue_data(blue_location):
+    """
+    If blue_file is an URL fetches this URL and loads the json content, otherwise tries to load the file as local file.
+    :param blue_location: An URL or local file path as string
+    :return: The content of the given file or URL
+    """
+    try:
+        blue_file = open(blue_location, 'r')
+    except FileNotFoundError as file_error:
+        try:
+            blue_file = urllib.request.urlopen(blue_location)
+        except URLError as url_error:
+            raise ExecutionError('Could not fetch blue file "{}"\n\nFile error:\n{}\n\nurl error:\n{}.'
+                                 .format(blue_location, repr(file_error), repr(url_error)))
+
+    try:
+        blue_data = json.load(blue_file)
+    except JSONDecodeError as e:
+        blue_file.close()
+        raise ExecutionError('Could not decode blue file "{}". Blue file is not in json format.\n{}'
+                             .format(blue_location, str(e)))
+    return blue_data
 
 
 def _validate_command(command):
