@@ -286,6 +286,9 @@ class InputConnectorRunner:
         # Is set to true, after mounting
         self._has_mounted = False
 
+    def get_input_class(self):
+        return self._input_class
+
     def is_mounting(self):
         """
          :return: Returns whether this runner is mounting or not.
@@ -662,16 +665,19 @@ CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING = {
 }
 
 
-def create_input_connector_runner(input_key, input_value, input_index, assert_list, connector_cli_version_cache):
+def create_input_connector_runner(input_key, input_value, input_index, assert_class, assert_list,
+                                  connector_cli_version_cache):
     """
     Creates a proper InputConnectorRunner instance for the given connector command.
 
     :param input_key: The input key of the runner
     :param input_value: The input to create an runner for
     :param input_index: The index of the input in case of File/Directory lists
+    :param assert_class: Assert this input class
     :param assert_list: Assert the input class to be a list of Files or Directories. Otherwise fail.
     :param connector_cli_version_cache: Cache for connector cli version
     :return: A ConnectorRunner
+    :rtype InputConnectorRunner
     """
     try:
         connector_data = input_value['connector']
@@ -699,11 +705,16 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_li
                              'Unable to mount if class is different from "Directory"'
                              .format(format_key_index(input_key, input_index), input_class.to_string()))
 
-    # check if is list
+    # check if is ConnectorType matches
     if assert_list and not input_class.is_array():
-        raise ConnectorError('Connector for input key "{}" is given as list, but input class is not list.')
-    if not assert_list and input_class.is_array():
-        raise ConnectorError('Connector for input key "{}" is not given as list, but input class is list.')
+        raise ConnectorError('Connector for input key "{}" is given as list, but input class is not list.'
+                             .format(format_key_index(input_key, input_index)))
+    if (assert_list is None) and input_class.is_array():
+        raise ConnectorError('Connector for input key "{}" is not given as list, but input class is list.'
+                             .format(format_key_index(input_key, input_index)))
+    if (assert_class is not None) and (assert_class != input_class):
+        raise ConnectorError('Connector for input key "{}" has unexpected class "{}". Expected class is "{}"'
+                             .format(format_key_index(input_key, input_index), input_class, assert_class))
 
     connector_runner_class = CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING.get(cli_version)
     if connector_runner_class is None:
@@ -865,8 +876,8 @@ class ConnectorClass:
 
         if connector_type is None:
             raise ConnectorError('Could not extract connector class from string "{}".'
-                                 'Connector classes should start with "File" or "Directory" and optionally stop '
-                                 'with brackets'.format(s))
+                                 'Connector classes should start with "File" or "Directory" and optionally end '
+                                 'with "[]"'.format(s))
 
         return ConnectorClass(connector_type, is_array)
 
@@ -875,6 +886,12 @@ class ConnectorClass:
             return '{}[]'.format(self.connector_type.name)
         else:
             return self.connector_type.name
+
+    def __repr__(self):
+        return self.to_string()
+
+    def __eq__(self, other):
+        return (self.connector_type == other.connector_type) and (self._is_array == other.is_array())
 
     def is_file(self):
         return self.connector_type == ConnectorType.File
@@ -898,21 +915,6 @@ class ConnectorManager:
         self._output_runners = []
         self._connector_cli_version_cache = {}
 
-    def _import_input_connector(self, input_key, input_value, input_index=None, assert_list=False):
-        """
-        Creates a InputConnectorRunner for input key
-        :param input_key: The input key to create a runner for
-        :param input_value: The value from where to extract information about the Connector.
-        :param input_index: index in case of File/Directory lists
-        :param assert_list: Assert the input class to be a list of Files or Directories. Otherwise fail.
-        """
-        runner = create_input_connector_runner(input_key,
-                                               input_value,
-                                               input_index,
-                                               assert_list,
-                                               self._connector_cli_version_cache)
-        self._input_runners.append(runner)
-
     def import_input_connectors(self, inputs):
         """
         Creates InputConnectorRunner for every key in inputs (or more Runners for File/Directory lists).
@@ -920,10 +922,24 @@ class ConnectorManager:
         """
         for input_key, input_value in inputs.items():
             if isinstance(input_value, dict):
-                self._import_input_connector(input_key, input_value)
+                runner = create_input_connector_runner(input_key,
+                                                       input_value,
+                                                       None,
+                                                       None,
+                                                       False,
+                                                       self._connector_cli_version_cache)
+                self._input_runners.append(runner)
             elif isinstance(input_value, list):
+                assert_class = None
                 for index, sub_input in enumerate(input_value):
-                    self._import_input_connector(input_key, sub_input, input_index=index, assert_list=True)
+                    runner = create_input_connector_runner(input_key,
+                                                           sub_input,
+                                                           index,
+                                                           assert_class,
+                                                           True,
+                                                           self._connector_cli_version_cache)
+                    assert_class = runner.get_input_class()
+                    self._input_runners.append(runner)
 
     def import_output_connectors(self, outputs, cli_outputs):
         """
