@@ -1,10 +1,11 @@
-from cc_core.commons.schemas.common import auth_schema
+from cc_core.commons.schemas.common import _auth_schema
+from cc_core.commons.schema_transform import transform
 
 
 MIN_RAM_LIMIT = 256
 
 
-gpus_schema = {
+_gpus_schema = {
     'oneOf': [{
         'type': 'array',
         'items': {
@@ -25,16 +26,14 @@ gpus_schema = {
 }
 
 
-image_schema = {
+_image_schema = {
     'type': 'object',
     'properties': {
-        'doc': {'type': 'string'},
         'url': {'type': 'string'},
-        'auth': auth_schema,
+        'auth': _auth_schema,
         'source': {
             'type': 'object',
             'properties': {
-                'doc': {'type': 'string'},
                 'url': {'type': 'string'}
             },
             'additionalProperties': False,
@@ -46,12 +45,11 @@ image_schema = {
 }
 
 
-docker_schema = {
+_docker_schema = {
     'type': 'object',
     'properties': {
-        'doc': {'type': 'string'},
         'version': {'type': 'string'},
-        'image': image_schema,
+        'image': _image_schema,
         'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
     },
     'additionalProperties': False,
@@ -59,18 +57,21 @@ docker_schema = {
 }
 
 
-nvidia_docker_schema = {
+_nvidia_docker_schema = {
     'type': 'object',
     'properties': {
-        'doc': {'type': 'string'},
         'version': {'type': 'string'},
-        'image': image_schema,
-        'gpus': gpus_schema,
+        'image': _image_schema,
+        'gpus': _gpus_schema,
         'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
     },
     'additionalProperties': False,
     'required': ['image', 'gpus']
 }
+
+
+docker_schema = transform(_docker_schema)
+nvidia_docker_schema = transform(_nvidia_docker_schema)
 
 
 container_engines = {

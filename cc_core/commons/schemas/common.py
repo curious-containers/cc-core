@@ -1,7 +1,7 @@
-pattern_key = '^[a-zA-Z0-9_-]+$'
+PATTERN_KEY = '^[a-zA-Z0-9_-]+$'
 
 
-auth_schema = {
+_auth_schema = {
     'oneOf': [{
         'type': 'object',
         'properties': {

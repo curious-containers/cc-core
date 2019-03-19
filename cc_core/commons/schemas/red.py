@@ -1,7 +1,8 @@
 import copy
 
-from cc_core.commons.schemas.common import pattern_key
-from cc_core.commons.schemas.cwl import cwl_schema
+from cc_core.commons.schemas.common import PATTERN_KEY
+from cc_core.commons.schemas.cwl import _cwl_schema
+from cc_core.commons.schema_transform import transform
 
 _connector_schema = {
     'type': 'object',
@@ -31,7 +32,7 @@ _directory_schema['properties']['listing'] = {'type': 'array'}
 _inputs_schema = {
     'type': 'object',
     'patternProperties': {
-        pattern_key: {
+        PATTERN_KEY: {
             'anyOf': [
                 {'type': 'string'},
                 {'type': 'number'},
@@ -59,7 +60,7 @@ _inputs_schema = {
 _outputs_schema = {
     'type': 'object',
     'patternProperties': {
-        pattern_key: {
+        PATTERN_KEY: {
             'type': 'object',
             'properties': {
                 'class': {'enum': ['File']},
@@ -75,7 +76,6 @@ _outputs_schema = {
 _engine_schema = {
     'type': 'object',
     'properties': {
-        'doc': {'type': 'string'},
         'engine': {'type': 'string'},
         'settings': {'type': 'object'}
     },
@@ -85,13 +85,12 @@ _engine_schema = {
 
 
 # Reproducible Experiment Description (RED)
-red_schema = {
+_red_schema = {
     'oneOf': [{
         'type': 'object',
         'properties': {
-            'doc': {'type': 'string'},
             'redVersion': {'type': 'string'},
-            'cli': cwl_schema,
+            'cli': _cwl_schema,
             'inputs': _inputs_schema,
             'outputs': _outputs_schema,
             'container': _engine_schema,
@@ -102,9 +101,8 @@ red_schema = {
     }, {
         'type': 'object',
         'properties': {
-            'doc': {'type': 'string'},
             'redVersion': {'type': 'string'},
-            'cli': cwl_schema,
+            'cli': _cwl_schema,
             'batches': {
                 'type': 'array',
                 'items': {
@@ -126,10 +124,13 @@ red_schema = {
 }
 
 
-fill_schema = {
+_fill_schema = {
     'type': 'object',
     'patternProperties': {
-        pattern_key: {'type': 'string'}
+        PATTERN_KEY: {'type': 'string'}
     },
     'additionalProperties': False
 }
+
+red_schema = transform(_red_schema)
+fill_schema = transform(_fill_schema)
