@@ -23,8 +23,9 @@ def _transform(schema):
 
     elif 'type' in schema:
         if schema['type'] == 'array':
-            subschema = schema['items']
-            _transform(subschema)
+            subschema = schema.get('items')
+            if subschema:
+                _transform(subschema)
 
         elif schema['type'] == 'object':
             if 'patternProperties' in schema:

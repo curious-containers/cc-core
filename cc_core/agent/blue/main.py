@@ -135,9 +135,9 @@ def get_blue_data(blue_location):
     except FileNotFoundError as file_error:
         try:
             blue_file = urllib.request.urlopen(blue_location)
-        except URLError as url_error:
+        except (URLError, ValueError) as http_error:
             raise ExecutionError('Could not fetch blue file "{}"\n\nFile error:\n{}\n\nurl error:\n{}.'
-                                 .format(blue_location, repr(file_error), repr(url_error)))
+                                 .format(blue_location, repr(file_error), repr(http_error)))
 
     try:
         blue_data = json.load(blue_file)
