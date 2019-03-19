@@ -71,7 +71,7 @@ def run(args):
             raise KeyError('Invalid BLUE file. "workDir" is required.')
         create_working_dir(working_dir)
 
-        if use_outputs and not 'outputs' not in blue_data:
+        if use_outputs and 'outputs' not in blue_data:
             raise AssertionError('--outputs/-o argument is set but no outputs section is defined in BLUE file.')
 
         # validate command
