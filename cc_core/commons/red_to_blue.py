@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Any, Union
 
 import os.path
@@ -21,10 +22,20 @@ def convert_red_to_blue(red_data):
 
 
 class CliArgument:
-    def __init__(self):
+    class CliArgumentType(Enum):
+        Positional = 0
+        Named = 1
+
+    def __init__(self, input_key, argument_type, input_type):
         """
-        
+        Creates a new CliArgument.
+        :param input_key: The input key of the cli argument
+        :param argument_type: The type of the cli argument (Positional, Named)
+        :param input_type: The type of the input key
         """
+        self._input_key = input_key
+        self._argument_type = argument_type
+        self._input_type = input_type
 
 
 def generate_command(cli_description, batch):
@@ -35,6 +46,17 @@ def generate_command(cli_description, batch):
     :return: A list of string representing the created command
     """
     command = produce_base_command(cli_description.get('baseCommand'))
+
+    arguments = get_arguments(cli_description['inputs'])
+
+
+def get_arguments(cli_inputs):
+    """
+    Returns a list of arguments
+    :param cli_inputs:
+    :return:
+    """
+    raise NotImplementedError()
 
 
 def produce_base_command(cwl_base_command):
