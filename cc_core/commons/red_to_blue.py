@@ -1,3 +1,11 @@
+"""
+This module defines functionality to transform red data into blue data:
+- Define a command from a red file
+  - Define the base command
+  - Define the arguments for the command
+- Complete input attributes
+- Resolve input references
+"""
 from enum import Enum
 from functools import total_ordering
 
@@ -8,23 +16,54 @@ import uuid
 from cc_core.commons.exceptions import JobSpecificationError
 
 
+DEFAULT_WORKING_DIRECTORY = '/tmp/red/work/'
+
+
 def convert_red_to_blue(red_data):
     """
     Converts the given red data into a list of blue data dictionary. The blue data is always given as list and each list
     entry represents one batch in the red data.
-    The red data must not contain unresolved input references.
     :param red_data: The red data to convert
+    :return: A list of blue data dictionaries
+    """
+    blue_data_list = []
+
+    batches = extract_batches(red_data)
+    complete_batches(batches)
+
+    cli_description = red_data['cli']
+    cli_inputs = cli_description['inputs']
+    cli_outputs = cli_description['outputs']
+
+    cli_arguments = get_cli_arguments(cli_inputs)
+    base_command = produce_base_command(cli_description.get('baseCommand'))
+
+    for batch in batches:
+        command = generate_command(base_command, cli_arguments, batch)
+        blue_data = create_blue_data(command, batch, cli_outputs)
+        blue_data_list.append(blue_data)
+
+    return blue_data_list
+
+
+def create_blue_data(command, batch, cli_outputs):
+    """
+    Defines a dictionary containing blue data
+    :param command: The command of the blue data, given as list of strings
+    :param batch: The Job data of the blue data
+    :param cli_outputs: The outputs section of cli description
     :return: A dictionary containing the blue data
     """
-    batches = extract_batches(red_data)
-    complete_inputs(batches)
-    cli_description = red_data['cli']
-    cli_arguments = get_cli_arguments(cli_description['inputs'])
-    command = produce_base_command(cli_description.get('baseCommand'))
-    for batch in batches:
-        command = generate_command(command, cli_arguments, batch)
+    blue_data = {
+        'command': command,
+        'workDir': DEFAULT_WORKING_DIRECTORY,
+        'cli': {
+            'outputs': cli_outputs
+        },
+        'inputs': batch
+    }
 
-    return {}
+    return blue_data
 
 
 class InputType:
@@ -98,14 +137,10 @@ def generate_command(base_command, cli_arguments, batch):
     """
     command = base_command.copy()
 
-    execution_arguments = []
-
     for cli_argument in cli_arguments:
         batch_value = batch['inputs'].get(cli_argument.input_key)
         execution_argument = create_execution_argument(cli_argument, batch_value)
-        execution_arguments.extend(execution_argument)
-
-    command.extend(execution_arguments)
+        command.extend(execution_argument)
 
     print('command: {}'.format(command))
 
@@ -126,12 +161,13 @@ INPUT_CATEGORY_REPRESENTATION_MAPPER = {
 
 def create_execution_argument(cli_argument, batch_value):
     """
-    Creates a string representing an execution argument. Like '--outdir=/path/to/file'
+    Creates a list of strings representing an execution argument. Like ['--outdir=', '/path/to/file']
     :param cli_argument: The cli argument
     :param batch_value: The batch value corresponding to the cli argument. Can be None
     :return: A list of strings, that can be used to extend the command. Returns an empty list if (cli_argument is
     optional and batch_value is None) or (cli argument is array and len(batch_value) is 0)
     :raise JobSpecificationError: If cli argument is mandatory, but batch value is None
+    If Cli Description defines an array, but job does not define a list
     """
     # handle optional arguments
     if batch_value is None:
@@ -143,31 +179,35 @@ def create_execution_argument(cli_argument, batch_value):
     # handle arrays (create argument list)
     argument_list = []
     if cli_argument.is_array():
-        assert isinstance(batch_value, list)
+        if not isinstance(batch_value, list):
+            raise JobSpecificationError('For input key "{}":\nDescription defines an array, '
+                                        'but job is not given as list'.format(cli_argument.input_key))
+
         for sub_batch_value in batch_value:
             r = INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](sub_batch_value)
             argument_list.append(r)
 
         if not argument_list:
-            return None
+            return []
     else:
         argument_list.append(INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](batch_value))
 
     # join argument list
     if cli_argument.item_separator:
-        joined_arguments = cli_argument.item_separator.join(argument_list)
+        argument_list = [cli_argument.item_separator.join(argument_list)]
 
-        # add prefix
-        if cli_argument.prefix:
-            if cli_argument.separate:
-                argument_list = [cli_argument.prefix, joined_arguments]
-            else:
-                argument_list = ['{}{}'.format(cli_argument.prefix, joined_arguments)]
-    else:
-        # add prefix
-        # if item separator is not given, always separate prefix from argument list
-        if cli_argument.prefix:
+    # add prefix
+    if cli_argument.prefix:
+        do_separate = cli_argument.separate
+        # do not separate, if the cli argument is an array and the item separator is not given
+        if cli_argument.is_array() and not cli_argument.item_separator:
+            do_separate = False
+
+        if do_separate:
             argument_list.insert(0, cli_argument.prefix)
+        else:
+            assert len(argument_list) == 1
+            argument_list = ['{}{}'.format(cli_argument.prefix, argument_list[0])]
 
     return argument_list
 
@@ -298,7 +338,7 @@ class CliArgument:
         input_binding = cli_input_description['inputBinding']
         input_binding_position = input_binding.get('position', 0)
         prefix = input_binding.get('prefix')
-        separate = input_binding.get('prefix', True)
+        separate = input_binding.get('separate', True)
         item_separator = input_binding.get('itemSeparator')
 
         input_type = InputType.from_string(cli_input_description['type'])
@@ -338,18 +378,39 @@ def produce_base_command(cwl_base_command):
     return base_command
 
 
-def complete_inputs(batches):
+def complete_batches(batches):
+    """
+    Completes the input attributes of the input files/directories and resolved input references.
+    :param batches: The list of batches to complete
+    """
+    for batch in batches:
+        complete_inputs(batch['inputs'])
+
+
+def complete_inputs(batch_inputs):
     """
     Completes the input attributes of the input files, by adding the attributes:
     path, basename, dirname, nameroot, nameext
-    :param batches: list of batches
+    :param batch_inputs: list of batches
     """
-    for batch in batches:
-        for input_key, input_value in batch['inputs'].items():
-            if input_value['class'] == 'File':
-                complete_file_input_values(input_key, input_value)
-            elif input_value['class'] == 'Directory':
-                complete_directory_input_values(input_key, input_value)
+    for input_key, batch_value in batch_inputs.items():
+        input_type = InputType.from_string(batch_value['class'])
+
+        # complete files
+        if input_type.is_file():
+            if input_type.is_array():
+                for file_element in batch_value:
+                    complete_file_input_values(input_key, file_element)
+            else:
+                complete_file_input_values(input_key, batch_value)
+
+        # complete directories
+        elif input_type.is_directory():
+            if input_type.is_array():
+                for directory_element in batch_value:
+                    complete_directory_input_values(input_key, directory_element)
+            else:
+                complete_directory_input_values(input_key, batch_value)
 
 
 def default_inputs_dirname():

@@ -254,11 +254,11 @@ def resolve_input_references(to_resolve, inputs_to_reference):
     :return: A string in which the input references are replaced with actual values.
     """
 
-    splitted = split_input_references(to_resolve)
+    split_references = split_input_references(to_resolve)
 
     result = []
 
-    for part in splitted:
+    for part in split_references:
         if is_input_reference(part):
             result.append(str(resolve_input_reference(part, inputs_to_reference)))
         else:
