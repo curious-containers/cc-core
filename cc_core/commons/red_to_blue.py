@@ -6,6 +6,8 @@ This module defines functionality to transform red data into blue data:
 - Complete input attributes
 - Resolve input references
 """
+from copy import deepcopy
+
 from enum import Enum
 from functools import total_ordering
 
@@ -13,8 +15,8 @@ import os.path
 
 import uuid
 
-from cc_core.commons.exceptions import JobSpecificationError
-
+from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference
+from cc_core.commons.input_references import resolve_input_references
 
 DEFAULT_WORKING_DIRECTORY = '/tmp/red/work/'
 
@@ -26,29 +28,31 @@ def convert_red_to_blue(red_data):
     :param red_data: The red data to convert
     :return: A list of blue data dictionaries
     """
-    blue_data_list = []
+    blue_batches = []
 
     batches = extract_batches(red_data)
-    complete_batches(batches)
 
     cli_description = red_data['cli']
     cli_inputs = cli_description['inputs']
-    cli_outputs = cli_description['outputs']
+    cli_outputs = cli_description.get('outputs')
 
     cli_arguments = get_cli_arguments(cli_inputs)
     base_command = produce_base_command(cli_description.get('baseCommand'))
 
     for batch in batches:
+        batch_inputs = batch['inputs']
+        complete_batch_inputs(batch_inputs)
+        resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
-        blue_data = create_blue_data(command, batch, cli_outputs)
-        blue_data_list.append(blue_data)
+        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs)
+        blue_batches.append(blue_batch)
 
-    return blue_data_list
+    return blue_batches
 
 
-def create_blue_data(command, batch, cli_outputs):
+def create_blue_batch(command, batch, cli_outputs):
     """
-    Defines a dictionary containing blue data
+    Defines a dictionary containing a blue batch
     :param command: The command of the blue data, given as list of strings
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
@@ -141,8 +145,6 @@ def generate_command(base_command, cli_arguments, batch):
         batch_value = batch['inputs'].get(cli_argument.input_key)
         execution_argument = create_execution_argument(cli_argument, batch_value)
         command.extend(execution_argument)
-
-    print('command: {}'.format(command))
 
     return command
 
@@ -378,20 +380,32 @@ def produce_base_command(cwl_base_command):
     return base_command
 
 
-def complete_batches(batches):
+def complete_input_references_in_outputs(cli_outputs, inputs_to_reference):
     """
-    Completes the input attributes of the input files/directories and resolved input references.
-    :param batches: The list of batches to complete
+    Takes the cli outputs and inputs to reference and returns the cli outputs, but with resolved input references
+    :param cli_outputs: The cli outputs to resolve input references for
+    :param inputs_to_reference: The inputs to reference
     """
-    for batch in batches:
-        complete_inputs(batch['inputs'])
+    resolved_outputs = deepcopy(cli_outputs)
+
+    for output_key, output_value in resolved_outputs.items():
+        output_binding = output_value['outputBinding']
+
+        try:
+            resolved_glob = resolve_input_references(output_binding['glob'], inputs_to_reference)
+        except InvalidInputReference as e:
+            raise InvalidInputReference('Invalid Input Reference for output key "{}":\n{}'.format(output_key, str(e)))
+
+        output_binding['glob'] = resolved_glob
+
+    return resolved_outputs
 
 
-def complete_inputs(batch_inputs):
+def complete_batch_inputs(batch_inputs):
     """
-    Completes the input attributes of the input files, by adding the attributes:
+    Completes the input attributes of the input files/directories, by adding the attributes:
     path, basename, dirname, nameroot, nameext
-    :param batch_inputs: list of batches
+    :param batch_inputs: a dictionary containing job input information
     """
     for input_key, batch_value in batch_inputs.items():
         input_type = InputType.from_string(batch_value['class'])
@@ -418,7 +432,7 @@ def default_inputs_dirname():
     Returns the default dirname for an input file.
     :return: The default dirname for an input file.
     """
-    return os.path.join('/tmp', 'red', 'inputs', str(uuid.uuid4()))
+    return os.path.join('/tmp/red/inputs', str(uuid.uuid4()))
 
 
 def complete_file_input_values(input_key, input_value, ):
