@@ -64,7 +64,7 @@ def create_blue_batch(command, batch, cli_outputs):
         'cli': {
             'outputs': cli_outputs
         },
-        'inputs': batch
+        **batch
     }
 
     return blue_data
