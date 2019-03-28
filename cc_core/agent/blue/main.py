@@ -671,10 +671,7 @@ class CliOutputRunner:
             raise PermissionError('Failed to create path "{}" for output key "{}", because of insufficient permissions.'
                                   '\n{}'.format(output_dir, self._output_key, str(e)))
 
-        if self._output_class.is_file():
-            shutil.copy2(working_path, output_path)
-        elif self._output_class.is_directory():
-            shutil.copytree(working_path, output_path)
+        shutil.move(working_path, output_path)
 
     def check_output(self, working_dir):
         """
