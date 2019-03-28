@@ -435,7 +435,7 @@ def default_inputs_dirname():
     return os.path.join('/tmp/red/inputs', str(uuid.uuid4()))
 
 
-def complete_file_input_values(input_key, input_value, ):
+def complete_file_input_values(input_key, input_value):
     """
     Completes the information inside a given file input value. Will alter the given input_value.
     Creates the following keys (if not already present): path, basename, dirname, nameroot, nameext
@@ -470,7 +470,7 @@ def complete_directory_input_values(input_key, input_value):
     Completes the information inside a given directory input value. Will alter the given input_value.
     Creates the following keys (if not already present): path, basename
     :param input_key: An input key as string
-    :param input_value: An input value with class 'File'
+    :param input_value: An input value with class 'Directory'
     """
     # define basename
     if 'basename' in input_value:

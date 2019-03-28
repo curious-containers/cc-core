@@ -29,9 +29,19 @@ _file_schema = {
     'required': ['class', 'connector']
 }
 
-_directory_schema = copy.deepcopy(_file_schema)
-_directory_schema['properties']['class']['enum'] = ['Directory']
-_directory_schema['properties']['listing'] = {'type': 'array'}
+_directory_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['Directory']},
+        'connector': _connector_schema,
+        'basename': {'type': 'string'},
+        'checksum': {'type': 'string'},
+        'size': {'type': 'integer'},
+        'listing': {'type': 'array'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'connector']
+}
 
 _inputs_schema = {
     'type': 'object',
