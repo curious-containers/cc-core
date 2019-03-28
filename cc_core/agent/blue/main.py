@@ -355,14 +355,6 @@ class InputConnectorRunner:
     A ConnectorRunner instance is associated with a blue input, that uses a connector.
     For every blue input, that uses a connector a new ConnectorRunner instance is created.
     """
-    _input_key: str
-    _input_index: int
-    _connector_command: List[str]
-    _input_class: ConnectorClass
-    _mount: bool
-    _access: dict
-    _path: str
-    _listing: dict
 
     def __init__(self, input_key, input_index, connector_command, input_class, mount, access, path, listing=None):
         """
@@ -642,9 +634,9 @@ class CliOutputRunner:
         :param glob_pattern: The glob pattern to match against output files
         :param output_class: The class of the output
         """
-        self._output_key: str = output_key
-        self._glob_pattern: str = glob_pattern
-        self._output_class: ConnectorClass = output_class
+        self._output_key = output_key
+        self._glob_pattern = glob_pattern
+        self._output_class = output_class
 
     def try_move(self, working_dir, output_dir):
         """
@@ -1044,11 +1036,6 @@ def format_key_index(input_key, input_index=None):
 
 
 class ConnectorManager:
-    _input_runners: List[InputConnectorRunner]
-    _output_runners: List[OutputConnectorRunner]
-    _cli_output_runner: List[CliOutputRunner]
-    _connector_cli_version_cache: dict
-
     def __init__(self):
         self._input_runners = []
         self._output_runners = []
