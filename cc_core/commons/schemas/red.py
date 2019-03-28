@@ -1,5 +1,3 @@
-import copy
-
 from cc_core.commons.schemas.common import PATTERN_KEY
 from cc_core.commons.schemas.cwl import _cwl_schema
 from cc_core.commons.schema_transform import transform

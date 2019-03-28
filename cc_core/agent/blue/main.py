@@ -13,7 +13,6 @@ import urllib.request
 from argparse import ArgumentParser
 from json import JSONDecodeError
 from traceback import format_exc
-from typing import List
 from urllib.error import URLError
 
 DESCRIPTION = 'Run an experiment as described in a BLUEFILE.'
