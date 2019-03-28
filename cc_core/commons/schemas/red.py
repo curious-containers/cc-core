@@ -19,7 +19,11 @@ _file_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['File']},
-        'connector': _connector_schema
+        'connector': _connector_schema,
+        'basename': {'type': 'string'},
+        'dirname': {'type': 'string'},
+        'checksum': {'type': 'string'},
+        'size': {'type': 'integer'}
     },
     'additionalProperties': False,
     'required': ['class', 'connector']
