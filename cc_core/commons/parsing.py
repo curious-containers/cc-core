@@ -89,7 +89,7 @@ def split_into_parts(to_split, start, end):
                 part.append(p)
 
     if in_reference:
-        raise ParsingError('Framed string not closed.\n{}'.format(to_split))
+        raise ParsingError('Framed string started but not closed.\n{}'.format(to_split))
     elif part:
         result.append(''.join(part))
 

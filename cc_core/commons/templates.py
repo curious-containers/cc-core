@@ -318,7 +318,8 @@ def _extract_missing_keys(template_string, key_string):
     try:
         parts = split_into_parts(template_string, TEMPLATE_SEPARATOR_START, TEMPLATE_SEPARATOR_END)
     except ParsingError as e:
-        raise TemplateError('Could not parse template "{}" in "{}". Failed with the following message:\n{}'
+        raise TemplateError('Could not parse template string "{}" in "{}". Do not use "{{" or "}}" in strings except '
+                            'for template values. Failed with the following message:\n{}'
                             .format(template_string, key_string, str(e)))
 
     missing_keys = set()
