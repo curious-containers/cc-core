@@ -103,3 +103,11 @@ class AccessValidationError(Exception):
 
 class AccessError(Exception):
     pass
+
+
+class ParsingError(Exception):
+    pass
+
+
+class TemplateError(Exception):
+    pass

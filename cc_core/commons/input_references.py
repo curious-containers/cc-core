@@ -1,6 +1,7 @@
 from copy import deepcopy
 
-from cc_core.commons.exceptions import InvalidInputReference
+from cc_core.commons.exceptions import InvalidInputReference, ParsingError
+from cc_core.commons.parsing import partition_all, split_into_parts
 
 ATTRIBUTE_SEPARATOR_SYMBOLS = ['.', '["', '"]', '[\'', '\']']
 INPUT_REFERENCE_START = '$('
@@ -32,53 +33,6 @@ def create_inputs_to_reference(job_data, input_files, input_directories):
     return {**deepcopy(job_data), **deepcopy(input_files), **deepcopy(input_directories)}
 
 
-def _partition_all_internal(s, sep):
-    """
-    Uses str.partition() to split every occurrence of sep in s. The returned list does not contain empty strings.
-
-    :param s: The string to split.
-    :param sep: A separator string.
-    :return: A list of parts split by sep
-    """
-    parts = list(s.partition(sep))
-
-    # if sep found
-    if parts[1] == sep:
-        new_parts = partition_all(parts[2], sep)
-        parts.pop()
-        parts.extend(new_parts)
-        return [p for p in parts if p]
-    else:
-        if parts[0]:
-            return [parts[0]]
-        else:
-            return []
-
-
-def partition_all(s, sep):
-    """
-    Uses str.partition() to split every occurrence of sep in s. The returned list does not contain empty strings.
-    If sep is a list, all separators are evaluated.
-
-    :param s: The string to split.
-    :param sep: A separator string or a list of separator strings.
-    :return: A list of parts split by sep
-    """
-    if isinstance(sep, list):
-        parts = _partition_all_internal(s, sep[0])
-        sep = sep[1:]
-
-        for s in sep:
-            tmp = []
-            for p in parts:
-                tmp.extend(_partition_all_internal(p, s))
-            parts = tmp
-
-        return parts
-    else:
-        return _partition_all_internal(s, sep)
-
-
 def split_input_references(to_split):
     """
     Returns the given string in normal strings and unresolved input references.
@@ -91,37 +45,11 @@ def split_input_references(to_split):
     :raise InvalidInputReference: If an input reference is not closed and a new reference starts or the string ends.
     :return: A list of normal strings and unresolved input references.
     """
-    parts = partition_all(to_split, [INPUT_REFERENCE_START, INPUT_REFERENCE_END])
-
-    result = []
-    part = []
-    in_reference = False
-    for p in parts:
-        if in_reference:
-            if p == INPUT_REFERENCE_START:
-                raise InvalidInputReference('A new input reference has been started, although the old input reference'
-                                            'has not yet been completed.\n{}'.format(to_split))
-            elif p == ")":
-                part.append(")")
-                result.append(''.join(part))
-                part = []
-                in_reference = False
-            else:
-                part.append(p)
-        else:
-            if p == INPUT_REFERENCE_START:
-                if part:
-                    result.append(''.join(part))
-                part = [INPUT_REFERENCE_START]
-                in_reference = True
-            else:
-                part.append(p)
-
-    if in_reference:
-        raise InvalidInputReference('Input reference not closed.\n{}'.format(to_split))
-    elif part:
-        result.append(''.join(part))
-
+    try:
+        result = split_into_parts(to_split, INPUT_REFERENCE_START, INPUT_REFERENCE_END)
+    except ParsingError as e:
+        raise InvalidInputReference('Could not parse input reference "{}". Failed with the following message:\n{}'
+                                    .format(to_split, repr(e)))
     return result
 
 
