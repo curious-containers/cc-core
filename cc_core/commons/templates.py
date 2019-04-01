@@ -1,3 +1,5 @@
+import sys
+
 import jsonschema
 import keyring
 
@@ -225,25 +227,42 @@ def _get_templates(missing_keys, keyring_service, fail_if_interactive):
     """
 
     templates = {}
+    keys_that_could_not_be_fulfilled = []
 
     first_interactive_key = True
 
     for missing_key in missing_keys:
+        # try keyring
         template_value = keyring.get_password(keyring_service, missing_key)
         if template_value is not None:
             templates[missing_key] = template_value
-        else:
+        else:  # ask user
             if fail_if_interactive:
-                raise TemplateError('Could not resolve template key "{}".'.format(missing_key))
+                keys_that_could_not_be_fulfilled.append(missing_key)
+                continue
 
             if first_interactive_key:
                 print('Asking for template values:')
+                sys.stdout.flush()
                 first_interactive_key = False
 
             template_value = _ask_for_template_value(missing_key)
             templates[missing_key] = template_value
 
+    if keys_that_could_not_be_fulfilled:
+        raise TemplateError('Could not resolve the following template keys: "{}".'
+                            .format(keys_that_could_not_be_fulfilled))
+
     return templates
+
+
+def _is_protected_key(key):
+    """
+    Returns whether the given key is a protected key. ('password' or starts with underscore).
+    :param key: The key to check
+    :return: True, if the given key is a protected key, otherwise False
+    """
+    return (key == 'password') or (key.startswith('_'))
 
 
 def _ask_for_template_value(template_key):
@@ -252,7 +271,10 @@ def _ask_for_template_value(template_key):
     :param template_key: The key to ask for
     :return: The users input
     """
-    value = input('{}: '.format(template_key))
+    if _is_protected_key(template_key):
+        value = getpass('{} (protected): '.format(template_key))
+    else:
+        value = input('{}: '.format(template_key))
     return value
 
 
