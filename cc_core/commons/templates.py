@@ -330,7 +330,10 @@ def _extract_missing_keys(template_string, key_string):
             if ('{' in template_key) or ('}' in template_key):
                 raise TemplateError('Could not parse template string "{}" in "{}". Too many brackets.'
                                     .format(template_string, key_string))
-            missing_keys.add(part[2:-2])
+            if template_key == '':
+                raise TemplateError('Could not parse template string "{}" in "{}". Template keys should not be empty.'
+                                    .format(template_string, key_string))
+            missing_keys.add(template_key)
         elif ('{' in part) or ('}' in part):
             raise TemplateError('Could not parse template string "{}" in "{}". Too many brackets.'
                                 .format(template_string, key_string))
