@@ -46,6 +46,10 @@ def main():
     if args.__dict__.get('debug'):
         print(json.dumps(result, indent=JSON_INDENT))
 
+    scheme = urlparse(args.blue_file).scheme
+    if _is_file_scheme_remote(scheme):
+        _post_result(args.blue_file, result)
+
     if result['state'] == 'succeeded':
         return 0
 
@@ -140,11 +144,11 @@ def get_blue_data(blue_location):
     """
     If blue_file is an URL fetches this URL and loads the json content, otherwise tries to load the file as local file.
     :param blue_location: An URL or local file path as string
-    :return: The content of the given file or URL
+    :return: A tuple containing the content of the given file or url and a fetch mode.
     """
     scheme = urlparse(blue_location).scheme
 
-    if scheme == 'path' or scheme == '':
+    if _is_file_scheme_local(scheme):
         try:
             if scheme == 'path':
                 blue_location = blue_location[5:]
@@ -152,7 +156,7 @@ def get_blue_data(blue_location):
         except FileNotFoundError as file_error:
             raise ExecutionError('Could not find blue file "{}" locally. Failed with the following message:\n{}'
                                  .format(blue_location, str(file_error)))
-    elif scheme == 'http' or scheme == 'https':
+    elif _is_file_scheme_remote(scheme):
         try:
             blue_file = urllib.request.urlopen(blue_location)
         except (URLError, ValueError) as http_error:
@@ -169,6 +173,29 @@ def get_blue_data(blue_location):
         raise ExecutionError('Could not decode blue file "{}". Blue file is not in json format.\n{}'
                              .format(blue_location, str(e)))
     return blue_data
+
+
+def _is_file_scheme_local(file_scheme):
+    return file_scheme == 'path' or file_scheme == ''
+
+
+def _is_file_scheme_remote(file_scheme):
+    return file_scheme == 'http' or file_scheme == 'https'
+
+
+def _post_result(url, result):
+    """
+    Posts the given result dictionary to the given url
+    :param url: The url to post the result to
+    :param result: The result to post
+    """
+    bytes_data = bytes(json.dumps(result), encoding='utf-8')
+
+    request = urllib.request.Request(url, data=bytes_data)
+    request.add_header('Content-Type', 'application/json')
+
+    # ignore response here
+    urllib.request.urlopen(request)
 
 
 def _validate_command(command):
