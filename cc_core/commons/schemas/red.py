@@ -46,6 +46,7 @@ _inputs_schema = {
     'patternProperties': {
         PATTERN_KEY: {
             'anyOf': [
+                {'type': 'null'},
                 {'type': 'string'},
                 {'type': 'number'},
                 {'type': 'boolean'},

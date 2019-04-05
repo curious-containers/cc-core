@@ -41,6 +41,7 @@ def convert_red_to_blue(red_data):
 
     for batch in batches:
         batch_inputs = batch['inputs']
+        remove_null_values(batch_inputs)
         complete_batch_inputs(batch_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
@@ -48,6 +49,17 @@ def convert_red_to_blue(red_data):
         blue_batches.append(blue_batch)
 
     return blue_batches
+
+
+def remove_null_values(dictionary):
+    """
+    Removed values that are None
+    :param dictionary: The dictionary in which to remove None values
+    """
+    keys = list(dictionary.keys())
+    for key in keys:
+        if dictionary[key] is None:
+            del dictionary[key]
 
 
 def create_blue_batch(command, batch, cli_outputs):
@@ -176,7 +188,7 @@ def create_execution_argument(cli_argument, batch_value):
         if cli_argument.is_optional():
             return []
         else:
-            raise JobSpecificationError('required argument "{}" is missing'.format(cli_argument.input_key))
+            raise JobSpecificationError('Required argument "{}" is missing'.format(cli_argument.input_key))
 
     # handle arrays (create argument list)
     argument_list = []
