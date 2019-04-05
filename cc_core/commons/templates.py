@@ -154,20 +154,20 @@ def fill_template(data, template_keys_and_values, allowed_section, remove_unders
     return _fill_recursively(data, template_keys_and_values, allowed_section, remove_underscores)
 
 
-def complete_red_data(red_data, keyring_service, fail_if_interactive):
+def complete_red_templates(red_data, keyring_service, fail_if_interactive):
     """
-    Replaces templates inside the given red data. Requests the missing keys of the red data from the keyring using the
+    Replaces templates inside the given red data. Requests the template keys of the red data from the keyring using the
     given keyring service.
-    :param red_data: The red data to complete missing keys for
+    :param red_data: The red data to complete template keys for
     :type red_data: dict[str, Any]
     :param keyring_service: The keyring service to use for requests
     :type keyring_service: str
     :param fail_if_interactive: Dont ask the user interactively for key values, but fail with an exception
     """
-    missing_keys = set()
-    _get_missing_keys(red_data, missing_keys)
+    template_keys = set()
+    _get_template_keys(red_data, template_keys)
 
-    templates = _get_templates(missing_keys, keyring_service, fail_if_interactive)
+    templates = _get_templates(template_keys, keyring_service, fail_if_interactive)
     _complete_templates(red_data, templates)
 
 
@@ -214,16 +214,18 @@ def _get_list_sub_key_string(index, key_string):
     return sub_key_string
 
 
-def _get_templates(missing_keys, keyring_service, fail_if_interactive):
+def _get_templates(template_keys, keyring_service, fail_if_interactive):
     """
     Returns a dictionary containing template keys and values.
-    To fill in the missing values, first the keyring service is requested for each key,
+    To fill in the template keys, first the keyring service is requested for each key,
     afterwards the user is asked interactively.
-    :param missing_keys: A set of missing keys to query the keyring or ask the user
+    :param template_keys: A set of template keys to query the keyring or ask the user
+    :type template_keys: set[TemplateKey]
     :param keyring_service: The keyring service to query
     :param fail_if_interactive: Dont ask the user interactively for key values, but fail with an exception
     :return: A dictionary containing a mapping of template keys and values
     :rtype: dict
+    :raise TemplateError: If not all TemplateKeys could be resolved and fail_if_interactive is set
     """
 
     templates = {}
@@ -231,14 +233,14 @@ def _get_templates(missing_keys, keyring_service, fail_if_interactive):
 
     first_interactive_key = True
 
-    for missing_key in missing_keys:
+    for template_key in template_keys:
         # try keyring
-        template_value = keyring.get_password(keyring_service, missing_key)
+        template_value = keyring.get_password(keyring_service, template_key.key)
         if template_value is not None:
-            templates[missing_key] = template_value
+            templates[template_key.key] = template_value
         else:  # ask user
             if fail_if_interactive:
-                keys_that_could_not_be_fulfilled.append(missing_key)
+                keys_that_could_not_be_fulfilled.append(template_key.key)
                 continue
 
             if first_interactive_key:
@@ -246,8 +248,8 @@ def _get_templates(missing_keys, keyring_service, fail_if_interactive):
                 sys.stdout.flush()
                 first_interactive_key = False
 
-            template_value = _ask_for_template_value(missing_key)
-            templates[missing_key] = template_value
+            template_value = _ask_for_template_value(template_key)
+            templates[template_key.key] = template_value
 
     if keys_that_could_not_be_fulfilled:
         raise TemplateError('Could not resolve the following template keys: "{}".'
@@ -271,45 +273,59 @@ def _ask_for_template_value(template_key):
     :param template_key: The key to ask for
     :return: The users input
     """
-    if _is_protected_key(template_key):
-        value = getpass('{} (protected): '.format(template_key))
+    if template_key.protected:
+        value = getpass('{} (protected): '.format(template_key.key))
     else:
-        value = input('{}: '.format(template_key))
+        value = input('{}: '.format(template_key.key))
     return value
 
 
 PRIVATE_KEYS = {'access', 'auth'}
 
 
-def _get_missing_keys(data, missing_keys, key_string=None, missing_keys_allowed=False):
+def _get_template_keys(data, template_keys, key_string=None, template_keys_allowed=False, protected=False):
     """
-    Iterates recursively over data values and appends template keys to the missing keys list.
+    Iterates recursively over data values and appends template keys to the template keys list.
     A template key is a string that starts with '{{' and ends with '}}'.
 
     :param data: The data to analyse.
-    :param missing_keys: A set of missing keys to append missing keys to.
-    :type missing_keys: set
+    :param template_keys: A set of template keys to append template keys to.
+    :type template_keys: set
     :param key_string: A string representing the keys above the current data element.
-    :param missing_keys_allowed: A boolean that specifies whether missing keys are allowed.
-    If a missing key is found but it is not allowed an exception is thrown.
-    :raise TemplateError: If a missing key is found, but is not allowed.
+    :param template_keys_allowed: A boolean that specifies whether template keys are allowed in the current dict
+    position. If a template key is found but it is not allowed an exception is thrown.
+    :param protected: Indicates that the sub keys should be treated as protected keys
+    :raise TemplateError: If a template key is found, but is not allowed.
     """
     if isinstance(data, dict):
         for key, value in data.items():
             sub_key_string = _get_dict_sub_key_string(key, key_string)
 
-            sub_missing_keys_allowed = missing_keys_allowed or (key in PRIVATE_KEYS)
-            _get_missing_keys(value, missing_keys, sub_key_string, sub_missing_keys_allowed)
+            sub_template_keys_allowed = template_keys_allowed or (key in PRIVATE_KEYS)
+            sub_protected = protected or _is_protected_key(key)
+
+            if sub_protected and not sub_template_keys_allowed:
+                raise TemplateError('Found protected key "{}", but protected keys are only allowed under one of {}'
+                                    .format(sub_key_string, str(PRIVATE_KEYS)))
+            _get_template_keys(data=value,
+                               template_keys=template_keys,
+                               key_string=sub_key_string,
+                               template_keys_allowed=sub_template_keys_allowed,
+                               protected=sub_protected)
     elif isinstance(data, list):
         for index, sub_data in enumerate(data):
             sub_key_string = _get_list_sub_key_string(index, key_string)
 
-            _get_missing_keys(sub_data, missing_keys, sub_key_string, missing_keys_allowed)
+            _get_template_keys(data=sub_data,
+                               template_keys=template_keys,
+                               key_string=sub_key_string,
+                               template_keys_allowed=template_keys_allowed,
+                               protected=protected)
     elif isinstance(data, str):
-        if missing_keys_allowed:
-            new_missing_keys = _extract_missing_keys(data, key_string)
-            if new_missing_keys:
-                missing_keys.update(new_missing_keys)
+        if template_keys_allowed:
+            new_template_keys = _extract_template_keys(data, key_string, protected)
+            if new_template_keys:
+                template_keys.update(new_template_keys)
         elif ('{' in data) or ('}' in data):
             raise TemplateError('Found invalid bracket in "{}" under "{}" in red data. Template keys are only '
                                 'allowed as sub element of an auth or access key.'.format(data, key_string))
@@ -319,7 +335,7 @@ TEMPLATE_SEPARATOR_START = '{{'
 TEMPLATE_SEPARATOR_END = '}}'
 
 
-def _is_missing_key(s):
+def _is_template_key(s):
     """
     Returns True if s is a template string.
     :param s: The string to analyse
@@ -328,14 +344,26 @@ def _is_missing_key(s):
     return s.startswith(TEMPLATE_SEPARATOR_START) and s.endswith(TEMPLATE_SEPARATOR_END)
 
 
-def _extract_missing_keys(template_string, key_string):
+class TemplateKey:
+    def __init__(self, key, protected):
+        """
+        Creates a new TemplateKey
+        :param key: The key string of this TemplateKey
+        :param protected: Indicates if this TemplateKey is protected or not
+        """
+        self.key = key
+        self.protected = protected
+
+
+def _extract_template_keys(template_string, key_string, protected):
     """
-    Returns a set of missing keys, found inside s.
+    Returns a set of template keys, found inside template_string.
     :param template_string: The string to analyse
     :type template_string: str
-    :param key_string: The keys of the given missing_key
-    :return: If s is a missing key, the inner value of the given string, otherwise None
-    :raise RedSpecificationError: If the missing key equals '{{}}'
+    :param key_string: The keys of the given template_string
+    :param protected: Indicates whether the extracted keys are protected
+    :return: A set of template keys found inside template_string
+    :raise Parsing: If the template_string is malformed
     """
     try:
         parts = split_into_parts(template_string, TEMPLATE_SEPARATOR_START, TEMPLATE_SEPARATOR_END)
@@ -344,23 +372,23 @@ def _extract_missing_keys(template_string, key_string):
                             'for template values. Failed with the following message:\n{}'
                             .format(template_string, key_string, str(e)))
 
-    missing_keys = set()
+    template_keys = set()
 
     for part in parts:
-        if _is_missing_key(part):
-            template_key = part[2:-2]
-            if ('{' in template_key) or ('}' in template_key):
+        if _is_template_key(part):
+            template_key_string = part[2:-2]
+            if ('{' in template_key_string) or ('}' in template_key_string):
                 raise TemplateError('Could not parse template string "{}" in "{}". Too many brackets.'
                                     .format(template_string, key_string))
-            if template_key == '':
+            if template_key_string == '':
                 raise TemplateError('Could not parse template string "{}" in "{}". Template keys should not be empty.'
                                     .format(template_string, key_string))
-            missing_keys.add(template_key)
+            template_keys.add(TemplateKey(template_key_string, protected))
         elif ('{' in part) or ('}' in part):
             raise TemplateError('Could not parse template string "{}" in "{}". Too many brackets.'
                                 .format(template_string, key_string))
 
-    return missing_keys
+    return template_keys
 
 
 def _resolve_template_string(template_string, templates, key_string):
@@ -378,10 +406,58 @@ def _resolve_template_string(template_string, templates, key_string):
                             .format(template_string, key_string, str(e)))
     result = []
     for p in parts:
-        if _is_missing_key(p):
+        if _is_template_key(p):
             resolved = templates[p[2:-2]]
             result.append(resolved)
         else:
             result.append(p)
 
     return ''.join(result)
+
+
+def get_secret_values(red_data):
+    """
+    Returns a list of secret values found in the given red data.
+    A secret value is a value found under a protected key
+    :param red_data: A dictionary containing the red data
+    :return: A list of secret values found in the given red data
+    """
+    secret_values = []
+    _append_secret_values(red_data, secret_values)
+    return secret_values
+
+
+def _append_secret_values(data, secret_values, protected=False):
+    """
+    Appends secret values found in data to secret_values
+    :param data: The data to search in for secret values
+    :param secret_values: The list of secret values
+    :param protected: Indicates if the given value is protected or not
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            sub_protected = protected or _is_protected_key(key)
+            _append_secret_values(value, secret_values, sub_protected)
+    elif isinstance(data, list):
+        for value in data:
+            _append_secret_values(value, secret_values, protected)
+    else:
+        if protected:
+            secret_values.append(data)
+
+
+def normalize_keys(data):
+    """
+    Removes starting underscores from the keys in data
+    :param data: The data in which keys with underscores should be replaced without underscore
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key.startswith('_'):
+                normalized_key = key[1:]
+                data[normalized_key] = value
+                del data[key]
+            normalize_keys(value)
+    elif isinstance(data, list):
+        for value in data:
+            normalize_keys(value)
