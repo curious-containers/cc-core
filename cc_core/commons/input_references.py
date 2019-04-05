@@ -88,7 +88,7 @@ def resolve_input_reference(reference, inputs_to_reference):
     """
     original_reference = reference
     if not reference.startswith('{}inputs.'.format(INPUT_REFERENCE_START)):
-        raise InvalidInputReference('An input reference must have the following form'
+        raise InvalidInputReference('An input reference must have the following form '
                                     '"$(inputs.<input_name>[.<attribute>]".\n'
                                     'The invalid reference is: "{}"'.format(original_reference))
     # remove "$(" and ")"
@@ -100,14 +100,14 @@ def resolve_input_reference(reference, inputs_to_reference):
                                     'input reference does not comply with it:\n{}'.format(original_reference))
     elif parts[0] != "inputs":
         raise InvalidInputReference('InputReference should at least contain "$(inputs.identifier)". The following '
-                                    'input reference does not comply with it:\n$({})'.format(original_reference))
+                                    'input reference does not comply with it:\n{}'.format(original_reference))
 
     # remove 'inputs'
     parts = parts[1:]
     try:
         resolved = _get_dict_element(inputs_to_reference, parts)
     except KeyError as e:
-        raise InvalidInputReference('Could not resolve input reference "{}". The Key "{}" could not be resolved.'
+        raise InvalidInputReference('Could not resolve input reference "{}". The key "{}" could not be resolved.'
                                     .format(original_reference, str(e)))
     return resolved
 
