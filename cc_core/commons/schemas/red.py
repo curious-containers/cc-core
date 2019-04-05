@@ -74,13 +74,18 @@ _outputs_schema = {
     'type': 'object',
     'patternProperties': {
         PATTERN_KEY: {
-            'type': 'object',
-            'properties': {
-                'class': {'enum': ['File']},
-                'connector': _connector_schema
-            },
-            'additionalProperties': False,
-            'required': ['class', 'connector']
+            'anyOf': [
+                {
+                    'type': 'object',
+                    'properties': {
+                        'class': {'enum': ['File']},
+                        'connector': _connector_schema
+                    },
+                    'additionalProperties': False,
+                    'required': ['class', 'connector']
+                },
+                {'type': 'null'}
+            ]
         }
     },
     'additionalProperties': False

@@ -41,7 +41,6 @@ def convert_red_to_blue(red_data):
 
     for batch in batches:
         batch_inputs = batch['inputs']
-        remove_null_values(batch_inputs)
         complete_batch_inputs(batch_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
@@ -49,17 +48,6 @@ def convert_red_to_blue(red_data):
         blue_batches.append(blue_batch)
 
     return blue_batches
-
-
-def remove_null_values(dictionary):
-    """
-    Removed values that are None
-    :param dictionary: The dictionary in which to remove None values
-    """
-    keys = list(dictionary.keys())
-    for key in keys:
-        if dictionary[key] is None:
-            del dictionary[key]
 
 
 def create_blue_batch(command, batch, cli_outputs):
@@ -498,20 +486,37 @@ def complete_directory_input_values(input_key, input_value):
 
 def extract_batches(red_data):
     """
-    Extracts a list of batches from the given red data
+    Extracts a list of batches from the given red data.
+    The resulting batches always contain an inputs and an outputs key
     :param red_data: The red data to extract batches from
     :return: A list of Batches
     """
-
     # in case of batches given
     red_batches = red_data.get('batches')
     if red_batches:
         batches = []
         for batch in red_batches:
-            batches.append(batch)
-
-        return batches
+            new_batch = {'inputs': batch['inputs'],
+                         'outputs': batch.get('outputs', {})}
+            batches.append(new_batch)
     else:
         batch = {'inputs': red_data['inputs'],
-                 'outputs': red_data.get('outputs')}
-        return [batch]
+                 'outputs': red_data.get('outputs', {})}
+        batches = [batch]
+
+    for batch in batches:
+        remove_null_values(batch['inputs'])
+        remove_null_values(batch['outputs'])
+
+    return batches
+
+
+def remove_null_values(dictionary):
+    """
+    Removed values that are None
+    :param dictionary: The dictionary in which to remove None values
+    """
+    keys = list(dictionary.keys())
+    for key in keys:
+        if dictionary[key] is None:
+            del dictionary[key]
