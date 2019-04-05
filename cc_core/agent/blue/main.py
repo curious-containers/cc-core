@@ -14,6 +14,7 @@ from argparse import ArgumentParser
 from json import JSONDecodeError
 from traceback import format_exc
 from urllib.error import URLError
+from urllib.parse import urlparse
 
 DESCRIPTION = 'Run an experiment as described in a BLUEFILE.'
 JSON_INDENT = 2
@@ -141,14 +142,25 @@ def get_blue_data(blue_location):
     :param blue_location: An URL or local file path as string
     :return: The content of the given file or URL
     """
-    try:
-        blue_file = open(blue_location, 'r')
-    except FileNotFoundError as file_error:
+    scheme = urlparse(blue_location).scheme
+
+    if scheme == 'path' or scheme == '':
+        try:
+            if scheme == 'path':
+                blue_location = blue_location[5:]
+            blue_file = open(blue_location, 'r')
+        except FileNotFoundError as file_error:
+            raise ExecutionError('Could not find blue file "{}" locally. Failed with the following message:\n{}'
+                                 .format(blue_location, str(file_error)))
+    elif scheme == 'http' or scheme == 'https':
         try:
             blue_file = urllib.request.urlopen(blue_location)
         except (URLError, ValueError) as http_error:
-            raise ExecutionError('Could not fetch blue file "{}"\n\nFile error:\n{}\n\nurl error:\n{}.'
-                                 .format(blue_location, repr(file_error), repr(http_error)))
+            raise ExecutionError('Could not fetch blue file "{}". Failed with the following message:\n{}.'
+                                 .format(blue_location, str(http_error)))
+    else:
+        raise ExecutionError('Unknown scheme for blue file "{}". Should be on of ["", "path", "http", "https"] but "{}"'
+                             ' was found.'.format(blue_location, scheme))
 
     try:
         blue_data = json.load(blue_file)
