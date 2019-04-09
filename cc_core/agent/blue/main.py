@@ -238,7 +238,7 @@ def ensure_directory(d):
     """
     if os.path.exists(d):
         if os.listdir(d):
-            raise FileExistsError('Directory "{}" already exists and is not empty.')
+            raise FileExistsError('Directory "{}" already exists and is not empty.'.format(d))
         else:
             return
     os.makedirs(d)
