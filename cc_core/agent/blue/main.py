@@ -1,4 +1,5 @@
 import glob
+import hashlib
 import os
 import sys
 
@@ -394,7 +395,17 @@ class InputConnectorRunner:
     For every blue input, that uses a connector a new ConnectorRunner instance is created.
     """
 
-    def __init__(self, input_key, input_index, connector_command, input_class, mount, access, path, listing=None):
+    def __init__(self,
+                 input_key,
+                 input_index,
+                 connector_command,
+                 input_class,
+                 mount,
+                 access,
+                 path,
+                 listing=None,
+                 checksum=None,
+                 size=None):
         """
         Initiates an InputConnectorRunner.
 
@@ -406,6 +417,8 @@ class InputConnectorRunner:
         :param access: The access information for the connector
         :param path: The path where to put the data
         :param listing: An optional listing for the associated connector
+        :param checksum: An optional checksum (sha1 hash) for the associated file
+        :param size: The optional size of the associated file in bytes
         """
         self._input_key = input_key
         self._input_index = input_index
@@ -415,6 +428,8 @@ class InputConnectorRunner:
         self._access = access
         self._path = path
         self._listing = listing
+        self._checksum = checksum
+        self._size = size
 
         # Is set to true, after mounting
         self._has_mounted = False
@@ -487,12 +502,31 @@ class InputConnectorRunner:
 
     def _receive_file_content_check(self):
         """
-        Checks if the given file exists.
-        :raise ConnectorError: If the given file does not exist
+        Checks if the given file exists. If a checksum is given checks if this checksum matches. If a size is given
+        checks if this size matches the file size.
+        :raise ConnectorError: If the given file does not exist, if the given hash does not match or if the given file
+        size does not match.
         """
         if not os.path.isfile(self._path):
             raise ConnectorError('Content check for input file "{}" failed. Path "{}" does not exist.'
                                  .format(self.format_input_key(), self._path))
+        if self._checksum:
+            hasher = hashlib.sha1()
+            with open(self._path, 'rb') as file:
+                buf = file.read()
+                hasher.update(buf)
+            checksum = 'sha1${}'.format(hasher.hexdigest())
+            if self._checksum != checksum:
+                raise ConnectorError('Content check for input file "{}" failed. The given checksum "{}" '
+                                     'does not match the checksum calculated from the file "{}".'
+                                     .format(self.format_input_key(), self._checksum, checksum))
+
+        if self._size is not None:
+            size = os.path.getsize(self._path)
+            if self._size != size:
+                raise ConnectorError('Content check for input file "{}" failed. The given file size "{}" '
+                                     'does not match the calculated file size "{}".'
+                                     .format(self.format_input_key(), self._size, size))
 
     def validate_receive(self):
         """
@@ -889,6 +923,8 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_cl
 
     mount = connector_data.get('mount', False)
     listing = input_value.get('listing')
+    checksum = input_value.get('checksum')
+    size = input_value.get('size')
 
     try:
         cli_version = resolve_connector_cli_version(connector_command, connector_cli_version_cache)
@@ -924,7 +960,9 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_cl
                                               mount,
                                               access,
                                               path,
-                                              listing)
+                                              listing,
+                                              checksum,
+                                              size)
 
     return connector_runner
 
