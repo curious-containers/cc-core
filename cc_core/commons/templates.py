@@ -286,7 +286,7 @@ PRIVATE_KEYS = {'access', 'auth'}
 def _get_template_keys(data, template_keys, key_string=None, template_keys_allowed=False, protected=False):
     """
     Iterates recursively over data values and appends template keys to the template keys list.
-    A template key is a string that starts with '{{' and ends with '}}'.
+    A template key string is a string that starts with '{{' and ends with '}}'.
 
     :param data: The data to analyse.
     :param template_keys: A set of template keys to append template keys to.
