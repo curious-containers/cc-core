@@ -153,27 +153,26 @@ def get_blue_data(blue_location):
         try:
             if scheme == 'path':
                 blue_location = blue_location[5:]
-            blue_file = open(blue_location, 'r')
+            with open(blue_location, 'r') as blue_file:
+                try:
+                    return json.load(blue_file)
+                except JSONDecodeError as e:
+                    raise ExecutionError('Could not decode blue file "{}". Blue file is not in json format.\n{}'
+                                         .format(blue_location, str(e)))
         except FileNotFoundError as file_error:
             raise ExecutionError('Could not find blue file "{}" locally. Failed with the following message:\n{}'
                                  .format(blue_location, str(file_error)))
     elif _is_file_scheme_remote(scheme):
         try:
-            blue_file = urllib.request.urlopen(blue_location)
+            with urllib.request.urlopen(blue_location) as blue_file:
+                blue_str = blue_file.read().decode('utf-8')
+                return json.loads(blue_str)
         except (URLError, ValueError) as http_error:
             raise ExecutionError('Could not fetch blue file "{}". Failed with the following message:\n{}.'
                                  .format(blue_location, str(http_error)))
-    else:
-        raise ExecutionError('Unknown scheme for blue file "{}". Should be on of ["", "path", "http", "https"] but "{}"'
-                             ' was found.'.format(blue_location, scheme))
 
-    try:
-        blue_data = json.load(blue_file)
-    except JSONDecodeError as e:
-        blue_file.close()
-        raise ExecutionError('Could not decode blue file "{}". Blue file is not in json format.\n{}'
-                             .format(blue_location, str(e)))
-    return blue_data
+    raise ExecutionError('Unknown scheme for blue file "{}". Should be on of ["", "path", "http", "https"] but "{}"'
+                         ' was found.'.format(blue_location, scheme))
 
 
 def _is_file_scheme_local(file_scheme):
