@@ -13,6 +13,9 @@ class GPUDevice:
         self.device_id = device_id
         self.vram = vram
 
+    def __repr__(self):
+        return 'GPUDevice(device_id="{}" vram="{}")'.format(self.device_id, self.vram)
+
 
 class GPURequirement:
     """
@@ -39,6 +42,9 @@ class GPURequirement:
             sufficient = False
 
         return sufficient
+
+    def __repr__(self):
+        return 'GPURequirement(min_vram="{}")'.format(self.min_vram)
 
 
 def get_cuda_devices():
