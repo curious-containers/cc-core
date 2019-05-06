@@ -4,8 +4,8 @@ from argparse import ArgumentParser
 
 from cc_core.version import VERSION
 
-from cc_core.agent.blue.main import main as blue_main
-from cc_core.agent.blue.main import DESCRIPTION as BLUE_DESCRIPTION
+from cc_core.agent.blue.__main__ import main as blue_main
+from cc_core.agent.blue.__main__ import DESCRIPTION as BLUE_DESCRIPTION
 
 SCRIPT_NAME = 'ccagent'
 
