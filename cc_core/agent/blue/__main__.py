@@ -913,7 +913,11 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_cl
         connector_command = connector_data['command']
         access = connector_data['access']
 
-        input_class = ConnectorClass.from_string(input_value['class'])
+        clazz = input_value['class']
+        if assert_list:
+            clazz = '{}[]'.format(clazz)
+
+        input_class = ConnectorClass.from_string(clazz)
         path = input_value['path']
     except KeyError as e:
         raise ConnectorError('Could not create connector for input key "{}".\n'
@@ -986,7 +990,7 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
         connector_command = connector_data['command']
         access = connector_data['access']
 
-        output_class = ConnectorClass.from_string(output_value['class'])
+        output_class = ConnectorClass.from_string(cli_output_value['type'])
         glob_pattern = cli_output_value['outputBinding']['glob']
     except KeyError as e:
         raise ConnectorError('Could not create connector for output key "{}".\n'

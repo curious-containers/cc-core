@@ -41,7 +41,7 @@ def convert_red_to_blue(red_data):
 
     for batch in batches:
         batch_inputs = batch['inputs']
-        complete_batch_inputs(batch_inputs)
+        complete_batch_inputs(batch_inputs, cli_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
         blue_batch = create_blue_batch(command, batch, resolved_cli_outputs)
@@ -74,12 +74,12 @@ class InputType:
     class InputCategory(Enum):
         File = 0
         Directory = 1
-        String = 2
-        Int = 3
-        Long = 4
-        Float = 5
-        Double = 6
-        Boolean = 7
+        string = 2
+        int = 3
+        long = 4
+        float = 5
+        double = 6
+        boolean = 7
 
     def __init__(self, input_category, is_array, is_optional):
         self.input_category = input_category
@@ -152,12 +152,12 @@ def generate_command(base_command, cli_arguments, batch):
 INPUT_CATEGORY_REPRESENTATION_MAPPER = {
     InputType.InputCategory.File: lambda batch_value: batch_value['path'],
     InputType.InputCategory.Directory: lambda batch_value: batch_value['path'],
-    InputType.InputCategory.String: lambda batch_value: batch_value,
-    InputType.InputCategory.Int: lambda batch_value: str(batch_value),
-    InputType.InputCategory.Long: lambda batch_value: str(batch_value),
-    InputType.InputCategory.Float: lambda batch_value: str(batch_value),
-    InputType.InputCategory.Double: lambda batch_value: str(batch_value),
-    InputType.InputCategory.Boolean: lambda batch_value: str(batch_value)
+    InputType.InputCategory.string: lambda batch_value: batch_value,
+    InputType.InputCategory.int: lambda batch_value: str(batch_value),
+    InputType.InputCategory.long: lambda batch_value: str(batch_value),
+    InputType.InputCategory.float: lambda batch_value: str(batch_value),
+    InputType.InputCategory.double: lambda batch_value: str(batch_value),
+    InputType.InputCategory.boolean: lambda batch_value: str(batch_value)
 }
 
 
@@ -186,13 +186,16 @@ def create_execution_argument(cli_argument, batch_value):
                                         'but job is not given as list'.format(cli_argument.input_key))
 
         for sub_batch_value in batch_value:
+            # TODO: boolean lists?
             r = INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](sub_batch_value)
             argument_list.append(r)
 
         if not argument_list:
             return []
     else:
-        argument_list.append(INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](batch_value))
+        # do not insert anything for boolean
+        if not cli_argument.get_type_category() == InputType.InputCategory.boolean:
+            argument_list.append(INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](batch_value))
 
     # join argument list
     if cli_argument.item_separator:
@@ -201,14 +204,15 @@ def create_execution_argument(cli_argument, batch_value):
     # add prefix
     if cli_argument.prefix:
         do_separate = cli_argument.separate
+        # TODO: do_separate = False does not work for input File lists, why did this code exist?
         # do not separate, if the cli argument is an array and the item separator is not given
-        if cli_argument.is_array() and not cli_argument.item_separator:
-            do_separate = False
+        # if cli_argument.is_array() and not cli_argument.item_separator:
+        #    do_separate = False
 
         if do_separate:
             argument_list.insert(0, cli_argument.prefix)
         else:
-            assert len(argument_list) == 1
+            assert len(argument_list) >= 1
             argument_list = ['{}{}'.format(cli_argument.prefix, argument_list[0])]
 
     return argument_list
@@ -401,14 +405,16 @@ def complete_input_references_in_outputs(cli_outputs, inputs_to_reference):
     return resolved_outputs
 
 
-def complete_batch_inputs(batch_inputs):
+def complete_batch_inputs(batch_inputs, cli_inputs):
     """
     Completes the input attributes of the input files/directories, by adding the attributes:
     path, basename, dirname, nameroot, nameext
     :param batch_inputs: a dictionary containing job input information
     """
     for input_key, batch_value in batch_inputs.items():
-        input_type = InputType.from_string(batch_value['class'])
+        cli_input = cli_inputs[input_key]
+
+        input_type = InputType.from_string(cli_input['type'])
 
         # complete files
         if input_type.is_file():
