@@ -245,19 +245,6 @@ def red_get_mount_connectors_from_inputs(inputs):
     return keys
 
 
-def red_get_mount_connectors_from_outputs(outputs):
-    keys = []
-    for output_key, arg in outputs.items():
-        if not isinstance(arg, dict):
-            continue
-
-        connector_data = arg['connector']
-        if connector_data.get('mount'):
-            keys.append(output_key)
-
-    return keys
-
-
 def red_get_mount_connectors(red_data, ignore_outputs):
     """
     Returns a list of mounting connectors
