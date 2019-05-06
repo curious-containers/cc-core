@@ -14,7 +14,6 @@ requests = "^2.18"
 jsonschema = "^2.6"
 psutil = "^5.4"
 "ruamel.yaml" = "^0.15"
-keyring = "^19.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.3"
