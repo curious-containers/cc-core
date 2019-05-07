@@ -141,14 +141,4 @@ _red_schema = {
     }]
 }
 
-
-_fill_schema = {
-    'type': 'object',
-    'patternProperties': {
-        PATTERN_KEY: {'type': 'string'}
-    },
-    'additionalProperties': False
-}
-
 red_schema = transform(_red_schema)
-fill_schema = transform(_fill_schema)
