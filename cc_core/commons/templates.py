@@ -169,3 +169,22 @@ def _extract_template_keys(template_string, key_string, protected):
                                 .format(template_string, key_string))
 
     return template_keys
+
+
+def normalize_keys(data):
+    """
+    Removes starting underscores from the keys in data
+    :param data: The data in which keys with underscores should be replaced without underscore
+    """
+    if isinstance(data, dict):
+        keys = list(data.keys())
+        for key in keys:
+            value = data[key]
+            if key.startswith('_'):
+                normalized_key = key[1:]
+                data[normalized_key] = value
+                del data[key]
+            normalize_keys(value)
+    elif isinstance(data, list):
+        for value in data:
+            normalize_keys(value)
