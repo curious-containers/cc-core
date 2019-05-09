@@ -204,15 +204,15 @@ def create_execution_argument(cli_argument, batch_value):
     # add prefix
     if cli_argument.prefix:
         do_separate = cli_argument.separate
-        # TODO: do_separate = False does not work for input File lists, why did this code exist?
-        # do not separate, if the cli argument is an array and the item separator is not given
-        # if cli_argument.is_array() and not cli_argument.item_separator:
-        #    do_separate = False
+
+        # do separate, if the cli argument is an array and the item separator is not given
+        if cli_argument.is_array() and not cli_argument.item_separator:
+            do_separate = True
 
         if do_separate:
             argument_list.insert(0, cli_argument.prefix)
         else:
-            assert len(argument_list) >= 1
+            assert len(argument_list) == 1
             argument_list = ['{}{}'.format(cli_argument.prefix, argument_list[0])]
 
     return argument_list
@@ -410,6 +410,7 @@ def complete_batch_inputs(batch_inputs, cli_inputs):
     Completes the input attributes of the input files/directories, by adding the attributes:
     path, basename, dirname, nameroot, nameext
     :param batch_inputs: a dictionary containing job input information
+    :param cli_inputs: a dictionary that contains the cli description
     """
     for input_key, batch_value in batch_inputs.items():
         cli_input = cli_inputs[input_key]
