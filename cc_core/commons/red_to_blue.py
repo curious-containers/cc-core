@@ -161,6 +161,89 @@ INPUT_CATEGORY_REPRESENTATION_MAPPER = {
 }
 
 
+def _get_boolean_array_argument_list(cli_argument, batch_value):
+    """
+    Creates a list of strings representing an execution argument for boolean arrays. Like ['true', 'False']
+    :param cli_argument: The cli argument. (Should be an boolean array)
+    :param batch_value: The batch value corresponding to the cli argument. Should contain any number of booleans.
+    :return: A list of strings representing
+    """
+    argument_list = []
+    if cli_argument.item_separator:
+        for sub_batch_value in batch_value:
+            r = INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](sub_batch_value)
+            argument_list.append(r)
+    return argument_list
+
+
+def _create_argument_list(cli_argument, batch_value):
+    """
+    Creates the argument list for an execution argument.
+    Prefix is not included.
+    Elements are not joined with item_separator.
+
+    :param cli_argument: An cli argument
+    :param batch_value: The batch value corresponding to the cli argument.
+    :return: A list of strings representing the argument list of this cli argument.
+    """
+    argument_list = []
+    if cli_argument.is_array():
+        if not isinstance(batch_value, list):
+            raise JobSpecificationError('For input key "{}":\nDescription defines an array, '
+                                        'but job is not given as list'.format(cli_argument.input_key))
+
+        # handle boolean arrays special
+        if cli_argument.is_boolean():
+            argument_list = _get_boolean_array_argument_list(cli_argument, batch_value)
+        else:
+            for sub_batch_value in batch_value:
+                r = INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](sub_batch_value)
+                argument_list.append(r)
+    else:
+        # do not insert anything for boolean
+        if not cli_argument.is_boolean():
+            argument_list.append(INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](batch_value))
+
+    return argument_list
+
+
+def _argument_list_to_execution_argument(argument_list, cli_argument, batch_value):
+    """
+    Returns a list of strings representing the execution argument for the given cli argument.
+    :param argument_list: The list of argument without prefix
+    :param cli_argument: The cli argument whose prefix might be added.
+    :param batch_value: The batch value corresponding to the cli argument
+    """
+    execution_argument = []
+
+    if cli_argument.prefix:
+        do_separate = cli_argument.separate
+
+        # do separate, if the cli argument is an array and the item separator is not given
+        if cli_argument.is_array() and not cli_argument.item_separator:
+            do_separate = True
+
+        # handle prefix special for boolean values and arrays
+        # do not add prefix, if boolean value is False or array of booleans is empty
+        should_add_prefix = True
+        if cli_argument.is_boolean():
+            if not batch_value:
+                should_add_prefix = False
+
+        if should_add_prefix:
+            if do_separate:
+                execution_argument.append(cli_argument.prefix)
+                execution_argument.extend(argument_list)
+            else:
+                assert len(argument_list) == 1
+                joined_argument = '{}{}'.format(cli_argument.prefix, argument_list[0])
+                execution_argument.append(joined_argument)
+    else:
+        execution_argument.extend(argument_list)
+
+    return execution_argument
+
+
 def create_execution_argument(cli_argument, batch_value):
     """
     Creates a list of strings representing an execution argument. Like ['--outdir=', '/path/to/file']
@@ -178,44 +261,13 @@ def create_execution_argument(cli_argument, batch_value):
         else:
             raise JobSpecificationError('Required argument "{}" is missing'.format(cli_argument.input_key))
 
-    # handle arrays (create argument list)
-    argument_list = []
-    if cli_argument.is_array():
-        if not isinstance(batch_value, list):
-            raise JobSpecificationError('For input key "{}":\nDescription defines an array, '
-                                        'but job is not given as list'.format(cli_argument.input_key))
+    argument_list = _create_argument_list(cli_argument, batch_value)
 
-        for sub_batch_value in batch_value:
-            # TODO: boolean lists?
-            r = INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](sub_batch_value)
-            argument_list.append(r)
-
-        if not argument_list:
-            return []
-    else:
-        # do not insert anything for boolean
-        if not cli_argument.get_type_category() == InputType.InputCategory.boolean:
-            argument_list.append(INPUT_CATEGORY_REPRESENTATION_MAPPER[cli_argument.get_type_category()](batch_value))
-
-    # join argument list
+    # join argument list, depending on item separator
     if cli_argument.item_separator:
         argument_list = [cli_argument.item_separator.join(argument_list)]
 
-    # add prefix
-    if cli_argument.prefix:
-        do_separate = cli_argument.separate
-
-        # do separate, if the cli argument is an array and the item separator is not given
-        if cli_argument.is_array() and not cli_argument.item_separator:
-            do_separate = True
-
-        if do_separate:
-            argument_list.insert(0, cli_argument.prefix)
-        else:
-            assert len(argument_list) == 1
-            argument_list = ['{}{}'.format(cli_argument.prefix, argument_list[0])]
-
-    return argument_list
+    return _argument_list_to_execution_argument(argument_list, cli_argument, batch_value)
 
 
 @total_ordering
@@ -331,6 +383,9 @@ class CliArgument:
 
     def get_type_category(self):
         return self.input_type.input_category
+
+    def is_boolean(self):
+        return self.input_type.input_category == InputType.InputCategory.boolean
 
     @staticmethod
     def from_cli_input_description(input_key, cli_input_description):
