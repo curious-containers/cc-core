@@ -313,7 +313,7 @@ def create_execution_argument(cli_argument, batch_value):
     argument_list = _create_argument_list(cli_argument, batch_value)
 
     # join argument list, depending on item separator
-    if cli_argument.item_separator:
+    if argument_list and cli_argument.item_separator:
         argument_list = [cli_argument.item_separator.join(argument_list)]
 
     return _argument_list_to_execution_argument(argument_list, cli_argument, batch_value)
