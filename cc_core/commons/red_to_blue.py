@@ -390,8 +390,8 @@ class CliArgument:
         :param item_separator: The string to join the elements of an array
         """
         self.input_key = input_key
-        self.argument_position: CliArgumentPosition = argument_position
-        self.input_type: InputType = input_type
+        self.argument_position = argument_position
+        self.input_type = input_type
         self.prefix = prefix
         self.separate = separate
         self.item_separator = item_separator
