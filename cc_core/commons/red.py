@@ -142,11 +142,17 @@ def _check_input_type(input_key, input_value, cli_description_type):
             else:
                 short_repr = 'value "{}" of type "{}"'.format(sub_input_value, type(sub_input_value).__name__)
 
-            raise RedSpecificationError(
-                'Value of input key "{}" should have type "{}", but found {}.'.format(
+            raise RedSpecificationError('Value of input key "{}" should have type "{}", but found {}.'.format(
                     input_key, input_type.input_category.name, short_repr
-                )
-            )
+            ))
+
+        if not input_type.is_primitive():
+            cli_type = input_type.input_category.name
+            value_type = sub_input_value.get('class')
+            if cli_type != value_type:
+                raise RedSpecificationError('Input key "{}" is declared as "{}" but given as "{}"'.format(
+                    input_key, cli_type, value_type
+                ))
 
 
 def _check_input_types(red_data):

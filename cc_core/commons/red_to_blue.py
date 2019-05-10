@@ -169,6 +169,10 @@ class InputType:
     def is_optional(self):
         return self._is_optional
 
+    def is_primitive(self):
+        return (self.input_category != InputType.InputCategory.Directory) and \
+               (self.input_category != InputType.InputCategory.File)
+
 
 def generate_command(base_command, cli_arguments, batch):
     """
