@@ -6,7 +6,7 @@ URL_SCHEME_IDENTIFIER = 'path'
 
 
 CWL_INPUT_TYPES = ['File', 'Directory', 'string', 'int', 'long', 'float', 'double', 'boolean']
-CWL_INPUT_TYPES += ['{}[]'.format(t) for t in CWL_INPUT_TYPES[:-1]]
+CWL_INPUT_TYPES += ['{}[]'.format(t) for t in CWL_INPUT_TYPES[:]]
 CWL_INPUT_TYPES += ['{}?'.format(t) for t in CWL_INPUT_TYPES[:]]
 
 CWL_OUTPUT_TYPES = ['File', 'Directory']
