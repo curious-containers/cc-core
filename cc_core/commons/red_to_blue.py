@@ -19,6 +19,7 @@ from cc_core.commons.exceptions import JobSpecificationError, InvalidInputRefere
 from cc_core.commons.input_references import resolve_input_references
 
 DEFAULT_WORKING_DIRECTORY = '/tmp/red/work/'
+BLUE_INPUT_CLASSES = {'File', 'Directory'}
 
 
 def convert_red_to_blue(red_data):
@@ -52,6 +53,39 @@ def convert_red_to_blue(red_data):
     return blue_batches
 
 
+def _is_blue_input_value(input_value):
+    """
+    Returns whether the given input value defines a connector.
+    :param input_value: The input value as list or value, that may contain a connector
+    :return: True, if input value contains a connector definition, otherwise false
+    """
+    if isinstance(input_value, list):
+        if not input_value:
+            return False
+
+        for sub_input_value in input_value:
+            if not _is_blue_input_value(sub_input_value):
+                return False
+        return True
+    elif isinstance(input_value, dict):
+        return input_value.get('class') in BLUE_INPUT_CLASSES
+
+    return False
+
+
+def _create_blue_batch_inputs(batch_inputs):
+    """
+    Filters the given inputs and returns only batch inputs, that contain a connector definition
+    :param batch_inputs: The batch inputs of a red file
+    :return: A dictionary containing all keys of batch_inputs, which contain a connector definition
+    """
+    blue_batch_inputs = {}
+    for input_key, input_value in batch_inputs.items():
+        if _is_blue_input_value(input_value):
+            blue_batch_inputs[input_key] = input_value
+    return blue_batch_inputs
+
+
 def create_blue_batch(command, batch, cli_outputs):
     """
     Defines a dictionary containing a blue batch
@@ -60,13 +94,16 @@ def create_blue_batch(command, batch, cli_outputs):
     :param cli_outputs: The outputs section of cli description
     :return: A dictionary containing the blue data
     """
+    blue_batch_inputs = _create_blue_batch_inputs(batch['inputs'])
+    blue_batch_outputs = batch['outputs']
     blue_data = {
         'command': command,
         'workDir': DEFAULT_WORKING_DIRECTORY,
         'cli': {
             'outputs': cli_outputs
         },
-        **batch
+        'inputs': blue_batch_inputs,
+        'outputs': blue_batch_outputs
     }
 
     return blue_data

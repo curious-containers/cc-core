@@ -1,3 +1,4 @@
+import distutils
 import glob
 import hashlib
 import os
@@ -1095,6 +1096,9 @@ def execute(command, work_dir=None):
     :param work_dir: The working directory for the executed command
     :return: An ExecutionResult
     """
+    if shutil.which(command[0]) is None:
+        return ExecutionResult([], ['Command "{}" not in PATH.'.format(command[0])], 127)
+
     try:
         sp = _exec(command, work_dir)
     except FileNotFoundError as e:
