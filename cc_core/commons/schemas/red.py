@@ -1,7 +1,6 @@
-import copy
-
-from cc_core.commons.schemas.common import pattern_key
-from cc_core.commons.schemas.cwl import cwl_schema
+from cc_core.commons.schemas.common import PATTERN_KEY
+from cc_core.commons.schemas.cwl import _cwl_schema
+from cc_core.commons.schema_transform import transform
 
 _connector_schema = {
     'type': 'object',
@@ -18,21 +17,36 @@ _file_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['File']},
-        'connector': _connector_schema
+        'connector': _connector_schema,
+        'basename': {'type': 'string'},
+        'dirname': {'type': 'string'},
+        'checksum': {'type': 'string'},
+        'size': {'type': 'integer'}
     },
     'additionalProperties': False,
     'required': ['class', 'connector']
 }
 
-_directory_schema = copy.deepcopy(_file_schema)
-_directory_schema['properties']['class']['enum'] = ['Directory']
-_directory_schema['properties']['listing'] = {'type': 'array'}
+_directory_schema = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['Directory']},
+        'connector': _connector_schema,
+        'basename': {'type': 'string'},
+        'checksum': {'type': 'string'},
+        'size': {'type': 'integer'},
+        'listing': {'type': 'array'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'connector']
+}
 
 _inputs_schema = {
     'type': 'object',
     'patternProperties': {
-        pattern_key: {
+        PATTERN_KEY: {
             'anyOf': [
+                {'type': 'null'},
                 {'type': 'string'},
                 {'type': 'number'},
                 {'type': 'boolean'},
@@ -42,6 +56,7 @@ _inputs_schema = {
                         'oneOf': [
                             {'type': 'string'},
                             {'type': 'number'},
+                            {'type': 'boolean'},
                             _file_schema,
                             _directory_schema
                         ]
@@ -59,14 +74,19 @@ _inputs_schema = {
 _outputs_schema = {
     'type': 'object',
     'patternProperties': {
-        pattern_key: {
-            'type': 'object',
-            'properties': {
-                'class': {'enum': ['File']},
-                'connector': _connector_schema
-            },
-            'additionalProperties': False,
-            'required': ['class', 'connector']
+        PATTERN_KEY: {
+            'anyOf': [
+                {
+                    'type': 'object',
+                    'properties': {
+                        'class': {'enum': ['File']},
+                        'connector': _connector_schema
+                    },
+                    'additionalProperties': False,
+                    'required': ['class', 'connector']
+                },
+                {'type': 'null'}
+            ]
         }
     },
     'additionalProperties': False
@@ -75,7 +95,6 @@ _outputs_schema = {
 _engine_schema = {
     'type': 'object',
     'properties': {
-        'doc': {'type': 'string'},
         'engine': {'type': 'string'},
         'settings': {'type': 'object'}
     },
@@ -85,13 +104,12 @@ _engine_schema = {
 
 
 # Reproducible Experiment Description (RED)
-red_schema = {
+_red_schema = {
     'oneOf': [{
         'type': 'object',
         'properties': {
-            'doc': {'type': 'string'},
             'redVersion': {'type': 'string'},
-            'cli': cwl_schema,
+            'cli': _cwl_schema,
             'inputs': _inputs_schema,
             'outputs': _outputs_schema,
             'container': _engine_schema,
@@ -102,9 +120,8 @@ red_schema = {
     }, {
         'type': 'object',
         'properties': {
-            'doc': {'type': 'string'},
             'redVersion': {'type': 'string'},
-            'cli': cwl_schema,
+            'cli': _cwl_schema,
             'batches': {
                 'type': 'array',
                 'items': {
@@ -125,11 +142,4 @@ red_schema = {
     }]
 }
 
-
-fill_schema = {
-    'type': 'object',
-    'patternProperties': {
-        pattern_key: {'type': 'string'}
-    },
-    'additionalProperties': False
-}
+red_schema = transform(_red_schema)

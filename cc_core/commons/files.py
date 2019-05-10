@@ -37,6 +37,12 @@ def move_files(output_files):
 
 
 def load_and_read(location, var_name):
+    """
+    Reads a path or URL and parses this file as yaml/json.
+    :param location: The location as local path or URL
+    :param var_name:
+    :return:
+    """
     if not location:
         return None
     raw_data = load(location, var_name)
@@ -65,13 +71,10 @@ def load(location, var_name):
 
 def read(raw_data, var_name):
     try:
-        data = json.loads(raw_data)
+        data = yaml.load(raw_data)
     except:
-        try:
-            data = yaml.load(raw_data)
-        except:
-            raise AgentError('data for argument "{}" is neither json nor yaml formatted.\ndata: {}'
-                             .format(var_name, raw_data))
+        raise AgentError('data for argument "{}" is neither json nor yaml formatted.\ndata: {}'
+                         .format(var_name, raw_data))
 
     if not isinstance(data, dict):
         raise AgentError('data for argument "{}" does not contain a dictionary.\ndata: "{}"'.format(var_name, data))
