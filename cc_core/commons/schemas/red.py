@@ -56,6 +56,7 @@ _inputs_schema = {
                         'oneOf': [
                             {'type': 'string'},
                             {'type': 'number'},
+                            {'type': 'boolean'},
                             _file_schema,
                             _directory_schema
                         ]

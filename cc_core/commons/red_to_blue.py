@@ -274,9 +274,14 @@ def _argument_list_to_execution_argument(argument_list, cli_argument, batch_valu
                 execution_argument.append(cli_argument.prefix)
                 execution_argument.extend(argument_list)
             else:
-                assert len(argument_list) == 1
-                joined_argument = '{}{}'.format(cli_argument.prefix, argument_list[0])
-                execution_argument.append(joined_argument)
+                # This case only occurs for boolean arrays, if prefix is set, separate is set to false and no
+                # itemSeparator is given and the corresponding input list is not empty
+                if not argument_list:
+                    execution_argument.append(cli_argument.prefix)
+                else:
+                    assert len(argument_list) == 1
+                    joined_argument = '{}{}'.format(cli_argument.prefix, argument_list[0])
+                    execution_argument.append(joined_argument)
     else:
         execution_argument.extend(argument_list)
 
