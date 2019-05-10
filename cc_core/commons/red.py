@@ -1,6 +1,7 @@
 import jsonschema
 from jsonschema.exceptions import ValidationError
 
+from cc_core.commons.red_to_blue import InputType
 from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
@@ -97,6 +98,77 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
     if container_requirement:
         if not red_data.get('container'):
             raise RedSpecificationError('container engine description is missing in REDFILE')
+
+    _check_input_types(red_data)
+
+
+CWL_TYPE_TO_PYTHON_TYPE = {
+    InputType.InputCategory.File: {dict},
+    InputType.InputCategory.Directory: {dict},
+    InputType.InputCategory.string: {str},
+    InputType.InputCategory.int: {int},
+    InputType.InputCategory.long: {int},
+    InputType.InputCategory.float: {float, int},
+    InputType.InputCategory.double: {float, int},
+    InputType.InputCategory.boolean: {bool}
+}
+
+
+def _check_input_type(input_key, input_value, cli_description_type):
+    """
+    Checks whether the type of the given input value matches the type of the given cli description.
+    :param input_key: The corresponding input key
+    :param input_value: The input value whose type to check
+    :param cli_description_type: The cwl type description of the input key
+    :raise RedSpecificationError: If actual input type does not match type of cli description
+    """
+    input_type = InputType.from_string(cli_description_type)
+
+    if input_type.is_array():
+        if not isinstance(input_value, list):
+            raise RedSpecificationError('Value of input key "{}" is declared as array, but not given as such.'
+                                        .format(input_key))
+
+    else:
+        input_value = [input_value]
+
+    for sub_input_value in input_value:
+        set_of_possible_value_types = CWL_TYPE_TO_PYTHON_TYPE[input_type.input_category]
+        if type(sub_input_value) not in set_of_possible_value_types:
+            if isinstance(sub_input_value, dict):
+                short_repr = 'dictionary'
+            elif isinstance(sub_input_value, list):
+                short_repr = 'list'
+            else:
+                short_repr = 'value "{}" of type "{}"'.format(sub_input_value, type(sub_input_value).__name__)
+
+            raise RedSpecificationError(
+                'Value of input key "{}" should have type "{}", but found {}.'.format(
+                    input_key, input_type.input_category.name, short_repr
+                )
+            )
+
+
+def _check_input_types(red_data):
+    """
+    Checks whether the types of the given input values match the types specified in the cli description.
+    :param red_data: The red data to check
+    :type red_data: dict
+    :raise RedSpecificationError: If actual input type does not match type of cli description
+    """
+
+    input_cli_description = red_data['cli']['inputs']
+
+    batches = red_data.get('batches')
+    if batches:
+        for batch in batches:
+            for input_key, input_value in batch['inputs'].items():
+                cli_description = input_cli_description[input_key]
+                _check_input_type(input_key, input_value, cli_description['type'])
+    else:
+        for input_key, input_value in red_data['inputs'].items():
+            cli_description = input_cli_description[input_key]
+            _check_input_type(input_key, input_value, cli_description['type'])
 
 
 def convert_batch_experiment(red_data, batch):
