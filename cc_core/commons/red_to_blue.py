@@ -262,9 +262,14 @@ def _argument_list_to_execution_argument(argument_list, cli_argument, batch_valu
         if cli_argument.is_array() and not cli_argument.item_separator:
             do_separate = True
 
+        should_add_prefix = True
+        # do not add prefix if input value is an empty list
+        if cli_argument.is_array():
+            if not batch_value:
+                should_add_prefix = False
+
         # handle prefix special for boolean values and arrays
         # do not add prefix, if boolean value is False or array of booleans is empty
-        should_add_prefix = True
         if cli_argument.is_boolean():
             if not batch_value:
                 should_add_prefix = False
