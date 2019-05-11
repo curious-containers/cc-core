@@ -1,4 +1,3 @@
-import distutils
 import glob
 import hashlib
 import os
@@ -13,7 +12,6 @@ import tempfile
 import urllib.request
 
 from argparse import ArgumentParser
-from json import JSONDecodeError
 from traceback import format_exc
 from urllib.error import URLError
 from urllib.parse import urlparse
@@ -157,7 +155,7 @@ def get_blue_data(blue_location):
             with open(blue_location, 'r') as blue_file:
                 try:
                     return json.load(blue_file)
-                except JSONDecodeError as e:
+                except Exception as e:
                     raise ExecutionError('Could not decode blue file "{}". Blue file is not in json format.\n{}'
                                          .format(blue_location, str(e)))
         except FileNotFoundError as file_error:
