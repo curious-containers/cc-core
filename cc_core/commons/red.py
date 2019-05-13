@@ -33,8 +33,11 @@ def _red_listing_validation(key, listing):
         try:
             jsonschema.validate(listing, cwl_job_listing_schema)
         except ValidationError as e:
-            raise RedValidationError('REDFILE listing of input "{}" does not comply with jsonschema: {}'
-                                     .format(key, e.context))
+            where = '.'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
+            raise RedValidationError(
+                'REDFILE listing of input key "{}" does not comply with jsonschema:\n\tkey: {}\n\treason: {}'
+                .format(key, where, e.message)
+            )
 
 
 def red_get_mount_connectors_from_inputs(inputs):
