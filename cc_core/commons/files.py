@@ -6,7 +6,8 @@ import requests
 import textwrap
 import shutil
 from urllib.parse import urlparse
-from ruamel.yaml import YAML
+
+from ruamel.yaml import YAML, YAMLError
 
 from cc_core.commons.exceptions import AgentError
 
@@ -72,9 +73,9 @@ def load(location, var_name):
 def read(raw_data, var_name):
     try:
         data = yaml.load(raw_data)
-    except:
-        raise AgentError('data for argument "{}" is neither json nor yaml formatted.\ndata: {}'
-                         .format(var_name, raw_data))
+    except YAMLError as e:
+        raise AgentError('data for argument "{}" is neither json nor yaml formatted. Failed with the following message:'
+                         '\n{}\n\ndata:\n{}'.format(var_name, str(e), raw_data))
 
     if not isinstance(data, dict):
         raise AgentError('data for argument "{}" does not contain a dictionary.\ndata: "{}"'.format(var_name, data))
