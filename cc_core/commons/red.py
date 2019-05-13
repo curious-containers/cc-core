@@ -60,7 +60,10 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
     try:
         jsonschema.validate(red_data, red_schema)
     except ValidationError as e:
-        raise RedValidationError('REDFILE does not comply with jsonschema: {}'.format(e.context))
+        where = '/'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
+        raise RedValidationError(
+            'REDFILE does not comply with jsonschema:\n\tkey in red file: {}\n\treason: {}'.format(where, e.message)
+        )
 
     if not red_data['redVersion'] == RED_VERSION:
         raise RedSpecificationError(
