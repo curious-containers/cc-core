@@ -1,5 +1,6 @@
 from cc_core.commons.parsing import split_into_parts
 from cc_core.commons.exceptions import TemplateError, ParsingError
+from cc_core.commons.red import check_keys_are_strings
 
 TEMPLATE_SEPARATOR_START = '{{'
 TEMPLATE_SEPARATOR_END = '}}'
@@ -41,6 +42,7 @@ def get_secret_values(red_data):
     :param red_data: A dictionary containing the red data
     :return: A list of secret values found in the given red data
     """
+    check_keys_are_strings(red_data)
     secret_values = []
     _append_secret_values(red_data, secret_values)
     return secret_values
