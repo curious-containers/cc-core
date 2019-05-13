@@ -33,8 +33,6 @@ _directory_schema = {
         'class': {'enum': ['Directory']},
         'connector': _connector_schema,
         'basename': {'type': 'string'},
-        'checksum': {'type': 'string'},
-        'size': {'type': 'integer'},
         'listing': {'type': 'array'}
     },
     'additionalProperties': False,
@@ -116,7 +114,7 @@ _red_schema = {
             'execution': _engine_schema
         },
         'additionalProperties': False,
-        'required': ['redVersion', 'cli', 'inputs']
+        'required': ['redVersion', 'cli', 'inputs', 'container']
     }, {
         'type': 'object',
         'properties': {
@@ -138,7 +136,7 @@ _red_schema = {
             'execution': _engine_schema
         },
         'additionalProperties': False,
-        'required': ['redVersion', 'cli', 'batches']
+        'required': ['redVersion', 'cli', 'batches', 'container']
     }]
 }
 
