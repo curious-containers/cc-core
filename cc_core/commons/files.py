@@ -67,7 +67,7 @@ def load(location, var_name):
     if scheme == 'http' or scheme == 'https':
         return _http(location, var_name)
 
-    raise AgentError('argument "{}" has unknown url scheme'.format(location))
+    raise AgentError('Argument "{}" has unknown url scheme'.format(location))
 
 
 def read(raw_data, var_name):
@@ -75,7 +75,7 @@ def read(raw_data, var_name):
         data = yaml.load(raw_data)
     except YAMLError as e:
         raise AgentError('data for argument "{}" is neither json nor yaml formatted. Failed with the following message:'
-                         '\n{}\n\ndata:\n{}'.format(var_name, str(e), raw_data))
+                         '\n{}'.format(var_name, str(e)))
 
     if not isinstance(data, dict):
         raise AgentError('data for argument "{}" does not contain a dictionary.\ndata: "{}"'.format(var_name, data))
@@ -140,7 +140,7 @@ def _local(location, var_name):
         with open(os.path.expanduser(location)) as f:
             return f.read()
     except:
-        raise AgentError('file for argument "{}" could not be loaded from file system'.format(var_name))
+        raise AgentError('File "{}" for argument "{}" could not be loaded from file system'.format(location, var_name))
 
 
 def for_each_file(base_dir, func):
