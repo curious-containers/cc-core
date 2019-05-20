@@ -973,6 +973,7 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_cl
 
 CONNECTOR_CLI_VERSION_OUTPUT_RUNNER_MAPPING = {
     '0.1': OutputConnectorRunner01,
+    '1': OutputConnectorRunner01
 }
 
 
