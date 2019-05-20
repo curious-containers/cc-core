@@ -892,6 +892,7 @@ class OutputConnectorRunner01(OutputConnectorRunner):
 
 CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING = {
     '0.1': InputConnectorRunner01,
+    '1': InputConnectorRunner01
 }
 
 
