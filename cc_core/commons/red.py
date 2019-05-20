@@ -33,8 +33,11 @@ def _red_listing_validation(key, listing):
         try:
             jsonschema.validate(listing, cwl_job_listing_schema)
         except ValidationError as e:
-            raise RedValidationError('REDFILE listing of input "{}" does not comply with jsonschema: {}'
-                                     .format(key, e.context))
+            where = '.'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
+            raise RedValidationError(
+                'REDFILE listing of input key "{}" does not comply with jsonschema:\n\tkey: {}\n\treason: {}'
+                .format(key, where, e.message)
+            )
 
 
 def red_get_mount_connectors_from_inputs(inputs):
@@ -57,10 +60,15 @@ def red_get_mount_connectors_from_inputs(inputs):
 
 
 def red_validation(red_data, ignore_outputs, container_requirement=False):
+    check_keys_are_strings(red_data)
+
     try:
         jsonschema.validate(red_data, red_schema)
     except ValidationError as e:
-        raise RedValidationError('REDFILE does not comply with jsonschema: {}'.format(e.context))
+        where = '/'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
+        raise RedValidationError(
+            'REDFILE does not comply with jsonschema:\n\tkey in red file: {}\n\treason: {}'.format(where, e.message)
+        )
 
     if not red_data['redVersion'] == RED_VERSION:
         raise RedSpecificationError(
@@ -175,6 +183,42 @@ def _check_input_types(red_data):
         for input_key, input_value in red_data['inputs'].items():
             cli_description = input_cli_description[input_key]
             _check_input_type(input_key, input_value, cli_description['type'])
+
+
+def _check_key_is_string(key, path):
+    """
+    Raises an RedSpecificationError, if the given key is not of type string.
+    :param key: The key to check the type
+    :param path: The path to this key
+    :raise RedSpecificationError: If the given key has a type different from str
+    """
+    if not isinstance(key, str):
+        if path:
+            where = 'under "{}" '.format('.'.join(path))
+        else:
+            where = ''
+        raise RedSpecificationError(
+            'The key "{}" ({}) in REDFILE {}is not of type string'.format(key, type(key).__name__, where)
+        )
+
+
+def check_keys_are_strings(data, path=None):
+    """
+    Raises an RedSpecificationError, if a key is not of type string
+    :param data: The data to check
+    :param path: The path of keys as list of strings leading to data
+    :raise RedSpecificationError: If a key is found, that has a type different from str
+    """
+    if path is None:
+        path = []
+
+    if isinstance(data, dict):
+        for key, value in data.items():
+            _check_key_is_string(key, path)
+            check_keys_are_strings(value, path + [key])
+    elif isinstance(data, list):
+        for index, value in enumerate(data):
+            check_keys_are_strings(value, path + [str(index)])
 
 
 def convert_batch_experiment(red_data, batch):
