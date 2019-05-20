@@ -114,7 +114,7 @@ def get_template_keys(data, template_keys, key_string=None, template_keys_allowe
             new_template_keys = _extract_template_keys(data, key_string, protected)
             if new_template_keys:
                 template_keys.update(new_template_keys)
-        elif ('{' in data) or ('}' in data):
+        elif (TEMPLATE_SEPARATOR_START in data) or (TEMPLATE_SEPARATOR_END in data):
             raise TemplateError('Found invalid bracket in "{}" under "{}" in red data. Template keys are only '
                                 'allowed as sub element of an auth or access key.'.format(data, key_string))
 
@@ -159,14 +159,14 @@ def _extract_template_keys(template_string, key_string, protected):
     for part in parts:
         if is_template_key(part):
             template_key_string = part[2:-2]
-            if ('{' in template_key_string) or ('}' in template_key_string):
+            if (TEMPLATE_SEPARATOR_START in template_key_string) or (TEMPLATE_SEPARATOR_END in template_key_string):
                 raise TemplateError('Could not parse template string "{}" in "{}". Too many brackets.'
                                     .format(template_string, key_string))
             if template_key_string == '':
                 raise TemplateError('Could not parse template string "{}" in "{}". Template keys should not be empty.'
                                     .format(template_string, key_string))
             template_keys.add(TemplateKey(template_key_string, protected))
-        elif ('{' in part) or ('}' in part):
+        elif (TEMPLATE_SEPARATOR_START in part) or (TEMPLATE_SEPARATOR_END in part):
             raise TemplateError('Could not parse template string "{}" in "{}". Too many brackets.'
                                 .format(template_string, key_string))
 
