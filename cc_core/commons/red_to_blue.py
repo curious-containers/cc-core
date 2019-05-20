@@ -43,9 +43,7 @@ def convert_red_to_blue(red_data):
     for batch in batches:
         batch_inputs = batch['inputs']
         complete_batch_inputs(batch_inputs, cli_inputs)
-        # TODO: include input references
-        # resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
-        resolved_cli_outputs = cli_outputs
+        resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
         blue_batch = create_blue_batch(command, batch, resolved_cli_outputs)
         blue_batches.append(blue_batch)

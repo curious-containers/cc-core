@@ -1,23 +1,69 @@
-from copy import deepcopy
 
 from cc_core.commons.exceptions import InvalidInputReference, ParsingError
 from cc_core.commons.parsing import partition_all, split_into_parts
 
 ATTRIBUTE_SEPARATOR_SYMBOLS = ['.', '["', '"]', '[\'', '\']']
+INDEX_SEPARATOR_SYMBOLS = ['[', ']']
 INPUT_REFERENCE_START = '$('
 INPUT_REFERENCE_END = ')'
 
 
-def _get_dict_element(d, l):
+def _resolve_keys_from_parts(inputs_to_reference, key_list):
     """
-    Uses the keys in list l to get recursive values in d. Like return d[l[0]] [l[1]] [l[2]]...
-    :param d: A dictionary
-    :param l: A list of keys
-    :return: The last value of d, after inserting all keys in l.
+    Uses the keys in list key_list to get recursive values in inputs_to_reference.
+    Like return inputs_to_reference[key_list[0]] [key_list[1]] ...
+
+    :rtype: str
+    :param inputs_to_reference: A recursive dictionary or list
+    :param key_list: A list of keys to insert into the inputs to reference
+    :return: The last value of d, after inserting all keys in key_list.
     """
-    for e in l:
-        d = d[e]
-    return d
+    handled_keys = 'inputs'
+    for key in key_list:
+        if isinstance(inputs_to_reference, dict):
+            if isinstance(key, str):
+                inputs_to_reference = inputs_to_reference.get(key)
+                if inputs_to_reference is None:
+                    raise InvalidInputReference('Could not resolve "{}".'.format(key))
+            else:
+                raise InvalidInputReference(
+                    'Could not resolve "{}" in "{}", because "{}" has type "{}". Expected type is "str".'
+                    .format(key, handled_keys, key, type(key).__name__)
+                )
+        elif isinstance(inputs_to_reference, list):
+            if isinstance(key, int):
+                if key < len(inputs_to_reference):
+                    inputs_to_reference = inputs_to_reference[key]
+                else:
+                    raise InvalidInputReference('Index {} is out of bounds in "{}", because "{}" has length {}.'
+                                                .format(key, handled_keys, handled_keys, len(inputs_to_reference)))
+            else:
+                raise InvalidInputReference(
+                    'Could not resolve "{}" in "{}", because "{}" is a list and the index "{}" ({}) is not given as int'
+                    .format(key, handled_keys, handled_keys, key, type(key).__name__)
+                )
+        else:
+            raise InvalidInputReference(
+                'Could not resolve "{}", because type of "{}" is neither dict nor list'.format(key, handled_keys)
+            )
+
+        if isinstance(key, int):
+            handled_keys = '{}[{}]'.format(handled_keys, key)
+        else:
+            handled_keys = '{}.{}'.format(handled_keys, key)
+
+    if isinstance(inputs_to_reference, dict):
+        raise InvalidInputReference(
+            '"{}" could not be resolved completely. It is a dict, with the following keys: {}'
+            .format(handled_keys, list(inputs_to_reference.keys()))
+        )
+    if isinstance(inputs_to_reference, list):
+        raise InvalidInputReference(
+            '"{}" could not be resolved completely. It is a list, with length {}'
+            .format(handled_keys, len(inputs_to_reference))
+        )
+
+    return inputs_to_reference
 
 
 def split_input_references(to_split):
@@ -62,6 +108,34 @@ def split_all(reference, sep):
     return [p for p in parts if p not in sep]
 
 
+def _try_to_int(s):
+    try:
+        return int(s)
+    except ValueError:
+        return s
+
+
+def _create_array_indices(parts):
+    """
+    Iterates over parts and tries to split array indices.
+    :param parts: The parts that whose indices should be split.
+    :return: A new list of parts, with extra elements defining the indices.
+    """
+
+    new_parts = []
+    for part in parts:
+        split_part = split_all(part, INDEX_SEPARATOR_SYMBOLS)
+        if len(split_part) == 1:
+            new_parts.append(split_part[0])
+        elif len(split_part) > 1:
+            new_parts.append(split_part[0])
+            new_parts.extend([_try_to_int(p) for p in split_part[1:]])
+        else:
+            raise InvalidInputReference('Could not create array indices. {} is invalid.'.format(parts))
+
+    return new_parts
+
+
 def resolve_input_reference(reference, inputs_to_reference):
     """
     Replaces a given input_reference by a string extracted from inputs_to_reference.
@@ -91,11 +165,14 @@ def resolve_input_reference(reference, inputs_to_reference):
 
     # remove 'inputs'
     parts = parts[1:]
+
+    parts = _create_array_indices(parts)
+
     try:
-        resolved = _get_dict_element(inputs_to_reference, parts)
-    except KeyError as e:
-        raise InvalidInputReference('Could not resolve input reference "{}". The key "{}" could not be resolved.'
-                                    .format(original_reference, str(e)))
+        resolved = _resolve_keys_from_parts(inputs_to_reference, parts)
+    except InvalidInputReference as e:
+        raise InvalidInputReference('Could not resolve input reference "{}".\n{}'.format(original_reference, str(e)))
+
     return resolved
 
 
