@@ -153,7 +153,9 @@ def split_into_parts(to_split, start, end, remove_separators=False):
                 part.append(p)
 
     if in_reference:
-        raise ParsingError('Framed string started but not closed.\n{}'.format(to_split))
+        raise ParsingError(
+            'string "{}" contains start symbol "{}" but not end symbol "{}"'.format(to_split, start, end)
+        )
     elif part:
         result.append(''.join(part))
 

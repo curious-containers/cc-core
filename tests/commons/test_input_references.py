@@ -37,7 +37,8 @@ INPUT_TO_REFERENCE = {
         'dirname': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51',
         'nameext': '',
         'nameroot': 'a_file',
-        'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/a_file'
+        'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/a_file',
+        'size': 1000
     }
 }
 
@@ -124,3 +125,16 @@ def test_missing_inputs():
     glob = '$(invalid.a_file.basename)'
     with pytest.raises(InvalidInputReference):
         resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_wrong_order():
+    glob = '$(inputs.a_file["basename)"]'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_int_value():
+    glob = '$(inputs.a_file.size)'
+    result = resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+    assert result == '1000'
