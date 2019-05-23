@@ -109,12 +109,18 @@ def test_string_index_and_dot():
 
 
 def test_string_index_in_list():
-    glob = '$(inputs.a_file[hey].basename)'
+    glob = '$(inputs.a_file[invalid].basename)'
     with pytest.raises(InvalidInputReference):
         resolve_input_references(glob, INPUT_LIST_TO_REFERENCE)
 
 
 def test_could_not_resolve_identifier():
-    glob = '$(inputs["hey"])'
+    glob = '$(inputs["invalid"])'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_missing_inputs():
+    glob = '$(invalid.a_file.basename)'
     with pytest.raises(InvalidInputReference):
         resolve_input_references(glob, INPUT_TO_REFERENCE)

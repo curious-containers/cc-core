@@ -15,6 +15,7 @@ def _resolve_keys_from_parts(inputs_to_reference, key_list):
 
     :rtype: str
     :param inputs_to_reference: A recursive dictionary or list
+    :type inputs_to_reference: dict
     :param key_list: A list of keys to insert into the inputs to reference
     :return: The last value of d, after inserting all keys in key_list.
     """
@@ -22,12 +23,12 @@ def _resolve_keys_from_parts(inputs_to_reference, key_list):
     for key in key_list:
         if isinstance(inputs_to_reference, dict):
             if isinstance(key, str):
-                last_inputs_to_reference = inputs_to_reference
+                last_inputs_to_reference_keys = list(inputs_to_reference.keys())
                 inputs_to_reference = inputs_to_reference.get(key)
                 if inputs_to_reference is None:
                     raise InvalidInputReference(
                         'Could not resolve key "{}" in "{}".\n"{}" has the following keys: {}'
-                        .format(key, handled_keys, handled_keys, list(last_inputs_to_reference.keys()))
+                        .format(key, handled_keys, handled_keys, last_inputs_to_reference_keys)
                     )
             else:
                 raise InvalidInputReference(
