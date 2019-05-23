@@ -1,7 +1,8 @@
 from cc_core.commons.exceptions import InvalidInputReference, ParsingError
-from cc_core.commons.parsing import partition_all, split_into_parts
+from cc_core.commons.parsing import split_into_parts, split_into_parts_with_separators
 
-ATTRIBUTE_SEPARATOR_SYMBOLS = ['.', '["', '"]', '[\'', '\']']
+ATTRIBUTE_WRAPPING_SYMBOLS = [('["', '"]'), ('[\'', '\']')]
+ATTRIBUTE_SEPARATOR_SYMBOL = '.'
 INDEX_SEPARATOR_SYMBOLS = ['[', ']']
 INPUT_REFERENCE_START = '$('
 INPUT_REFERENCE_END = ')'
@@ -95,18 +96,6 @@ def is_input_reference(s):
     return s.startswith(INPUT_REFERENCE_START) and s.endswith(INPUT_REFERENCE_END)
 
 
-def split_all(reference, sep):
-    """
-    Splits a given string at a given separator or list of separators.
-
-    :param reference: The reference to split.
-    :param sep: Separator string or list of separator strings.
-    :return: A list of split strings
-    """
-    parts = partition_all(reference, sep)
-    return [p for p in parts if p not in sep]
-
-
 def _try_to_int(s):
     try:
         return int(s)
@@ -123,7 +112,11 @@ def _create_array_indices(parts):
 
     new_parts = []
     for part in parts:
-        split_part = split_all(part, INDEX_SEPARATOR_SYMBOLS)
+        split_part = split_into_parts(
+            part,
+            *INDEX_SEPARATOR_SYMBOLS,
+            remove_separators=True
+        )
         if len(split_part) == 1:
             new_parts.append(split_part[0])
         elif len(split_part) > 1:
@@ -133,6 +126,29 @@ def _create_array_indices(parts):
             raise InvalidInputReference('Could not create array indices. {} is invalid.'.format(parts))
 
     return new_parts
+
+
+def _build_reference_parts(reference):
+    """
+    Splits the given reference into parts.
+    Example:
+    _build_reference_parts('$(inputs.identifier["attribute"])') == ["inputs", "identifier", "attribute"]
+    :param reference: The reference to split
+    :return: A list of strings
+    """
+    # remove "$(" and ")"
+    reference = reference[2:-1]
+    parts = split_into_parts_with_separators(
+        reference,
+        ATTRIBUTE_WRAPPING_SYMBOLS,
+        remove_separators=True
+    )
+
+    tmp_parts = []
+    for p in parts:
+        tmp_parts.extend(p.split(ATTRIBUTE_SEPARATOR_SYMBOL))
+    parts = tmp_parts
+    return parts
 
 
 def resolve_input_reference(reference, inputs_to_reference):
@@ -148,9 +164,7 @@ def resolve_input_reference(reference, inputs_to_reference):
     """
     original_reference = reference
 
-    # remove "$(" and ")"
-    reference = reference[2:-1]
-    parts = split_all(reference, ATTRIBUTE_SEPARATOR_SYMBOLS)
+    parts = _build_reference_parts(reference)
 
     if len(parts) < 2:
         raise InvalidInputReference('InputReference should at least contain "$(inputs.<identifier>)". The following '
@@ -186,7 +200,6 @@ def resolve_input_references(to_resolve, inputs_to_reference):
 
     :return: A string in which the input references are replaced with actual values.
     """
-
     split_references = split_input_references(to_resolve)
 
     result = []

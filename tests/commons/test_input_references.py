@@ -1,9 +1,12 @@
+import pytest
+
+from cc_core.commons.exceptions import InvalidInputReference
 from cc_core.commons.input_references import resolve_input_references
 
 INPUT_LIST_TO_REFERENCE = {
-    'ifile': [
+    'a_file': [
         {
-            'basename': 'ifile',
+            'basename': 'a_file',
             'class': 'File',
             'connector': {
                 'access': {
@@ -14,15 +17,15 @@ INPUT_LIST_TO_REFERENCE = {
             },
             'dirname': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51',
             'nameext': '',
-            'nameroot': 'ifile',
-            'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/ifile'
+            'nameroot': 'a_file',
+            'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/a_file'
         }
     ]
 }
 
 INPUT_TO_REFERENCE = {
-    'ifile': {
-        'basename': 'ifile',
+    'a_file': {
+        'basename': 'a_file',
         'class': 'File',
         'connector': {
             'access': {
@@ -33,33 +36,41 @@ INPUT_TO_REFERENCE = {
         },
         'dirname': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51',
         'nameext': '',
-        'nameroot': 'ifile',
-        'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/ifile'
+        'nameroot': 'a_file',
+        'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/a_file'
     }
 }
 
 
 def test_bracket_double_quote():
-    glob = 'PRE-$(inputs["ifile"]["basename"])-POST'
+    glob = 'PRE-$(inputs["a_file"]["basename"])-POST'
     result = resolve_input_references(glob, INPUT_TO_REFERENCE)
 
-    assert result == 'PRE-ifile-POST'
+    assert result == 'PRE-a_file-POST'
 
 
 def test_bracket_single_quote():
-    glob = 'PRE-$(inputs[\'ifile\'][\'basename\'])-POST'
+    glob = 'PRE-$(inputs[\'a_file\'][\'basename\'])-POST'
     result = resolve_input_references(glob, INPUT_TO_REFERENCE)
 
-    assert result == 'PRE-ifile-POST'
+    assert result == 'PRE-a_file-POST'
 
 
 def test_bracket_dots():
-    glob = 'PRE-$(inputs.ifile.basename])-POST'
+    glob = 'PRE-$(inputs.a_file.basename)-POST'
     result = resolve_input_references(glob, INPUT_TO_REFERENCE)
-    assert False
 
-    assert result == 'PRE-ifile-POST'
+    assert result == 'PRE-a_file-POST'
 
 
 def test_file_list():
-    glob = '$(inputs.ifile[0].basename)'
+    glob = 'PRE-$(inputs.a_file[0].basename)-POST'
+    result = resolve_input_references(glob, INPUT_LIST_TO_REFERENCE)
+
+    assert result == 'PRE-a_file-POST'
+
+
+def test_could_not_resolve():
+    glob = '$(inputs.a_file.invalid)'
+    with pytest.raises(InvalidInputReference):
+        _ = resolve_input_references(glob, INPUT_TO_REFERENCE)
