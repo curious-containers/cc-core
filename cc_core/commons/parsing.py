@@ -95,6 +95,8 @@ def split_into_parts_with_separators(to_split, separator_list, remove_separators
     :param separator_list: A list containing tuples of separator starts and ends.
     Example: [('start', 'end'), ('<', '>'), ...]
     :param remove_separators: Defines whether the separator symbols should be removed from the output.
+    :raise ParsingError: If separator start is found, but the corresponding end separator does not occur until the end
+    of to_split
     :return: The given string split into parts, by separators given in separator list.
     """
     # parts is a list containing strings, which will be split by the following procedure

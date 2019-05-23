@@ -15,10 +15,10 @@ INPUT_LIST_TO_REFERENCE = {
                 },
                 'command': 'red-connector-http'
             },
-            'dirname': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51',
+            'dirname': '/tmp/red/inputs',
             'nameext': '',
             'nameroot': 'a_file',
-            'path': '/tmp/red/inputs/146dbc18-940d-4384-aaa7-073eb4402b51/a_file'
+            'path': '/tmp/red/inputs/a_file'
         }
     ]
 }
@@ -70,7 +70,51 @@ def test_file_list():
     assert result == 'PRE-a_file-POST'
 
 
-def test_could_not_resolve():
+def test_could_not_resolve_attribute():
     glob = '$(inputs.a_file.invalid)'
     with pytest.raises(InvalidInputReference):
-        _ = resolve_input_references(glob, INPUT_TO_REFERENCE)
+        resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_not_closed_bracket():
+    glob = '$(inputs["a_file.basename)'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_multiple_references():
+    glob = '$(inputs.a_file.basename) - $(inputs.a_file.class)'
+    result = resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+    assert result == 'a_file - File'
+
+
+def test_recursive_references():
+    glob = '$(inputs.$(inputs.a_file.basename).basename'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_recursive_attributes():
+    glob = '$(inputs["inputs["a_file"]"].basename)'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+
+def test_string_index_and_dot():
+    glob = '$(inputs["a_file"].basename)'
+    result = resolve_input_references(glob, INPUT_TO_REFERENCE)
+
+    assert result == 'a_file'
+
+
+def test_string_index_in_list():
+    glob = '$(inputs.a_file[hey].basename)'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_LIST_TO_REFERENCE)
+
+
+def test_could_not_resolve_identifier():
+    glob = '$(inputs["hey"])'
+    with pytest.raises(InvalidInputReference):
+        resolve_input_references(glob, INPUT_TO_REFERENCE)

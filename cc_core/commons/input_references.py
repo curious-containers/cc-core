@@ -22,9 +22,13 @@ def _resolve_keys_from_parts(inputs_to_reference, key_list):
     for key in key_list:
         if isinstance(inputs_to_reference, dict):
             if isinstance(key, str):
+                last_inputs_to_reference = inputs_to_reference
                 inputs_to_reference = inputs_to_reference.get(key)
                 if inputs_to_reference is None:
-                    raise InvalidInputReference('Could not resolve "{}".'.format(key))
+                    raise InvalidInputReference(
+                        'Could not resolve key "{}" in "{}".\n"{}" has the following keys: {}'
+                        .format(key, handled_keys, handled_keys, list(last_inputs_to_reference.keys()))
+                    )
             else:
                 raise InvalidInputReference(
                     'Could not resolve "{}" in "{}", because "{}" has type "{}". Expected type is "str".'
@@ -82,7 +86,7 @@ def split_input_references(to_split):
         result = split_into_parts(to_split, INPUT_REFERENCE_START, INPUT_REFERENCE_END)
     except ParsingError as e:
         raise InvalidInputReference('Could not parse input reference "{}". Failed with the following message:\n{}'
-                                    .format(to_split, repr(e)))
+                                    .format(to_split, str(e)))
     return result
 
 
@@ -109,7 +113,6 @@ def _create_array_indices(parts):
     :param parts: The parts that whose indices should be split.
     :return: A new list of parts, with extra elements defining the indices.
     """
-
     new_parts = []
     for part in parts:
         split_part = split_into_parts(
@@ -123,7 +126,9 @@ def _create_array_indices(parts):
             new_parts.append(split_part[0])
             new_parts.extend([_try_to_int(p) for p in split_part[1:]])
         else:
-            raise InvalidInputReference('Could not create array indices. {} is invalid.'.format(parts))
+            raise InvalidInputReference(
+                'Could not create array indices. Part "{}" of {} is invalid.'.format(part, parts)
+            )
 
     return new_parts
 
@@ -138,15 +143,23 @@ def _build_reference_parts(reference):
     """
     # remove "$(" and ")"
     reference = reference[2:-1]
-    parts = split_into_parts_with_separators(
-        reference,
-        ATTRIBUTE_WRAPPING_SYMBOLS,
-        remove_separators=True
-    )
+    try:
+        parts = split_into_parts_with_separators(
+            reference,
+            ATTRIBUTE_WRAPPING_SYMBOLS,
+            remove_separators=True
+        )
+    except ParsingError as e:
+        raise InvalidInputReference(
+            'Could not resolve input reference $({}). Parsing failed with the following message:\n{}'
+            .format(reference, str(e))
+        )
 
     tmp_parts = []
     for p in parts:
-        tmp_parts.extend(p.split(ATTRIBUTE_SEPARATOR_SYMBOL))
+        for split in p.split(ATTRIBUTE_SEPARATOR_SYMBOL):
+            if split:
+                tmp_parts.append(split)
     parts = tmp_parts
     return parts
 
