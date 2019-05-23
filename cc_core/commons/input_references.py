@@ -1,4 +1,3 @@
-
 from cc_core.commons.exceptions import InvalidInputReference, ParsingError
 from cc_core.commons.parsing import partition_all, split_into_parts
 
@@ -148,20 +147,17 @@ def resolve_input_reference(reference, inputs_to_reference):
     :return: A string which is the resolved input reference.
     """
     original_reference = reference
-    if not reference.startswith('{}inputs.'.format(INPUT_REFERENCE_START)):
-        raise InvalidInputReference('An input reference must have the following form '
-                                    '"$(inputs.<input_name>[.<attribute>]".\n'
-                                    'The invalid reference is: "{}"'.format(original_reference))
+
     # remove "$(" and ")"
     reference = reference[2:-1]
     parts = split_all(reference, ATTRIBUTE_SEPARATOR_SYMBOLS)
 
     if len(parts) < 2:
-        raise InvalidInputReference('InputReference should at least contain "$(inputs.identifier)". The following '
+        raise InvalidInputReference('InputReference should at least contain "$(inputs.<identifier>)". The following '
                                     'input reference does not comply with it:\n{}'.format(original_reference))
     elif parts[0] != "inputs":
-        raise InvalidInputReference('InputReference should at least contain "$(inputs.identifier)". The following '
-                                    'input reference does not comply with it:\n{}'.format(original_reference))
+        raise InvalidInputReference('InputReference should begin with "inputs". The following input reference does not '
+                                    'comply with it:\n{}'.format(original_reference))
 
     # remove 'inputs'
     parts = parts[1:]
