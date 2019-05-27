@@ -382,6 +382,19 @@ class ConnectorClass:
         return self._is_optional
 
 
+def calculate_file_checksum(path):
+    """
+    Calculates the sha1 checksum of a given file. The checksum is formatted in the following way: 'sha1$<checksum>'
+    :param path: The path to the file, whose checksum should be calculated.
+    :return: The sha1 checksum of the given file as string
+    """
+    hasher = hashlib.sha1()
+    with open(path, 'rb') as file:
+        buf = file.read()
+        hasher.update(buf)
+    return 'sha1${}'.format(hasher.hexdigest())
+
+
 class InputConnectorRunner:
     """
     A ConnectorRunner can be used to execute the different functions of a Connector.
@@ -486,8 +499,9 @@ class InputConnectorRunner:
         for sub in listing:
             path = os.path.join(directory_path, sub['basename'])
             if sub['class'] == 'File':
-                if not os.path.isfile(path):
-                    return 'listing contains "{}" but this file could not be found on disk.'.format(path)
+                file_check_result = InputConnectorRunner._directory_listing_file_check(sub, path)
+                if file_check_result is not None:
+                    return file_check_result
             elif sub['class'] == 'Directory':
                 if not os.path.isdir(path):
                     return 'listing contains "{}" but this directory could not be found on disk'.format(path)
@@ -496,6 +510,37 @@ class InputConnectorRunner:
                     res = InputConnectorRunner.directory_listing_content_check(path, listing)
                     if res is not None:
                         return res
+        return None
+
+    @staticmethod
+    def _directory_listing_file_check(file_description, path):
+        """
+        Validates if the given file is present in the filesystem and checks for size and checksum, if given in the
+        file_description.
+        :param file_description: A dictionary describing a file given in a listing.
+        necessary keys: ['class', 'basename']
+        optional keys: ['size', 'checksum']
+        :param path: The path to the file, where it should be present in the local filesystem
+        :return: None, if the file is present and checksum and size given in the file_description match the real file,
+        otherwise a string describing the mismatch.
+        """
+        if not os.path.isfile(path):
+            return 'listing contains "{}" but this file could not be found on disk.'.format(path)
+
+        checksum = file_description.get('checksum')
+        if checksum is not None:
+            file_checksum = calculate_file_checksum(path)
+            if checksum != file_checksum:
+                return 'checksum of file "{}" does not match the checksum given in listing.' \
+                       '\n\tgiven checksum: "{}"\n\tfile checksum: "{}"'.format(path, checksum, file_checksum)
+
+        size = file_description.get('size')
+        if size is not None:
+            file_size = os.path.getsize(path)
+            if size != file_size:
+                return 'file size of "{}" does not match the file size given in listing.' \
+                       '\n\tgiven size: {}\n\tfile size: {}'.format(path, size, file_size)
+
         return None
 
     def _receive_file_content_check(self):
@@ -509,15 +554,11 @@ class InputConnectorRunner:
             raise ConnectorError('Content check for input file "{}" failed. Path "{}" does not exist.'
                                  .format(self.format_input_key(), self._path))
         if self._checksum:
-            hasher = hashlib.sha1()
-            with open(self._path, 'rb') as file:
-                buf = file.read()
-                hasher.update(buf)
-            checksum = 'sha1${}'.format(hasher.hexdigest())
-            if self._checksum != checksum:
+            file_checksum = calculate_file_checksum(self._path)
+            if self._checksum != file_checksum:
                 raise ConnectorError('Content check for input file "{}" failed. The given checksum "{}" '
                                      'does not match the checksum calculated from the file "{}".'
-                                     .format(self.format_input_key(), self._checksum, checksum))
+                                     .format(self.format_input_key(), self._checksum, file_checksum))
 
         if self._size is not None:
             size = os.path.getsize(self._path)
