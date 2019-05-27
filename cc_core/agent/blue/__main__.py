@@ -803,7 +803,7 @@ class CliOutputRunner:
                 raise ConnectorError('Could not resolve glob "{}" for required output key "{}". {} not '
                                      'found.'.format(self._glob_pattern, self._output_key, file_directory))
 
-        # check checksum
+        # check checksum and file size
         if len(glob_result) == 1:
             path = glob_result[0]
 
@@ -1109,10 +1109,11 @@ def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None
                              'The following property was not found: "{}"'.format(cli_output_key, str(e)))
 
     if output_value is None:
-        output_value = {}
-
-    checksum = output_value.get('checksum')
-    size = output_value.get('size')
+        checksum = None
+        size = None
+    else:
+        checksum = output_value.get('checksum')
+        size = output_value.get('size')
 
     return CliOutputRunner(cli_output_key, glob_pattern, output_class, checksum, size)
 
