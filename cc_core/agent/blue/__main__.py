@@ -532,14 +532,14 @@ class InputConnectorRunner:
             file_checksum = calculate_file_checksum(path)
             if checksum != file_checksum:
                 return 'checksum of file "{}" does not match the checksum given in listing.' \
-                       '\n\tgiven checksum: "{}"\n\tfile checksum: "{}"'.format(path, checksum, file_checksum)
+                       '\n\tgiven checksum: "{}"\n\tfile checksum : "{}"'.format(path, checksum, file_checksum)
 
         size = file_description.get('size')
         if size is not None:
             file_size = os.path.getsize(path)
             if size != file_size:
                 return 'file size of "{}" does not match the file size given in listing.' \
-                       '\n\tgiven size: {}\n\tfile size: {}'.format(path, size, file_size)
+                       '\n\tgiven size: {}\n\tfile size : {}'.format(path, size, file_size)
 
         return None
 
