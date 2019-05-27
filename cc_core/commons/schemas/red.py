@@ -13,7 +13,7 @@ _connector_schema = {
     'required': ['command', 'access']
 }
 
-_file_schema = {
+_input_file_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['File']},
@@ -27,7 +27,7 @@ _file_schema = {
     'required': ['class', 'connector']
 }
 
-_directory_schema = {
+_input_directory_schema = {
     'type': 'object',
     'properties': {
         'class': {'enum': ['Directory']},
@@ -55,13 +55,13 @@ _inputs_schema = {
                             {'type': 'string'},
                             {'type': 'number'},
                             {'type': 'boolean'},
-                            _file_schema,
-                            _directory_schema
+                            _input_file_schema,
+                            _input_directory_schema
                         ]
                     }
                 },
-                _file_schema,
-                _directory_schema
+                _input_file_schema,
+                _input_directory_schema
             ]
         }
     },
@@ -78,6 +78,8 @@ _outputs_schema = {
                     'type': 'object',
                     'properties': {
                         'class': {'enum': ['File']},
+                        'checksum': {'type': 'string'},
+                        'size': {'type': 'integer'},
                         'connector': _connector_schema
                     },
                     'additionalProperties': False,

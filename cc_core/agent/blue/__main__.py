@@ -738,16 +738,20 @@ class CliOutputRunner:
     This CliOutputRunner is used to check if an cli output key is fulfilled and move the corresponding file into the
     outputs directory if needed.
     """
-    def __init__(self, output_key, glob_pattern, output_class):
+    def __init__(self, output_key, glob_pattern, output_class, checksum=None, size=None):
         """
         Creates a new CliOutputRunner
         :param output_key: The corresponding output key
         :param glob_pattern: The glob pattern to match against output files
         :param output_class: The class of the output
+        :param checksum: The expected checksum of the file
+        :param size: The expected size of the file
         """
         self._output_key = output_key
         self._glob_pattern = glob_pattern
         self._output_class = output_class
+        self._checksum = checksum
+        self._size = size
 
     def try_move(self, working_dir, output_dir):
         """
@@ -798,6 +802,26 @@ class CliOutputRunner:
                 file_directory = 'File' if self._output_class.connector_type == ConnectorType.File else 'Directory'
                 raise ConnectorError('Could not resolve glob "{}" for required output key "{}". {} not '
                                      'found.'.format(self._glob_pattern, self._output_key, file_directory))
+
+        # check checksum
+        if len(glob_result) == 1:
+            path = glob_result[0]
+
+            if self._checksum is not None:
+                file_checksum = calculate_file_checksum(path)
+                if file_checksum != self._checksum:
+                    raise ConnectorError(
+                        'The given checksum for output key "{}" does not match.\n\tgiven checksum: "{}"'
+                        '\n\tfile checksum : "{}"'.format(self._output_key, self._checksum, file_checksum)
+                    )
+
+            if self._size is not None:
+                file_size = os.path.getsize(path)
+                if file_size != self._size:
+                    raise ConnectorError(
+                        'The given file size for output key "{}" does not match.\n\tgiven size: {}'
+                        '\n\tfile size : {}'.format(self._output_key, self._size, file_size)
+                    )
 
 
 class InputConnectorRunner01(InputConnectorRunner):
@@ -1068,11 +1092,12 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     return connector_runner
 
 
-def create_cli_output_runner(cli_output_key, cli_output_value):
+def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None):
     """
     Creates a CliOutputRunner.
     :param cli_output_key: The output key of the corresponding cli output
     :param cli_output_value: The output value given in the blue file of the corresponding cli output
+    :param output_value: The job output value for this output key. Can be None
     :return: A new instance of CliOutputRunner
     :raise ConnectorError: If the cli output is not valid.
     """
@@ -1083,7 +1108,13 @@ def create_cli_output_runner(cli_output_key, cli_output_value):
         raise ConnectorError('Could not create cli runner for output key "{}".\n'
                              'The following property was not found: "{}"'.format(cli_output_key, str(e)))
 
-    return CliOutputRunner(cli_output_key, glob_pattern, output_class)
+    if output_value is None:
+        output_value = {}
+
+    checksum = output_value.get('checksum')
+    size = output_value.get('size')
+
+    return CliOutputRunner(cli_output_key, glob_pattern, output_class, checksum, size)
 
 
 class ExecutionResult:
@@ -1214,8 +1245,12 @@ class ConnectorManager:
                 self._output_runners.append(runner)
 
         for cli_output_key, cli_output_value in cli_outputs.items():
-            runner = create_cli_output_runner(cli_output_key,
-                                              cli_output_value)
+            output_value = outputs.get(cli_output_key)
+            runner = create_cli_output_runner(
+                cli_output_key,
+                cli_output_value,
+                output_value
+            )
 
             self._cli_output_runners.append(runner)
 
