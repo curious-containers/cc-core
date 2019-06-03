@@ -77,15 +77,16 @@ _outputs_schema = {
                 {
                     'type': 'object',
                     'properties': {
-                        'class': {'enum': ['File']},
+                        'class': {'enum': ['File', 'stdout']},
                         'checksum': {'type': 'string'},
                         'size': {'type': 'integer'},
                         'connector': _connector_schema
                     },
                     'additionalProperties': False,
                     'required': ['class', 'connector']
-                },
-                {'type': 'null'}
+                }, {
+                    'type': 'null'
+                }
             ]
         }
     },

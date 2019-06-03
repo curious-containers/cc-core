@@ -502,6 +502,8 @@ def complete_input_references_in_outputs(cli_outputs, inputs_to_reference):
     resolved_outputs = deepcopy(cli_outputs)
 
     for output_key, output_value in resolved_outputs.items():
+        if output_value['type'] == 'stdout':
+            continue
         output_binding = output_value['outputBinding']
 
         try:

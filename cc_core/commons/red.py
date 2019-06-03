@@ -21,12 +21,11 @@ SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS = ['access']
 SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS = []
 
 
-def _red_listing_validation(key, listing):
+def _red_listing_validation(listing):
     """
     Raises an RedValidationError, if the given listing does not comply with cwl_job_listing_schema.
     If listing is None or an empty list, no exception is thrown.
 
-    :param key: The input key to build an error message if needed.
     :param listing: The listing to validate
     :raise RedValidationError: If the given listing does not comply with cwl_job_listing_schema
     """
@@ -37,8 +36,8 @@ def _red_listing_validation(key, listing):
         except ValidationError as e:
             where = '.'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
             raise RedValidationError(
-                'REDFILE listing of input key "{}" does not comply with jsonschema:\n\tkey: {}\n\treason: {}'
-                .format(key, where, e.message)
+                'listing does not comply with jsonschema:\n\tkey: {}\n\treason: {}'
+                .format(where, e.message)
             )
 
 
@@ -61,7 +60,135 @@ def red_get_mount_connectors_from_inputs(inputs):
     return keys
 
 
+def _check_red_version(red_version):
+    if not red_version == RED_VERSION:
+        raise RedSpecificationError(
+            'red version "{}" specified in REDFILE is not compatible with red version "{}" of cc-faice'.format(
+                red_version, RED_VERSION
+            )
+        )
+
+
+class CliJobPair:
+    """
+    A CliJobPair represents a cli description of one input/output key and a corresponding input/output batch value.
+    """
+    def __init__(self, key, is_input, cli_description, job_value):
+        """
+        Initializes a CliJobPair
+        :param key: The input/output key of the cli description and job value
+        :param is_input: Defines whether it is an input or an output key
+        :param cli_description: A dictionary containing a cli description of an input/output key.
+        Keys of this cli description are ['type', 'inputBinding']
+        :param job_value: A primitive type or a dictionary containing a job value of an input or output
+        file/directory. In case of a file/directory the keys of the dictionary are ['class', 'connector']
+        """
+        self.key = key
+        self.is_input = is_input
+        self.cli_description = cli_description
+        self.job_value = job_value
+
+    def _get_input_output(self):
+        return 'input' if self.is_input else 'output'
+
+    def check_type(self):
+        """
+        Checks whether the job value type fits to the cli description
+        :raises RedSpecificationError: if cli_description and job value have incompatible types
+        """
+        try:
+            _check_input_output_type(self.job_value, self.cli_description['type'])
+        except RedSpecificationError as e:
+            raise RedSpecificationError(
+                'Error while checking {} key "{}":\n{}'.format(self._get_input_output(), self.key, str(e))
+            )
+
+    def check_directory_listing(self):
+        """
+        Validates a possible directory listing
+        :raise RedValidationError: If listing does not match given job data
+        """
+        cli_type = InputType.from_string(self.cli_description['type'])
+
+        if cli_type.is_directory() and self.job_value is not None:
+            try:
+                _red_listing_validation(self.job_value.get('listing'))
+            except RedValidationError as e:
+                raise RedValidationError('Error while checking listing for {} key "{}":\n{}'
+                                         .format(self._get_input_output(), self.key, str(e)))
+
+
+def _create_cli_job_pairs(red_data, ignore_outputs):
+    """
+    Creates a list containing all cli_job pairs given in red data
+    :param red_data: The red data to get cli job pairs from
+    :param ignore_outputs: Whether to ignore outputs or not
+    :return: A list of cli job pairs given in red data
+    :raise RedSpecificationError: If there is a job value, but no corresponding cli description
+    """
+    batches = red_data.get('batches')
+    if batches is None:
+        batches = [{
+            'inputs': red_data['inputs'],
+            'outputs': red_data['outputs']
+        }]
+
+    cli_job_pairs = []
+
+    # input cli job pairs
+    cli_inputs = red_data['cli']['inputs']
+    for batch in batches:
+        job_inputs = batch['inputs']
+        input_keys = set.union(set(batch['inputs'].keys()), set(cli_inputs.keys()))
+
+        for input_key in input_keys:
+            if input_key not in cli_inputs:
+                raise RedSpecificationError(
+                    'Input key "{}" is used in job description, but is not given in cli description'.format(input_key)
+                )
+
+            cli_job_pair = CliJobPair(input_key, True, cli_inputs[input_key], job_inputs.get(input_key))
+            cli_job_pairs.append(cli_job_pair)
+
+    # output cli job pairs
+    if not ignore_outputs:
+        cli_outputs = red_data['cli']['outputs']
+
+        for batch in batches:
+            job_outputs = batch['outputs']
+            output_keys = set.union(set(batch['outputs'].keys()), set(cli_outputs.keys()))
+
+            for output_key in output_keys:
+                if output_key not in cli_outputs:
+                    raise RedSpecificationError(
+                        'Output key "{}" is used in job description, but is not given in cli description'
+                        .format(output_key)
+                    )
+
+                cli_job_pair = CliJobPair(output_key, False, cli_outputs[output_key], job_outputs.get(output_key))
+                cli_job_pairs.append(cli_job_pair)
+
+    return cli_job_pairs
+
+
 def red_validation(red_data, ignore_outputs, container_requirement=False):
+    """
+    Checks the given red data. The process implements the following steps:
+
+    - check if all keys in the red data are strings
+    - validate red data with schema
+    - match red file version and cc_core version
+    - check if all given job values have a corresponding cli description
+    - match types of cli description and job values
+    - validate listings given in connectors
+    - validate container requirement
+    - checks if globs do start with "/"
+
+    :param red_data: The red data to check
+    :param ignore_outputs: Whether the outputs section should be ignored
+    :param container_requirement: If True, this function checks, if there is a container section in the red file
+    :raise RedValidationError, RedSpecificationError, CWLSpecificationError: If the red data is not valid
+    """
     check_keys_are_strings(red_data)
 
     try:
@@ -72,44 +199,19 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
             'REDFILE does not comply with jsonschema:\n\tkey in red file: {}\n\treason: {}'.format(where, e.message)
         )
 
-    if not red_data['redVersion'] == RED_VERSION:
-        raise RedSpecificationError(
-            'red version "{}" specified in REDFILE is not compatible with red version "{}" of cc-faice'.format(
-                red_data['redVersion'], RED_VERSION
-            )
-        )
+    _check_red_version(red_data['redVersion'])
 
-    if 'batches' in red_data:
-        for batch in red_data['batches']:
-            for key, val in batch['inputs'].items():
-                if key not in red_data['cli']['inputs']:
-                    raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
+    cli_job_pairs = _create_cli_job_pairs(red_data, ignore_outputs)
 
-                if isinstance(val, dict) and 'listing' in val:
-                    _red_listing_validation(key, val['listing'])
-
-            if not ignore_outputs and batch.get('outputs'):
-                for key, val in batch['outputs'].items():
-                    if key not in red_data['cli']['outputs']:
-                        raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
-    else:
-        for key, val in red_data['inputs'].items():
-            if key not in red_data['cli']['inputs']:
-                raise RedSpecificationError('red inputs argument "{}" is not specified in cwl'.format(key))
-
-            if isinstance(val, dict) and 'listing' in val:
-                _red_listing_validation(key, val['listing'])
-
-        if not ignore_outputs and red_data.get('outputs'):
-            for key, val in red_data['outputs'].items():
-                if key not in red_data['cli']['outputs']:
-                    raise RedSpecificationError('red outputs argument "{}" is not specified in cwl'.format(key))
+    # check whether types of job data do fit to cli description
+    for cli_job_pair in cli_job_pairs:
+        cli_job_pair.check_type()
+        cli_job_pair.check_directory_listing()
 
     if container_requirement:
         if not red_data.get('container'):
             raise RedSpecificationError('container engine description is missing in REDFILE')
 
-    _check_input_output_types(red_data)
     _check_output_glob(red_data)
 
 
@@ -121,6 +223,8 @@ def _check_output_glob(red_data):
     cli_outputs = red_data['cli'].get('outputs')
     if cli_outputs:
         for output_key, output_value in cli_outputs.items():
+            if output_value['type'] == 'stdout':
+                continue
             glob = output_value['outputBinding']['glob']
             if os.path.isabs(glob):
                 raise CWLSpecificationError(
@@ -148,6 +252,11 @@ def _check_input_output_type(input_value, cli_description_type):
     :raise RedSpecificationError: If actual input type does not match type of cli description
     """
     input_type = InputType.from_string(cli_description_type)
+
+    if input_value is None:
+        if input_type.is_optional():
+            return
+        raise RedSpecificationError('job value is missing and not optional')
 
     if input_type.is_array():
         if not isinstance(input_value, list):
@@ -177,65 +286,6 @@ def _check_input_output_type(input_value, cli_description_type):
                 raise RedSpecificationError('Is declared as "{}" but given as "{}"'.format(
                     cli_type, value_type
                 ))
-
-
-def _check_input_output_types(red_data):
-    """
-    Checks whether the types of the given red data match the types specified in the cli description.
-    :param red_data: The red data to check
-    :type red_data: dict
-    :raise RedSpecificationError: If types in batch does not match type of cli description
-    """
-
-    input_cli_description = red_data['cli']['inputs']
-    output_cli_description = red_data['cli'].get('outputs')
-
-    batches = red_data.get('batches')
-
-    # check inputs
-    if batches:
-        for batch_index, batch in enumerate(batches):
-            for input_key, input_value in batch['inputs'].items():
-                cli_description = input_cli_description[input_key]
-                try:
-                    _check_input_output_type(input_value, cli_description['type'])
-                except RedSpecificationError as e:
-                    raise RedSpecificationError(
-                        'Type of input key "{}" in batch {} does not match given values:\n{}'
-                        .format(input_key, batch_index, str(e))
-                    )
-    else:
-        for input_key, input_value in red_data['inputs'].items():
-            cli_description = input_cli_description[input_key]
-            try:
-                _check_input_output_type(input_value, cli_description['type'])
-            except RedSpecificationError as e:
-                raise RedSpecificationError(
-                    'Type of input key "{}" does not match given values:\n{}'.format(input_key, str(e))
-                )
-
-    if batches:
-        for batch_index, batch in enumerate(batches):
-            outputs = batch.get('outputs')
-            if outputs:
-                for output_key, output_value in outputs.items():
-                    cli_description = output_cli_description[output_key]
-                    try:
-                        _check_input_output_type(output_value, cli_description['type'])
-                    except Exception as e:
-                        raise RedSpecificationError(
-                            'Type of output key "{}" in batch {} does not match given values:\n{}'
-                            .format(output_key, batch_index, str(e))
-                        )
-    else:
-        for output_key, output_value in red_data['outputs'].items():
-            cli_description = output_cli_description[output_key]
-            try:
-                _check_input_output_type(output_value, cli_description['type'])
-            except Exception as e:
-                raise RedSpecificationError(
-                    'Type of output key "{}" does not match given values:\n{}'.format(output_key, str(e))
-                )
 
 
 def _check_key_is_string(key, path):

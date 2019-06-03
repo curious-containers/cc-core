@@ -68,20 +68,29 @@ _cwl_schema = {
             'type': 'object',
             'patternProperties': {
                 PATTERN_KEY: {
-                    'type': 'object',
-                    'properties': {
-                        'type': {'enum': CWL_OUTPUT_TYPES},
-                        'outputBinding': {
-                            'type': 'object',
-                            'properties': {
-                                'glob': {'type': 'string'},
-                            },
-                            'additionalProperties': False,
-                            'required': ['glob']
-                        }
-                    },
-                    'additionalProperties': False,
-                    'required': ['type', 'outputBinding']
+                    'oneOf': [{
+                        'type': 'object',
+                        'properties': {
+                            'type': {'enum': CWL_OUTPUT_TYPES},
+                            'outputBinding': {
+                                'type': 'object',
+                                'properties': {
+                                    'glob': {'type': 'string'},
+                                },
+                                'additionalProperties': False,
+                                'required': ['glob']
+                            }
+                        },
+                        'additionalProperties': False,
+                        'required': ['type', 'outputBinding']
+                    }, {
+                        'type': 'object',
+                        'properties': {
+                            'type': {'enum': ['stdout']},
+                        },
+                        'additionalProperties': False,
+                        'required': ['type']
+                    }]
                 }
             }
         }
