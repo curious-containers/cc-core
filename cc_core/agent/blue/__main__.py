@@ -13,6 +13,7 @@ import urllib.request
 
 from argparse import ArgumentParser
 from traceback import format_exc
+from typing import List, Dict
 from urllib.error import URLError
 from urllib.parse import urlparse
 
@@ -1252,17 +1253,10 @@ def format_key_index(input_key, input_index=None):
 
 class ConnectorManager:
     def __init__(self):
-        self._input_runners = []
-        """ :type: List[InputConnectorRunner] """
-
-        self._output_runners = []
-        """ :type: List[OutputConnectorRunner] """
-
-        self._cli_output_runners = []
-        """ :type: List[CliOutputRunner] """
-
-        self._connector_cli_version_cache = {}
-        """ :type: Dict[str; str] """
+        self._input_runners = []  # type: List[InputConnectorRunner]
+        self._output_runners = []  # type: List[OutputConnectorRunner]
+        self._cli_output_runners = []  # type: List[CliOutputRunner]
+        self._connector_cli_version_cache = {}  # type: Dict[str, str]
 
     def import_input_connectors(self, inputs):
         """
