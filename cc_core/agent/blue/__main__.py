@@ -19,7 +19,6 @@ from urllib.parse import urlparse
 
 DESCRIPTION = 'Run an experiment as described in a BLUEFILE.'
 JSON_INDENT = 2
-OUTPUT_DIRECTORY = '/outputs'
 
 
 def attach_args(parser):
@@ -82,13 +81,12 @@ def run(args):
 
         blue_data = get_blue_data(blue_location)
 
-        working_dir = blue_data.get('workDir')
-        if working_dir is None:
-            raise KeyError('Invalid BLUE file. "workDir" is required.')
-        create_working_dir(working_dir)
+        outdir = blue_data.get('outdir')
+        # it is assumed, that the outdir given in blue_data is present in the local filesystem
+        _check_outdir(outdir)
 
         if output_mode == OutputMode.Connectors and 'outputs' not in blue_data:
-            raise AssertionError('--outputs/-o argument is set but no outputs section is defined in BLUE file.')
+            raise ExecutionError('--outputs/-o argument is set but no outputs section is defined in BLUE file.')
 
         # validate command
         command = blue_data.get('command')
@@ -98,7 +96,7 @@ def run(args):
         # import, validate and execute connectors
         inputs = blue_data.get('inputs')
         if inputs is None:
-            raise KeyError('Invalid BLUE file. "inputs" is not specified.')
+            raise ExecutionError('Invalid BLUE file. "inputs" is not specified.')
         connector_manager.import_input_connectors(inputs)
 
         outputs = blue_data.get('outputs', {})
@@ -112,20 +110,18 @@ def run(args):
         result['inputs'] = connector_manager.inputs_to_dict()
 
         # execute command
-        execution_result = execute(command, work_dir=working_dir)
+        execution_result = execute(command, work_dir=outdir)
         result['process'] = execution_result.to_dict()
         if not execution_result.successful():
             raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
                                  .format(' '.join(command), execution_result.get_std_err()))
 
         # check output files/directories
-        connector_manager.check_outputs(working_dir)
+        connector_manager.check_outputs(outdir)
 
         # send files and directories
         if output_mode == OutputMode.Connectors:
-            connector_manager.send_connectors(working_dir)
-        elif output_mode == OutputMode.Directory:
-            connector_manager.move_output_files(working_dir, OUTPUT_DIRECTORY)
+            connector_manager.send_connectors(outdir)
 
     except Exception as e:
         print_exception(e)
@@ -216,20 +212,37 @@ def _validate_command(command):
                                  '"{}" is not a string'.format(command, s))
 
 
-def create_working_dir(working_dir):
+def _check_outdir(outdir):
     """
-    Tries to create the working directory for the executed process.
-    :param working_dir: The directory where to execute the main command and from where to search output-files.
-    :raise Exception: If working_dir could not be created
+    Checks whether the given output directory is empty and writable
+
+    :param outdir: The directory to check
+    :raise ExecutionError: If the given outdir is not present or not writable
     """
-    try:
-        ensure_directory(working_dir)
-    except FileExistsError:
-        raise FileExistsError('Could not create working dir "{}", because it already exists and is not empty.'
-                              .format(working_dir))
-    except PermissionError as e:
-        raise PermissionError('Failed to create working_dir "{}", because of insufficient permissions.\n{}'
-                              .format(working_dir, str(e)))
+    if outdir is None:
+        raise ExecutionError('Invalid BLUE file. "outdir" is required.')
+
+    if not os.path.isdir(outdir):
+        raise ExecutionError('The given outdir "{}" is not present in the local filesystem'.format(outdir))
+
+    if not is_directory_writable(outdir):
+        raise ExecutionError(
+            'The given outdir "{}" is not writable by the current user "{}"'.format(outdir, os.getuid())
+        )
+
+
+def is_directory_writable(d):
+    """
+    Returns whether the given directory is writable or not. Assumes, that it is present in the local filesystem.
+    :param d: The directory to check, whether it is writable
+    :return: True, if the given directory is writable, otherwise False
+    """
+    st = os.stat(d)
+    user_has_permissions = bool(st.st_mode & stat.S_IRUSR) and bool(st.st_mode & stat.S_IWUSR)
+    group_has_permissions = bool(st.st_mode & stat.S_IRGRP) and bool(st.st_mode & stat.S_IWGRP)
+    others_have_permissions = bool(st.st_mode & stat.S_IROTH) and bool(st.st_mode & stat.S_IWOTH)
+
+    return user_has_permissions or group_has_permissions or others_have_permissions
 
 
 def ensure_directory(d):
@@ -246,12 +259,7 @@ def ensure_directory(d):
     os.makedirs(d)
 
     # check write permissions
-    st = os.stat(d)
-    user_has_permissions = bool(st.st_mode & stat.S_IRUSR) and bool(st.st_mode & stat.S_IWUSR)
-    group_has_permissions = bool(st.st_mode & stat.S_IRGRP) and bool(st.st_mode & stat.S_IWGRP)
-    others_have_permissions = bool(st.st_mode & stat.S_IROTH) and bool(st.st_mode & stat.S_IWOTH)
-
-    if (not user_has_permissions) and (not group_has_permissions) and (not others_have_permissions):
+    if not is_directory_writable(d):
         raise PermissionError('Directory "{}" is not writable.'.format(d))
 
 
@@ -813,33 +821,6 @@ class CliOutputRunner:
         self._checksum = checksum
         self._size = size
 
-    def try_move(self, working_dir, output_dir):
-        """
-        Tries to move the associated output file into the output_dir.
-
-        :param working_dir: The working directory from where to glob the output file
-        :param output_dir: The directory to move the output files to.
-        :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous.
-        """
-        working_path = _resolve_glob_pattern_and_throw(self._glob_pattern,
-                                                       self._output_key,
-                                                       working_dir,
-                                                       self._output_class.connector_type)
-
-        # create output path
-        output_dir = os.path.join(output_dir, self._output_key)
-        output_path = os.path.join(output_dir, os.path.basename(working_path))
-        try:
-            ensure_directory(output_dir)
-        except FileExistsError:
-            raise FileExistsError('Could not create path for output key "{}", because path "{}" already exists and is '
-                                  'not empty.'.format(self._output_key, output_dir))
-        except PermissionError as e:
-            raise PermissionError('Failed to create path "{}" for output key "{}", because of insufficient permissions.'
-                                  '\n{}'.format(output_dir, self._output_key, str(e)))
-
-        shutil.move(working_path, output_path)
-
     def check_output(self, working_dir):
         """
         Checks if the corresponding output is present relative to the given working directory.
@@ -1385,16 +1366,6 @@ class ConnectorManager:
             inputs_dict[input_runner.format_input_key()] = input_runner.to_dict()
 
         return inputs_dict
-
-    def move_output_files(self, working_dir, output_dir):
-        """
-        Moves the output files to output directory.
-
-        :param working_dir: The directory from where to search the output files/directories
-        :param output_dir: The directory where the output files/directories should be moved to
-        """
-        for runner in self._cli_output_runners:
-            runner.try_move(working_dir, output_dir)
 
     def check_outputs(self, working_dir):
         """

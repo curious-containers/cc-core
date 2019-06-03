@@ -109,6 +109,7 @@ _red_schema = {
         'type': 'object',
         'properties': {
             'redVersion': {'type': 'string'},
+            'outdir': {'type': 'string'},
             'cli': _cwl_schema,
             'inputs': _inputs_schema,
             'outputs': _outputs_schema,
@@ -121,6 +122,7 @@ _red_schema = {
         'type': 'object',
         'properties': {
             'redVersion': {'type': 'string'},
+            'outdir': {'type': 'string'},
             'cli': _cwl_schema,
             'batches': {
                 'type': 'array',

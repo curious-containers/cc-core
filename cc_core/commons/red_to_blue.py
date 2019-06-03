@@ -18,7 +18,7 @@ import uuid
 from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference
 from cc_core.commons.input_references import resolve_input_references
 
-DEFAULT_WORKING_DIRECTORY = '/tmp/red/work/'
+DEFAULT_CONTAINER_OUTDIR = '/outputs'
 BLUE_INPUT_CLASSES = {'File', 'Directory'}
 
 
@@ -40,12 +40,14 @@ def convert_red_to_blue(red_data):
     cli_arguments = get_cli_arguments(cli_inputs)
     base_command = produce_base_command(cli_description.get('baseCommand'))
 
+    container_outdir = red_data.get('outdir', DEFAULT_CONTAINER_OUTDIR)
+
     for batch in batches:
         batch_inputs = batch['inputs']
         complete_batch_inputs(batch_inputs, cli_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
-        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs)
+        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, container_outdir)
         blue_batches.append(blue_batch)
 
     return blue_batches
@@ -84,19 +86,20 @@ def _create_blue_batch_inputs(batch_inputs):
     return blue_batch_inputs
 
 
-def create_blue_batch(command, batch, cli_outputs):
+def create_blue_batch(command, batch, cli_outputs, container_outdir):
     """
     Defines a dictionary containing a blue batch
     :param command: The command of the blue data, given as list of strings
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
+    :param container_outdir: The directory in the docker container, where the blue agent is executed.
     :return: A dictionary containing the blue data
     """
     blue_batch_inputs = _create_blue_batch_inputs(batch['inputs'])
     blue_batch_outputs = batch['outputs']
     blue_data = {
         'command': command,
-        'workDir': DEFAULT_WORKING_DIRECTORY,
+        'outdir': container_outdir,
         'cli': {
             'outputs': cli_outputs
         },

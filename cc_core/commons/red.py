@@ -1,3 +1,5 @@
+import os
+
 import jsonschema
 from jsonschema.exceptions import ValidationError
 
@@ -5,7 +7,7 @@ from cc_core.commons.red_to_blue import InputType
 from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
-from cc_core.commons.exceptions import ArgumentError, RedValidationError
+from cc_core.commons.exceptions import ArgumentError, RedValidationError, CWLSpecificationError
 from cc_core.commons.exceptions import RedSpecificationError
 
 SEND_RECEIVE_SPEC_ARGS = ['access', 'internal']
@@ -108,6 +110,22 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
             raise RedSpecificationError('container engine description is missing in REDFILE')
 
     _check_input_types(red_data)
+    _check_output_glob(red_data)
+
+
+def _check_output_glob(red_data):
+    """
+    Raises an CwlSpecificationError, if a glob is given as absolute path.
+    :param red_data: The red data to analyse
+    """
+    cli_outputs = red_data['cli'].get('outputs')
+    if cli_outputs:
+        for output_key, output_value in cli_outputs.items():
+            glob = output_value['outputBinding']['glob']
+            if os.path.isabs(glob):
+                raise CWLSpecificationError(
+                    'Glob of output key "{}" starts with "/", which is illegal'.format(output_key)
+                )
 
 
 CWL_TYPE_TO_PYTHON_TYPE = {
