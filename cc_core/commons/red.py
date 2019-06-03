@@ -109,7 +109,7 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
         if not red_data.get('container'):
             raise RedSpecificationError('container engine description is missing in REDFILE')
 
-    _check_input_types(red_data)
+    _check_input_output_types(red_data)
     _check_output_glob(red_data)
 
 
@@ -140,10 +140,9 @@ CWL_TYPE_TO_PYTHON_TYPE = {
 }
 
 
-def _check_input_type(input_key, input_value, cli_description_type):
+def _check_input_output_type(input_value, cli_description_type):
     """
-    Checks whether the type of the given input value matches the type of the given cli description.
-    :param input_key: The corresponding input key
+    Checks whether the type of the given value matches the type of the given cli description.
     :param input_value: The input value whose type to check
     :param cli_description_type: The cwl type description of the input key
     :raise RedSpecificationError: If actual input type does not match type of cli description
@@ -152,8 +151,7 @@ def _check_input_type(input_key, input_value, cli_description_type):
 
     if input_type.is_array():
         if not isinstance(input_value, list):
-            raise RedSpecificationError('Value of input key "{}" is declared as array, but not given as such.'
-                                        .format(input_key))
+            raise RedSpecificationError('cli is declared as array, but value is not given as such')
 
     else:
         input_value = [input_value]
@@ -168,39 +166,76 @@ def _check_input_type(input_key, input_value, cli_description_type):
             else:
                 short_repr = 'value "{}" of type "{}"'.format(sub_input_value, type(sub_input_value).__name__)
 
-            raise RedSpecificationError('Value of input key "{}" should have type "{}", but found {}.'.format(
-                    input_key, input_type.input_category.name, short_repr
+            raise RedSpecificationError('Value should have type "{}", but found {}.'.format(
+                    input_type.input_category.name, short_repr
             ))
 
         if not input_type.is_primitive():
             cli_type = input_type.input_category.name
             value_type = sub_input_value.get('class')
             if cli_type != value_type:
-                raise RedSpecificationError('Input key "{}" is declared as "{}" but given as "{}"'.format(
-                    input_key, cli_type, value_type
+                raise RedSpecificationError('Is declared as "{}" but given as "{}"'.format(
+                    cli_type, value_type
                 ))
 
 
-def _check_input_types(red_data):
+def _check_input_output_types(red_data):
     """
-    Checks whether the types of the given input values match the types specified in the cli description.
+    Checks whether the types of the given red data match the types specified in the cli description.
     :param red_data: The red data to check
     :type red_data: dict
-    :raise RedSpecificationError: If actual input type does not match type of cli description
+    :raise RedSpecificationError: If types in batch does not match type of cli description
     """
 
     input_cli_description = red_data['cli']['inputs']
+    output_cli_description = red_data['cli'].get('outputs')
 
     batches = red_data.get('batches')
+
+    # check inputs
     if batches:
-        for batch in batches:
+        for batch_index, batch in enumerate(batches):
             for input_key, input_value in batch['inputs'].items():
                 cli_description = input_cli_description[input_key]
-                _check_input_type(input_key, input_value, cli_description['type'])
+                try:
+                    _check_input_output_type(input_value, cli_description['type'])
+                except RedSpecificationError as e:
+                    raise RedSpecificationError(
+                        'Type of input key "{}" in batch {} does not match given values:\n{}'
+                        .format(input_key, batch_index, str(e))
+                    )
     else:
         for input_key, input_value in red_data['inputs'].items():
             cli_description = input_cli_description[input_key]
-            _check_input_type(input_key, input_value, cli_description['type'])
+            try:
+                _check_input_output_type(input_value, cli_description['type'])
+            except RedSpecificationError as e:
+                raise RedSpecificationError(
+                    'Type of input key "{}" does not match given values:\n{}'.format(input_key, str(e))
+                )
+
+    if batches:
+        for batch_index, batch in enumerate(batches):
+            outputs = batch.get('outputs')
+            if outputs:
+                for output_key, output_value in outputs.items():
+                    cli_description = output_cli_description[output_key]
+                    try:
+                        _check_input_output_type(output_value, cli_description['type'])
+                    except Exception as e:
+                        raise RedSpecificationError(
+                            'Type of output key "{}" in batch {} does not match given values:\n{}'
+                            .format(output_key, batch_index, str(e))
+                        )
+    else:
+        for output_key, output_value in red_data['outputs'].items():
+            cli_description = output_cli_description[output_key]
+            try:
+                _check_input_output_type(output_value, cli_description['type'])
+            except Exception as e:
+                raise RedSpecificationError(
+                    'Type of output key "{}" does not match given values:\n{}'.format(output_key, str(e))
+                )
 
 
 def _check_key_is_string(key, path):
