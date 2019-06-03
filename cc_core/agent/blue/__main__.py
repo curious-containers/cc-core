@@ -66,6 +66,8 @@ def run(args):
         'command': None,
         'process': None,
         'debugInfo': None,
+        'inputs': None,
+        'outputs': None,
         'state': 'succeeded'
     }
 
@@ -106,6 +108,7 @@ def run(args):
 
         connector_manager.validate_connectors(validate_outputs=(output_mode == OutputMode.Connectors))
         connector_manager.receive_connectors()
+        result['inputs'] = connector_manager.inputs_to_dict()
 
         # execute command
         execution_result = execute(command, work_dir=working_dir)
@@ -395,6 +398,42 @@ def calculate_file_checksum(path):
     return 'sha1${}'.format(hasher.hexdigest())
 
 
+def get_listing_information(path, listing):
+    """
+    Creates a dictionary that contains readable information about a given directory, that is present in the local
+    filesystem under path.
+
+    :param path: The path where the directory is present in the local filesystem
+    :param listing: The listing to get information about. Every file/directory in listing should contain a basename,
+    which has to be present in the filesystem.
+    :type listing: list[dict]
+    :return: A dictionary containing ['class', 'basename', 'checksum', 'size'] for every file in the given listing and
+    ['class', 'basename'] (and optional 'listing') for every directory.
+    """
+    listing_information = []
+
+    for sub in listing:
+        sub_information = {}
+        sub_path = os.path.join(path, sub['basename'])
+
+        if sub['class'] == 'File':
+            sub_information['class'] = 'File'
+            sub_information['basename'] = sub['basename']
+            sub_information['checksum'] = calculate_file_checksum(sub_path)
+            sub_information['size'] = os.path.getsize(sub_path)
+        elif sub['class'] == 'Directory':
+            sub_information['class'] = 'Directory'
+            sub_information['basename'] = sub['basename']
+
+            sub_listing = sub.get('listing')
+            if sub_listing:
+                sub_information['listing'] = get_listing_information(sub_path, sub_listing)
+
+        listing_information.append(sub_information)
+
+    return listing_information
+
+
 class InputConnectorRunner:
     """
     A ConnectorRunner can be used to execute the different functions of a Connector.
@@ -424,6 +463,7 @@ class InputConnectorRunner:
         :param input_index: The input index in case of File/Directory lists
         :param connector_command: The connector command to execute
         :param input_class: Either 'File' or 'Directory'
+        :type input_class: ConnectorClass
         :param mount: Whether the associated connector mounts or not
         :param access: The access information for the connector
         :param path: The path where to put the data
@@ -444,6 +484,25 @@ class InputConnectorRunner:
 
         # Is set to true, after mounting
         self._has_mounted = False
+
+    def to_dict(self):
+        """
+        Returns a dictionary representing this input file or directory
+        :return: A dictionary containing information about this input file or directory
+        """
+        dict_representation = {
+            'class': self._input_class.to_string(),
+            'path': self._path,
+        }
+
+        if self._input_class.is_file():
+            dict_representation['checksum'] = calculate_file_checksum(self._path)
+            dict_representation['size'] = os.path.getsize(self._path)
+        elif self._input_class.is_directory() and self._listing:
+            listing = get_listing_information(self._path, self._listing)
+            dict_representation['listing'] = listing
+
+        return dict_representation
 
     def get_input_class(self):
         return self._input_class
@@ -1194,9 +1253,16 @@ def format_key_index(input_key, input_index=None):
 class ConnectorManager:
     def __init__(self):
         self._input_runners = []
+        """ :type: List[InputConnectorRunner] """
+
         self._output_runners = []
+        """ :type: List[OutputConnectorRunner] """
+
         self._cli_output_runners = []
+        """ :type: List[CliOutputRunner] """
+
         self._connector_cli_version_cache = {}
+        """ :type: Dict[str; str] """
 
     def import_input_connectors(self, inputs):
         """
@@ -1313,6 +1379,18 @@ class ConnectorManager:
         elif errors_len > 1:
             error_strings = [_format_exception(e) for e in errors]
             raise ConnectorError('{} output connectors failed:\n{}'.format(errors_len, '\n'.join(error_strings)))
+
+    def inputs_to_dict(self):
+        """
+        Translates the imported input connectors into a dictionary.
+        :return: A dictionary containing status information about all imported input connectors
+        """
+        inputs_dict = {}
+
+        for input_runner in self._input_runners:
+            inputs_dict[input_runner.format_input_key()] = input_runner.to_dict()
+
+        return inputs_dict
 
     def move_output_files(self, working_dir, output_dir):
         """
