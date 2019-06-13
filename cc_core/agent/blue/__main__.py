@@ -81,10 +81,9 @@ def run(args):
 
         blue_data = get_blue_data(blue_location)
 
-        outdir = blue_data.get('outdir')
-        # it is assumed, that the outdir given in blue_data is present in the local filesystem, if output_mode is
-        # Directory
         if output_mode == OutputMode.Directory:
+            # it is assumed, that the outdir given in blue_data is present in the local filesystem
+            outdir = blue_data.get('outdir')
             _check_outdir(outdir)
         elif output_mode == OutputMode.Connectors:
             outdir = tempfile.mkdtemp()
