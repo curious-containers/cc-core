@@ -82,8 +82,12 @@ def run(args):
         blue_data = get_blue_data(blue_location)
 
         outdir = blue_data.get('outdir')
-        # it is assumed, that the outdir given in blue_data is present in the local filesystem
-        _check_outdir(outdir)
+        # it is assumed, that the outdir given in blue_data is present in the local filesystem, if output_mode is
+        # Directory
+        if output_mode == OutputMode.Directory:
+            _check_outdir(outdir)
+        elif output_mode == OutputMode.Connectors:
+            outdir = tempfile.mkdtemp()
 
         if output_mode == OutputMode.Connectors and 'outputs' not in blue_data:
             raise ExecutionError('--outputs/-o argument is set but no outputs section is defined in BLUE file.')
