@@ -93,7 +93,8 @@ _cwl_schema = {
                     }]
                 }
             }
-        }
+        },
+        'stdout': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['cwlVersion', 'class', 'baseCommand', 'inputs', 'outputs']

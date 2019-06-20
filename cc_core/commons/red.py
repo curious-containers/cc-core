@@ -1,9 +1,10 @@
+import itertools
 import os
 
 import jsonschema
 from jsonschema.exceptions import ValidationError
 
-from cc_core.commons.red_to_blue import InputType
+from cc_core.commons.red_to_blue import InputType, OutputType
 from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
@@ -97,7 +98,10 @@ class CliJobPair:
         :raises RedSpecificationError: if cli_description and job value have incompatible types
         """
         try:
-            _check_input_output_type(self.job_value, self.cli_description['type'])
+            if self.is_input:
+                _check_input_type(self.job_value, self.cli_description['type'])
+            else:
+                _check_output_type(self.job_value, self.cli_description['type'])
         except RedSpecificationError as e:
             raise RedSpecificationError(
                 'Error while checking {} key "{}":\n{}'.format(self._get_input_output(), self.key, str(e))
@@ -120,10 +124,14 @@ class CliJobPair:
 
 def _create_cli_job_pairs(red_data, ignore_outputs):
     """
-    Creates a list containing all cli_job pairs given in red data
+    Creates one list for all input cli_job pairs and one for all output cli_job pairs given in red data and returns them
+    as tuple. If ignore_outputs is True, the output cli_job pair list is empty.
     :param red_data: The red data to get cli job pairs from
     :param ignore_outputs: Whether to ignore outputs or not
-    :return: A list of cli job pairs given in red data
+    :return: A tuple(input_cli_job_pairs, output_cli_job_pairs) with:
+    input_cli_job_pairs: A list of all CliJobPairs given in the input section of red_data
+    output_cli_job_pairs: A list of all CliJobPairs given in the output section of red_data
+    :rtype: Tuple[List[CliJobPair], List[CliJobPair]]
     :raise RedSpecificationError: If there is a job value, but no corresponding cli description
     """
     batches = red_data.get('batches')
@@ -133,7 +141,7 @@ def _create_cli_job_pairs(red_data, ignore_outputs):
             'outputs': red_data['outputs']
         }]
 
-    cli_job_pairs = []
+    input_cli_job_pairs = []
 
     # input cli job pairs
     cli_inputs = red_data['cli']['inputs']
@@ -147,8 +155,10 @@ def _create_cli_job_pairs(red_data, ignore_outputs):
                     'Input key "{}" is used in job description, but is not given in cli description'.format(input_key)
                 )
 
-            cli_job_pair = CliJobPair(input_key, True, cli_inputs[input_key], job_inputs.get(input_key))
-            cli_job_pairs.append(cli_job_pair)
+            input_cli_job_pair = CliJobPair(input_key, True, cli_inputs[input_key], job_inputs.get(input_key))
+            input_cli_job_pairs.append(input_cli_job_pair)
+
+    output_cli_job_pairs = []
 
     # output cli job pairs
     if not ignore_outputs:
@@ -165,10 +175,10 @@ def _create_cli_job_pairs(red_data, ignore_outputs):
                         .format(output_key)
                     )
 
-                cli_job_pair = CliJobPair(output_key, False, cli_outputs[output_key], job_outputs.get(output_key))
-                cli_job_pairs.append(cli_job_pair)
+                output_cli_job_pair = CliJobPair(output_key, False, cli_outputs[output_key], job_outputs.get(output_key))
+                output_cli_job_pairs.append(output_cli_job_pair)
 
-    return cli_job_pairs
+    return input_cli_job_pairs, output_cli_job_pairs
 
 
 def red_validation(red_data, ignore_outputs, container_requirement=False):
@@ -201,10 +211,10 @@ def red_validation(red_data, ignore_outputs, container_requirement=False):
 
     _check_red_version(red_data['redVersion'])
 
-    cli_job_pairs = _create_cli_job_pairs(red_data, ignore_outputs)
+    input_cli_job_pairs, output_cli_job_pairs = _create_cli_job_pairs(red_data, ignore_outputs)
 
     # check whether types of job data do fit to cli description
-    for cli_job_pair in cli_job_pairs:
+    for cli_job_pair in itertools.chain(input_cli_job_pairs, output_cli_job_pairs):
         cli_job_pair.check_type()
         cli_job_pair.check_directory_listing()
 
@@ -232,7 +242,7 @@ def _check_output_glob(red_data):
                 )
 
 
-CWL_TYPE_TO_PYTHON_TYPE = {
+CWL_INPUT_TYPE_TO_PYTHON_TYPE = {
     InputType.InputCategory.File: {dict},
     InputType.InputCategory.Directory: {dict},
     InputType.InputCategory.string: {str},
@@ -240,33 +250,42 @@ CWL_TYPE_TO_PYTHON_TYPE = {
     InputType.InputCategory.long: {int},
     InputType.InputCategory.float: {float, int},
     InputType.InputCategory.double: {float, int},
-    InputType.InputCategory.boolean: {bool}
+    InputType.InputCategory.boolean: {bool},
+}
+
+CWL_OUTPUT_TYPE_TO_PYTHON_TYPE = {
+    OutputType.OutputCategory.File: {dict},
+    OutputType.OutputCategory.Directory: {dict}
 }
 
 
-def _check_input_output_type(input_value, cli_description_type):
+def _check_input_type(input_value, cli_description_type):
     """
-    Checks whether the type of the given value matches the type of the given cli description.
+    Checks whether the type of the given input value matches the type of the given cli description.
     :param input_value: The input value whose type to check
     :param cli_description_type: The cwl type description of the input key
     :raise RedSpecificationError: If actual input type does not match type of cli description
     """
     input_type = InputType.from_string(cli_description_type)
 
+    # check for optional arguments
     if input_value is None:
         if input_type.is_optional():
             return
         raise RedSpecificationError('job value is missing and not optional')
 
+    # check for arrays
+    # after this block input_value is always an array and an error is thrown, if input value has wrong list type
     if input_type.is_array():
         if not isinstance(input_value, list):
             raise RedSpecificationError('cli is declared as array, but value is not given as such')
-
     else:
+        if isinstance(input_value, list):
+            raise RedSpecificationError('cli is not declared as array, but value is given as array')
         input_value = [input_value]
 
     for sub_input_value in input_value:
-        set_of_possible_value_types = CWL_TYPE_TO_PYTHON_TYPE[input_type.input_category]
+        set_of_possible_value_types = CWL_INPUT_TYPE_TO_PYTHON_TYPE[input_type.input_category]
         if type(sub_input_value) not in set_of_possible_value_types:
             if isinstance(sub_input_value, dict):
                 short_repr = 'dictionary'
@@ -275,7 +294,7 @@ def _check_input_output_type(input_value, cli_description_type):
             else:
                 short_repr = 'value "{}" of type "{}"'.format(sub_input_value, type(sub_input_value).__name__)
 
-            raise RedSpecificationError('Value should have type "{}", but found {}.'.format(
+            raise RedSpecificationError('Value should have type "{}", but found "{}".'.format(
                     input_type.input_category.name, short_repr
             ))
 
@@ -286,6 +305,42 @@ def _check_input_output_type(input_value, cli_description_type):
                 raise RedSpecificationError('Is declared as "{}" but given as "{}"'.format(
                     cli_type, value_type
                 ))
+
+
+def _check_output_type(output_value, cli_description_type):
+    """
+    Checks whether the type of the given output value matches the type of the given cli description.
+    :param output_value: The output value whose type to check
+    :param cli_description_type: The cwl type description of the output key
+    :raise RedSpecificationError: If actual output type does not match type of cli description
+    """
+    output_type = OutputType.from_string(cli_description_type)
+
+    # check for optional arguments
+    if output_value is None:
+        if output_type.is_optional():
+            return
+        raise RedSpecificationError('job value is missing and not optional')
+
+    set_of_possible_value_types = CWL_OUTPUT_TYPE_TO_PYTHON_TYPE[output_type.output_category]
+    if type(output_value) not in set_of_possible_value_types:
+        if isinstance(output_value, dict):
+            short_repr = 'dictionary'
+        elif isinstance(output_value, list):
+            short_repr = 'list'
+        else:
+            short_repr = 'value "{}" of type "{}"'.format(output_value, type(output_value).__name__)
+
+        raise RedSpecificationError('Value should have type "{}", but found "{}".'.format(
+            output_type.output_category.name, short_repr
+        ))
+
+    cli_type = output_type.output_category.name
+    value_type = output_value.get('class')
+    if cli_type != value_type:
+        raise RedSpecificationError('Is declared as "{}" but given as "{}"'.format(
+            cli_type, value_type
+        ))
 
 
 def _check_key_is_string(key, path):

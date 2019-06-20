@@ -15,7 +15,7 @@ import os.path
 
 import uuid
 
-from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference
+from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference, RedSpecificationError
 from cc_core.commons.input_references import resolve_input_references
 
 DEFAULT_CONTAINER_OUTDIR = '/outputs'
@@ -141,7 +141,8 @@ class InputType:
             if s == ic.name:
                 input_category = ic
 
-        assert input_category is not None
+        if input_category is None:
+            raise RedSpecificationError('The given input type "{}" is not valid'.format(s))
 
         return InputType(input_category, is_array, is_optional)
 
@@ -173,6 +174,60 @@ class InputType:
     def is_primitive(self):
         return (self.input_category != InputType.InputCategory.Directory) and \
                (self.input_category != InputType.InputCategory.File)
+
+
+class OutputType:
+    class OutputCategory(Enum):
+        File = 0
+        Directory = 1
+        stdout = 2
+
+    def __init__(self, output_category, is_optional):
+        self.output_category = output_category
+        self._is_optional = is_optional
+
+    @staticmethod
+    def from_string(s):
+        is_optional = s.endswith('?')
+        if is_optional:
+            s = s[:-1]
+
+        output_category = None
+        for oc in OutputType.OutputCategory:
+            if s == oc.name:
+                output_category = oc
+
+        if output_category is None:
+            raise RedSpecificationError('The given output type "{}" is not valid'.format(s))
+
+        if output_category == OutputType.OutputCategory.stdout and is_optional:
+            raise RedSpecificationError(
+                'The given output type is an optional stdout ("{}"), which is not valid'.format(s)
+            )
+
+        return OutputType(output_category, is_optional)
+
+    def to_string(self):
+        return '{}{}'.format(
+            self.output_category.name,
+            '?' if self._is_optional else ''
+        )
+
+    def __repr__(self):
+        return self.to_string()
+
+    def __eq__(self, other):
+        return (self.output_category == other.output_category) and \
+               (self._is_optional == other.is_optional())
+
+    def is_file(self):
+        return self.output_category == InputType.InputCategory.File
+
+    def is_directory(self):
+        return self.output_category == InputType.InputCategory.Directory
+
+    def is_optional(self):
+        return self._is_optional
 
 
 def generate_command(base_command, cli_arguments, batch):
