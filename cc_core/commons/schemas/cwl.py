@@ -86,7 +86,7 @@ _cwl_schema = {
                     }, {
                         'type': 'object',
                         'properties': {
-                            'type': {'enum': ['stdout']},
+                            'type': {'enum': ['stdout', 'stderr']},
                         },
                         'additionalProperties': False,
                         'required': ['type']
@@ -94,7 +94,8 @@ _cwl_schema = {
                 }
             }
         },
-        'stdout': {'type': 'string'}
+        'stdout': {'type': 'string'},
+        'stderr': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['cwlVersion', 'class', 'baseCommand', 'inputs', 'outputs']

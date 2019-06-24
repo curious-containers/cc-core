@@ -106,7 +106,9 @@ def run(args):
         cli = blue_data.get('cli', {})
         cli_outputs = cli.get('outputs', {})
         cli_stdout = cli.get('stdout')
-        connector_manager.import_output_connectors(outputs, cli_outputs, output_mode, cli_stdout)
+        cli_stderr = cli.get('stderr')
+
+        connector_manager.import_output_connectors(outputs, cli_outputs, output_mode, cli_stdout, cli_stderr)
         connector_manager.prepare_directories()
 
         connector_manager.validate_connectors(validate_outputs=(output_mode == OutputMode.Connectors))
@@ -120,8 +122,9 @@ def run(args):
             raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
                                  .format(' '.join(command), execution_result.get_std_err()))
 
-        # write stdout file, if specified
+        # write stderr/stdout file, if specified
         _create_stdout_file(execution_result.std_out, cli_stdout, outdir)
+        _create_stderr_file(execution_result.std_err, cli_stderr, outdir)
 
         # check output files/directories
         connector_manager.check_outputs(outdir)
@@ -232,6 +235,21 @@ def _create_stdout_file(command_stdout, cli_stdout, outdir):
         with open(path, 'w') as stdout_file:
             for line in command_stdout:
                 stdout_file.write(line)
+
+
+def _create_stderr_file(command_stderr, cli_stderr, outdir):
+    """
+    Creates a file with the name given by cli_stderr and content given by command_stderr. The file is located in outdir.
+    This function is meant for creating the stderr file after a command execution has been successful.
+    :param command_stderr: The content of the file to create
+    :param cli_stderr: The name of the file to create. If cli_stderr is None, this function does nothing
+    :param outdir: The directory in which the file should be created
+    """
+    if cli_stderr is not None:
+        path = os.path.join(outdir, cli_stderr)
+        with open(path, 'w') as stderr_file:
+            for line in command_stderr:
+                stderr_file.write(line)
 
 
 def _check_outdir(outdir):
@@ -422,6 +440,7 @@ class OutputConnectorType(enum.Enum):
     File = 0
     Directory = 1
     stdout = 2
+    stderr = 3
 
     @staticmethod
     def get_list():
@@ -438,6 +457,7 @@ class OutputConnectorType(enum.Enum):
 FILE_LIKE_OUTPUT_TYPES = {
     OutputConnectorType.File,
     OutputConnectorType.stdout,
+    OutputConnectorType.stderr,
 }
 
 
@@ -486,12 +506,18 @@ class OutputConnectorClass:
     def is_stdout(self):
         return self.connector_type == OutputConnectorType.stdout
 
+    def is_stderr(self):
+        return self.connector_type == OutputConnectorType.stderr
+
+    def is_stream(self):
+        return self.is_stdout() or self.is_stderr()
+
     def is_optional(self):
         return self._is_optional
 
     def is_file_like(self):
         """
-        Returns True if this OutputConnectorClass stands for a File or stdout, otherwise False
+        Returns True if this OutputConnectorClass stands for a File, stdout or stderr. Otherwise returns False
         :return: Whether this OutputConnectorClass represents a file
         """
         return self.connector_type in FILE_LIKE_OUTPUT_TYPES
@@ -1205,7 +1231,12 @@ CONNECTOR_CLI_VERSION_OUTPUT_RUNNER_MAPPING = {
 }
 
 
-def create_output_connector_runner(output_key, output_value, cli_output_value, connector_cli_version_cache, cli_stdout):
+def create_output_connector_runner(output_key,
+                                   output_value,
+                                   cli_output_value,
+                                   connector_cli_version_cache,
+                                   cli_stdout,
+                                   cli_stderr):
     """
     Creates a proper OutputConnectorRunner instance for the given connector command.
 
@@ -1214,6 +1245,7 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     :param cli_output_value: The cli description for the runner
     :param connector_cli_version_cache: Cache for connector cli version
     :param cli_stdout: The path to the stdout file
+    :param cli_stderr: The path to the stderr file
     :return: A ConnectorRunner
     """
     try:
@@ -1230,6 +1262,13 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
                     .format(output_key)
                 )
             glob_pattern = cli_stdout
+        elif output_class.is_stderr():
+            if cli_stderr is None:
+                raise ConnectorError(
+                    'Type of output key "{}" is "stderr", but no stderr file specified in cli section of red file'
+                    .format(output_key)
+                )
+            glob_pattern = cli_stderr
         else:
             glob_pattern = cli_output_value['outputBinding']['glob']
     except KeyError as e:
@@ -1267,13 +1306,14 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     return connector_runner
 
 
-def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None, cli_stdout=None):
+def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None, cli_stdout=None, cli_stderr=None):
     """
     Creates a CliOutputRunner.
     :param cli_output_key: The output key of the corresponding cli output
     :param cli_output_value: The output value given in the blue file of the corresponding cli output
     :param output_value: The job output value for this output key. Can be None
     :param cli_stdout: The path to the stdout file
+    :param cli_stderr: The path to the stderr file
     :return: A new instance of CliOutputRunner
     :raise ConnectorError: If the cli output is not valid.
     """
@@ -1286,6 +1326,13 @@ def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None
                     .format(cli_output_key)
                 )
             glob_pattern = cli_stdout
+        elif output_class.is_stderr():
+            if cli_stderr is None:
+                raise ConnectorError(
+                    'Type of output key "{}" is "stderr", but no stderr file specified in cli section of red file'
+                    .format(cli_output_key)
+                )
+            glob_pattern = cli_stderr
         else:
             glob_pattern = cli_output_value['outputBinding']['glob']
     except KeyError as e:
@@ -1410,7 +1457,7 @@ class ConnectorManager:
                     assert_class = runner.get_input_class()
                     self._input_runners.append(runner)
 
-    def import_output_connectors(self, outputs, cli_outputs, output_mode, cli_stdout):
+    def import_output_connectors(self, outputs, cli_outputs, output_mode, cli_stdout, cli_stderr):
         """
         Creates OutputConnectorRunner for every key in outputs.
         In Addition creates a CliOutputRunner for every key in cli_outputs.
@@ -1418,6 +1465,7 @@ class ConnectorManager:
         :param cli_outputs: The output cli description.
         :param output_mode: The output mode for this execution
         :param cli_stdout: The value of the stdout cli description (the path to the stdout file)
+        :param cli_stderr: The value of the stderr cli description (the path to the stderr file)
         """
         if output_mode == OutputMode.Connectors:
             for output_key, output_value in outputs.items():
@@ -1431,8 +1479,10 @@ class ConnectorManager:
                     output_value,
                     cli_output_value,
                     self._connector_cli_version_cache,
-                    cli_stdout
+                    cli_stdout,
+                    cli_stderr
                 )
+
                 self._output_runners.append(runner)
 
         for cli_output_key, cli_output_value in cli_outputs.items():
@@ -1441,7 +1491,8 @@ class ConnectorManager:
                 cli_output_key,
                 cli_output_value,
                 output_value,
-                cli_stdout
+                cli_stdout,
+                cli_stderr
             )
 
             self._cli_output_runners.append(runner)

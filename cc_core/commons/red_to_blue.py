@@ -37,6 +37,7 @@ def convert_red_to_blue(red_data):
     cli_inputs = cli_description['inputs']
     cli_outputs = cli_description.get('outputs')
     cli_stdout = cli_description.get('stdout')
+    cli_stderr = cli_description.get('stderr')
 
     cli_arguments = get_cli_arguments(cli_inputs)
     base_command = produce_base_command(cli_description.get('baseCommand'))
@@ -48,7 +49,7 @@ def convert_red_to_blue(red_data):
         complete_batch_inputs(batch_inputs, cli_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
-        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, container_outdir, cli_stdout)
+        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, container_outdir, cli_stdout, cli_stderr)
         blue_batches.append(blue_batch)
 
     return blue_batches
@@ -87,14 +88,17 @@ def _create_blue_batch_inputs(batch_inputs):
     return blue_batch_inputs
 
 
-def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=None):
+def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=None, cli_stderr=None):
     """
     Defines a dictionary containing a blue batch
     :param command: The command of the blue data, given as list of strings
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
     :param container_outdir: The directory in the docker container, where the blue agent is executed.
-    :param cli_stdout: The path where the stdout file should be created. If None it is not added to the blue batch
+    :param cli_stdout: The path where the stdout file should be created. If None cli.stdout is not added to the blue
+    batch
+    :param cli_stderr: The path where the stderr file should be created. If None cli.stderr it is not added to the blue
+    batch
     :return: A dictionary containing the blue data
     """
     blue_batch_inputs = _create_blue_batch_inputs(batch['inputs'])
@@ -109,8 +113,12 @@ def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=
         'outputs': blue_batch_outputs
     }
 
+    # add stdout/stderr file specification
     if cli_stdout is not None:
         blue_data['cli']['stdout'] = cli_stdout
+
+    if cli_stderr is not None:
+        blue_data['cli']['stderr'] = cli_stderr
 
     return blue_data
 
@@ -186,6 +194,7 @@ class OutputType:
         File = 0
         Directory = 1
         stdout = 2
+        stderr = 3
 
     def __init__(self, output_category, is_optional):
         self.output_category = output_category
@@ -208,6 +217,10 @@ class OutputType:
         if output_category == OutputType.OutputCategory.stdout and is_optional:
             raise RedSpecificationError(
                 'The given output type is an optional stdout ("{}"), which is not valid'.format(s)
+            )
+        if output_category == OutputType.OutputCategory.stderr and is_optional:
+            raise RedSpecificationError(
+                'The given output type is an optional stderr ("{}"), which is not valid'.format(s)
             )
 
         return OutputType(output_category, is_optional)
@@ -233,6 +246,15 @@ class OutputType:
 
     def is_stdout(self):
         return self.output_category == OutputType.OutputCategory.stdout
+
+    def is_stderr(self):
+        return self.output_category == OutputType.OutputCategory.stderr
+
+    def is_stream(self):
+        """
+        Returns True, if this OutputType holds a stdout or stderr
+        """
+        return self.is_stdout() or self.is_stderr()
 
     def is_optional(self):
         return self._is_optional
@@ -565,7 +587,7 @@ def complete_input_references_in_outputs(cli_outputs, inputs_to_reference):
     resolved_outputs = deepcopy(cli_outputs)
 
     for output_key, output_value in resolved_outputs.items():
-        if output_value['type'] == 'stdout':
+        if output_value['type'] == 'stdout' or output_value['type'] == 'stderr':
             continue
         output_binding = output_value['outputBinding']
 

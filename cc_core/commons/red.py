@@ -236,7 +236,7 @@ def _check_output_glob(red_data):
     cli_outputs = red_data['cli'].get('outputs')
     if cli_outputs:
         for output_key, output_value in cli_outputs.items():
-            if output_value['type'] == 'stdout':
+            if output_value['type'] == 'stdout' or output_value['type'] == 'stderr':
                 continue
             glob = output_value['outputBinding']['glob']
             if os.path.isabs(glob):
@@ -259,7 +259,8 @@ CWL_INPUT_TYPE_TO_PYTHON_TYPE = {
 CWL_OUTPUT_TYPE_TO_PYTHON_TYPE = {
     OutputType.OutputCategory.File: {dict},
     OutputType.OutputCategory.Directory: {dict},
-    OutputType.OutputCategory.stdout: {dict}
+    OutputType.OutputCategory.stdout: {dict},
+    OutputType.OutputCategory.stderr: {dict}
 }
 
 
