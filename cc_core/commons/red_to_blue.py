@@ -113,6 +113,12 @@ def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=
         'outputs': blue_batch_outputs
     }
 
+    if _outputs_contain_output_type(blue_batch_outputs, 'stdout') and cli_stdout is None:
+        cli_stdout = str(uuid.uuid4())
+
+    if _outputs_contain_output_type(blue_batch_outputs, 'stderr') and cli_stderr is None:
+        cli_stderr = str(uuid.uuid4())
+
     # add stdout/stderr file specification
     if cli_stdout is not None:
         blue_data['cli']['stdout'] = cli_stdout
@@ -121,6 +127,23 @@ def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=
         blue_data['cli']['stderr'] = cli_stderr
 
     return blue_data
+
+
+def _outputs_contain_output_type(blue_batch_outputs, output_type):
+    """
+    Returns whether the given blue batch outputs contain an output with the given output type.
+    This function is used to determine, if this batch output contain stdout or stderr specifications.
+    :param blue_batch_outputs: The blue batch outputs to search in. The keys are the output keys of the converted red
+    file and the values are the output values corresponding to this key.
+    :type blue_batch_outputs: dict
+    :param output_type: The OutputType to search given as string
+    :type output_type: str
+    :return: True, if an output of type output_type could be found, otherwise False
+    """
+    for output_value in blue_batch_outputs.values():
+        if output_value.get('class') == output_type:
+            return True
+    return False
 
 
 class InputType:
