@@ -128,6 +128,7 @@ def run(args):
 
         # check output files/directories
         connector_manager.check_outputs(outdir)
+        result['outputs'] = connector_manager.outputs_to_dict(outdir)
 
         # send files and directories
         if output_mode == OutputMode.Connectors:
@@ -835,9 +836,9 @@ def _resolve_glob_pattern(glob_pattern, working_dir, connector_type=None):
     """
     glob_pattern = os.path.join(working_dir, glob_pattern)
     glob_result = glob.glob(glob_pattern)
-    if connector_type == InputConnectorType.File:
+    if connector_type == OutputConnectorType.File:
         glob_result = [f for f in glob_result if os.path.isfile(f)]
-    elif connector_type == InputConnectorType.Directory:
+    elif connector_type == OutputConnectorType.Directory:
         glob_result = [f for f in glob_result if os.path.isdir(f)]
     return glob_result
 
@@ -871,7 +872,7 @@ class OutputConnectorRunner:
     Subclasses implement different cli-versions for connectors.
 
     A ConnectorRunner instance is associated with a blue input, that uses a connector.
-    For every blue input, that uses a connector a new ConnectorRunner instance is created.
+    For every blue output, that uses a connector a new OutputConnectorRunner instance is created.
     """
 
     def __init__(self, output_key, connector_command, output_class, access, glob_pattern, listing=None):
@@ -897,6 +898,9 @@ class OutputConnectorRunner:
         self._access = access
         self._glob_pattern = glob_pattern
         self._listing = listing
+
+    def get_output_key(self):
+        return self._output_key
 
     def validate_send(self):
         """
@@ -959,6 +963,33 @@ class CliOutputRunner:
         self._output_class = output_class
         self._checksum = checksum
         self._size = size
+
+    def get_output_key(self):
+        return self._output_key
+
+    def to_dict(self, outdir):
+        """
+        Returns a dictionary representing this output file
+        :param outdir: The directory in which the output files should be searched
+        :return: A dictionary containing information about this output file
+        """
+        dict_representation = {
+            'class': self._output_class.to_string(),
+            'glob': self._glob_pattern,
+        }
+
+        path = _resolve_glob_pattern(self._glob_pattern, outdir, self._output_class.connector_type)
+
+        if len(path) == 1:
+            path = path[0]
+
+            if self._output_class.is_file_like():
+                dict_representation['checksum'] = calculate_file_checksum(path)
+                dict_representation['size'] = os.path.getsize(path)
+        else:
+            dict_representation['paths'] = path
+
+        return dict_representation
 
     def check_output(self, working_dir):
         """
@@ -1567,6 +1598,19 @@ class ConnectorManager:
             inputs_dict[input_runner.format_input_key()] = input_runner.to_dict()
 
         return inputs_dict
+
+    def outputs_to_dict(self, outdir):
+        """
+        Translates the imported output connectors into a dictionary.
+        :param outdir: The output directory where the glob_patterns of the connectors are evaluated
+        :return: A dictionary containing status information about all imported output connectors
+        """
+        outputs_dict = {}
+
+        for output_runner in self._cli_output_runners:
+            outputs_dict[output_runner.get_output_key()] = output_runner.to_dict(outdir)
+
+        return outputs_dict
 
     def check_outputs(self, working_dir):
         """
