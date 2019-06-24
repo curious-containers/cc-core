@@ -117,8 +117,8 @@ def run(args):
 
         # execute command
         execution_result = execute(command, work_dir=outdir)
-        result['process'] = execution_result.to_dict()
         if not execution_result.successful():
+            result['process'] = execution_result.to_dict()
             raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
                                  .format(' '.join(command), execution_result.get_std_err()))
 
