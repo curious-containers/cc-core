@@ -85,7 +85,7 @@ def run(args):
             # it is assumed, that the outdir given in blue_data is present in the local filesystem
             outdir = blue_data.get('outdir')
             _check_outdir(outdir)
-        elif output_mode == OutputMode.Connectors:
+        else:
             outdir = tempfile.mkdtemp()
 
         if output_mode == OutputMode.Connectors and 'outputs' not in blue_data:
@@ -105,7 +105,8 @@ def run(args):
         outputs = blue_data.get('outputs', {})
         cli = blue_data.get('cli', {})
         cli_outputs = cli.get('outputs', {})
-        connector_manager.import_output_connectors(outputs, cli_outputs, output_mode)
+        cli_stdout = cli.get('stdout')
+        connector_manager.import_output_connectors(outputs, cli_outputs, output_mode, cli_stdout)
         connector_manager.prepare_directories()
 
         connector_manager.validate_connectors(validate_outputs=(output_mode == OutputMode.Connectors))
@@ -118,6 +119,9 @@ def run(args):
         if not execution_result.successful():
             raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
                                  .format(' '.join(command), execution_result.get_std_err()))
+
+        # write stdout file, if specified
+        _create_stdout_file(execution_result.std_out, cli_stdout, outdir)
 
         # check output files/directories
         connector_manager.check_outputs(outdir)
@@ -213,6 +217,21 @@ def _validate_command(command):
             raise ExecutionError('Invalid BLUE File. "command" has to be a list of strings.\n'
                                  'command: "{}"\n'
                                  '"{}" is not a string'.format(command, s))
+
+
+def _create_stdout_file(command_stdout, cli_stdout, outdir):
+    """
+    Creates a file with the name given by cli_stdout and content given by command_stdout. The file is located in outdir.
+    This function is meant for creating the stdout file after a command execution has been successful.
+    :param command_stdout: The content of the file to create
+    :param cli_stdout: The name of the file to create. If cli_stdout is None, this function does nothing
+    :param outdir: The directory in which the file should be created
+    """
+    if cli_stdout is not None:
+        path = os.path.join(outdir, cli_stdout)
+        with open(path, 'w') as stdout_file:
+            for line in command_stdout:
+                stdout_file.write(line)
 
 
 def _check_outdir(outdir):
@@ -340,12 +359,12 @@ def execute_connector(connector_command, top_level_argument, access=None, path=N
     return execution_result
 
 
-class ConnectorType(enum.Enum):
+class InputConnectorType(enum.Enum):
     File = 0
     Directory = 1
 
 
-class ConnectorClass:
+class InputConnectorClass:
     def __init__(self, connector_type, is_array, is_optional):
         self.connector_type = connector_type
         self._is_array = is_array
@@ -362,15 +381,17 @@ class ConnectorClass:
             s = s[:-2]
 
         connector_type = None
-        for ct in ConnectorType:
+        for ct in InputConnectorType:
             if s == ct.name:
                 connector_type = ct
 
         if connector_type is None:
-            raise ConnectorError('Could not extract connector class from string "{}". Connector classes should start '
-                                 'with "File" or "Directory" and optionally end with "[]" or "?" or "[]?"'.format(s))
+            raise ConnectorError(
+                'Could not extract input connector class from string "{}". Connector classes should start with "File" '
+                'or "Directory" and optionally end with "[]" or "?" or "[]?"'.format(s)
+            )
 
-        return ConnectorClass(connector_type, is_array, is_optional)
+        return InputConnectorClass(connector_type, is_array, is_optional)
 
     def to_string(self):
         if self._is_array:
@@ -385,16 +406,95 @@ class ConnectorClass:
         return (self.connector_type == other.connector_type) and (self._is_array == other.is_array())
 
     def is_file(self):
-        return self.connector_type == ConnectorType.File
+        return self.connector_type == InputConnectorType.File
 
     def is_directory(self):
-        return self.connector_type == ConnectorType.Directory
+        return self.connector_type == InputConnectorType.Directory
 
     def is_array(self):
         return self._is_array
 
     def is_optional(self):
         return self._is_optional
+
+
+class OutputConnectorType(enum.Enum):
+    File = 0
+    Directory = 1
+    stdout = 2
+
+    @staticmethod
+    def get_list():
+        """
+        Returns a list containing all variants as string
+        :rtype: List[str]
+        """
+        result = []
+        for ct in OutputConnectorType:
+            result.append(ct.name)
+        return result
+
+
+FILE_LIKE_OUTPUT_TYPES = {
+    OutputConnectorType.File,
+    OutputConnectorType.stdout,
+}
+
+
+class OutputConnectorClass:
+    def __init__(self, connector_type, is_optional):
+        self.connector_type = connector_type
+        self._is_optional = is_optional
+
+    @staticmethod
+    def from_string(s):
+        is_optional = s.endswith('?')
+        if is_optional:
+            s = s[:-1]
+
+        connector_type = None
+        for ct in OutputConnectorType:
+            if s == ct.name:
+                connector_type = ct
+
+        if connector_type is None:
+            raise ConnectorError(
+                'Could not extract output connector class from string "{}". Connector class should be one of {}'
+                .format(s, OutputConnectorType.get_list())
+            )
+
+        return OutputConnectorClass(connector_type, is_optional)
+
+    def to_string(self):
+        if self._is_optional:
+            return '{}?'.format(self.connector_type.name)
+        else:
+            return self.connector_type.name
+
+    def __repr__(self):
+        return self.to_string()
+
+    def __eq__(self, other):
+        return self.connector_type == other.connector_type
+
+    def is_file(self):
+        return self.connector_type == OutputConnectorType.File
+
+    def is_directory(self):
+        return self.connector_type == OutputConnectorType.Directory
+
+    def is_stdout(self):
+        return self.connector_type == OutputConnectorType.stdout
+
+    def is_optional(self):
+        return self._is_optional
+
+    def is_file_like(self):
+        """
+        Returns True if this OutputConnectorClass stands for a File or stdout, otherwise False
+        :return: Whether this OutputConnectorClass represents a file
+        """
+        return self.connector_type in FILE_LIKE_OUTPUT_TYPES
 
 
 def calculate_file_checksum(path):
@@ -709,9 +809,9 @@ def _resolve_glob_pattern(glob_pattern, working_dir, connector_type=None):
     """
     glob_pattern = os.path.join(working_dir, glob_pattern)
     glob_result = glob.glob(glob_pattern)
-    if connector_type == ConnectorType.File:
+    if connector_type == InputConnectorType.File:
         glob_result = [f for f in glob_result if os.path.isfile(f)]
-    elif connector_type == ConnectorType.Directory:
+    elif connector_type == InputConnectorType.Directory:
         glob_result = [f for f in glob_result if os.path.isdir(f)]
     return glob_result
 
@@ -753,11 +853,17 @@ class OutputConnectorRunner:
         initiates a OutputConnectorRunner.
 
         :param output_key: The blue output key
+        :type output_key: str
         :param connector_command: The connector command to execute
+        :type connector_command: str
         :param output_class: The ConnectorClass for this output
+        :type output_class: OutputConnectorClass
         :param access: The access information for the connector
+        :type access: dict
         :param glob_pattern: The glob_pattern to match
+        :type glob_pattern: str
         :param listing: An optional listing for the associated connector
+        :type listing: list
         """
         self._output_key = output_key
         self._connector_command = connector_command
@@ -772,7 +878,7 @@ class OutputConnectorRunner:
         """
         if self._output_class.is_directory():
             self.send_dir_validate()
-        elif self._output_class.is_file():
+        elif self._output_class.is_file_like():
             self.send_file_validate()
 
     def try_send(self, working_dir):
@@ -782,11 +888,14 @@ class OutputConnectorRunner:
         :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous.
                                Or if the executed connector fails.
         """
-        path = _resolve_glob_pattern_and_throw(self._glob_pattern,
-                                               self._output_key,
-                                               working_dir,
-                                               self._output_class.connector_type)
-        if self._output_class.is_file():
+        path = _resolve_glob_pattern_and_throw(
+            self._glob_pattern,
+            self._output_key,
+            working_dir,
+            self._output_class.connector_type
+        )
+
+        if self._output_class.is_file_like():
             self.send_file(path)
         elif self._output_class.is_directory():
             self.send_dir(path)
@@ -815,6 +924,7 @@ class CliOutputRunner:
         :param output_key: The corresponding output key
         :param glob_pattern: The glob pattern to match against output files
         :param output_class: The class of the output
+        :type output_class: OutputConnectorClass
         :param checksum: The expected checksum of the file
         :param size: The expected size of the file
         """
@@ -830,11 +940,18 @@ class CliOutputRunner:
         :param working_dir: The Directory from where to look for the file/directory.
         :raise ConnectorError: If the corresponding file/directory is not present on disk
         """
-        glob_result = _resolve_glob_pattern(self._glob_pattern, working_dir, self._output_class.connector_type)
+        glob_result = _resolve_glob_pattern(
+            self._glob_pattern,
+            working_dir,
+            self._output_class.connector_type
+        )
 
         # check ambiguous
         if len(glob_result) >= 2:
-            files_directories = 'files' if self._output_class.connector_type == ConnectorType.File else 'directories'
+            if self._output_class.is_file_like():
+                files_directories = 'files'
+            else:
+                files_directories = 'directories'
 
             raise ConnectorError('Could not resolve glob "{}" for output key "{}". Glob is '
                                  'ambiguous. Found the following {}:\n{}'
@@ -843,7 +960,10 @@ class CliOutputRunner:
         # check if key is required
         if not self._output_class.is_optional():
             if len(glob_result) == 0:
-                file_directory = 'File' if self._output_class.connector_type == ConnectorType.File else 'Directory'
+                if self._output_class.is_file_like():
+                    file_directory = 'File'
+                else:
+                    file_directory = 'Directory'
                 raise ConnectorError('Could not resolve glob "{}" for required output key "{}". {} not '
                                      'found.'.format(self._glob_pattern, self._output_key, file_directory))
 
@@ -1026,7 +1146,7 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_cl
         if assert_list:
             clazz = '{}[]'.format(clazz)
 
-        input_class = ConnectorClass.from_string(clazz)
+        input_class = InputConnectorClass.from_string(clazz)
         path = input_value['path']
     except KeyError as e:
         raise ConnectorError('Could not create connector for input key "{}".\n'
@@ -1085,7 +1205,7 @@ CONNECTOR_CLI_VERSION_OUTPUT_RUNNER_MAPPING = {
 }
 
 
-def create_output_connector_runner(output_key, output_value, cli_output_value, connector_cli_version_cache):
+def create_output_connector_runner(output_key, output_value, cli_output_value, connector_cli_version_cache, cli_stdout):
     """
     Creates a proper OutputConnectorRunner instance for the given connector command.
 
@@ -1093,6 +1213,7 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     :param output_value: The output to create a runner for
     :param cli_output_value: The cli description for the runner
     :param connector_cli_version_cache: Cache for connector cli version
+    :param cli_stdout: The path to the stdout file
     :return: A ConnectorRunner
     """
     try:
@@ -1100,12 +1221,22 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
         connector_command = connector_data['command']
         access = connector_data['access']
 
-        output_class = ConnectorClass.from_string(cli_output_value['type'])
-        glob_pattern = cli_output_value['outputBinding']['glob']
+        output_class = OutputConnectorClass.from_string(cli_output_value['type'])
+
+        if output_class.is_stdout():
+            if cli_stdout is None:
+                raise ConnectorError(
+                    'Type of output key "{}" is "stdout", but no stdout file specified in cli section of red file'
+                    .format(output_key)
+                )
+            glob_pattern = cli_stdout
+        else:
+            glob_pattern = cli_output_value['outputBinding']['glob']
     except KeyError as e:
-        raise ConnectorError('Could not create connector for output key "{}".\n'
-                             'The following property was not found: "{}"'
-                             .format(output_key, str(e)))
+        raise ConnectorError(
+            'Could not create connector for output key "{}".\nThe following property was not found: "{}"'
+            .format(output_key, str(e))
+        )
 
     mount = connector_data.get('mount', False)
     listing = output_value.get('listing')
@@ -1136,18 +1267,27 @@ def create_output_connector_runner(output_key, output_value, cli_output_value, c
     return connector_runner
 
 
-def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None):
+def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None, cli_stdout=None):
     """
     Creates a CliOutputRunner.
     :param cli_output_key: The output key of the corresponding cli output
     :param cli_output_value: The output value given in the blue file of the corresponding cli output
     :param output_value: The job output value for this output key. Can be None
+    :param cli_stdout: The path to the stdout file
     :return: A new instance of CliOutputRunner
     :raise ConnectorError: If the cli output is not valid.
     """
     try:
-        output_class = ConnectorClass.from_string(cli_output_value['type'])
-        glob_pattern = cli_output_value['outputBinding']['glob']
+        output_class = OutputConnectorClass.from_string(cli_output_value['type'])
+        if output_class.is_stdout():
+            if cli_stdout is None:
+                raise ConnectorError(
+                    'Type of output key "{}" is "stdout", but no stdout file specified in cli section of red file'
+                    .format(cli_output_key)
+                )
+            glob_pattern = cli_stdout
+        else:
+            glob_pattern = cli_output_value['outputBinding']['glob']
     except KeyError as e:
         raise ConnectorError('Could not create cli runner for output key "{}".\n'
                              'The following property was not found: "{}"'.format(cli_output_key, str(e)))
@@ -1167,7 +1307,9 @@ class ExecutionResult:
         """
         Initializes a new ExecutionResult
         :param std_out: The std_err of the execution as list of strings
+        :type std_out: list[str]
         :param std_err: The std_out of the execution as list of strings
+        :type std_err: list[str]
         :param return_code: The return code of the execution
         """
         self.std_out = std_out
@@ -1268,13 +1410,14 @@ class ConnectorManager:
                     assert_class = runner.get_input_class()
                     self._input_runners.append(runner)
 
-    def import_output_connectors(self, outputs, cli_outputs, output_mode):
+    def import_output_connectors(self, outputs, cli_outputs, output_mode, cli_stdout):
         """
         Creates OutputConnectorRunner for every key in outputs.
         In Addition creates a CliOutputRunner for every key in cli_outputs.
         :param outputs: The outputs to create runner for.
         :param cli_outputs: The output cli description.
         :param output_mode: The output mode for this execution
+        :param cli_stdout: The value of the stdout cli description (the path to the stdout file)
         """
         if output_mode == OutputMode.Connectors:
             for output_key, output_value in outputs.items():
@@ -1283,10 +1426,13 @@ class ConnectorManager:
                     raise KeyError('Could not find output key "{}" in cli description, but was given in "outputs".'
                                    .format(output_key))
 
-                runner = create_output_connector_runner(output_key,
-                                                        output_value,
-                                                        cli_output_value,
-                                                        self._connector_cli_version_cache)
+                runner = create_output_connector_runner(
+                    output_key,
+                    output_value,
+                    cli_output_value,
+                    self._connector_cli_version_cache,
+                    cli_stdout
+                )
                 self._output_runners.append(runner)
 
         for cli_output_key, cli_output_value in cli_outputs.items():
@@ -1294,7 +1440,8 @@ class ConnectorManager:
             runner = create_cli_output_runner(
                 cli_output_key,
                 cli_output_value,
-                output_value
+                output_value,
+                cli_stdout
             )
 
             self._cli_output_runners.append(runner)

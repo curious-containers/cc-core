@@ -112,7 +112,10 @@ class CliJobPair:
         Validates a possible directory listing
         :raise RedValidationError: If listing does not match given job data
         """
-        cli_type = InputType.from_string(self.cli_description['type'])
+        if self.is_input:
+            cli_type = InputType.from_string(self.cli_description['type'])
+        else:
+            cli_type = OutputType.from_string(self.cli_description['type'])
 
         if cli_type.is_directory() and self.job_value is not None:
             try:
@@ -255,7 +258,8 @@ CWL_INPUT_TYPE_TO_PYTHON_TYPE = {
 
 CWL_OUTPUT_TYPE_TO_PYTHON_TYPE = {
     OutputType.OutputCategory.File: {dict},
-    OutputType.OutputCategory.Directory: {dict}
+    OutputType.OutputCategory.Directory: {dict},
+    OutputType.OutputCategory.stdout: {dict}
 }
 
 

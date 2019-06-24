@@ -36,6 +36,7 @@ def convert_red_to_blue(red_data):
     cli_description = red_data['cli']
     cli_inputs = cli_description['inputs']
     cli_outputs = cli_description.get('outputs')
+    cli_stdout = cli_description.get('stdout')
 
     cli_arguments = get_cli_arguments(cli_inputs)
     base_command = produce_base_command(cli_description.get('baseCommand'))
@@ -47,7 +48,7 @@ def convert_red_to_blue(red_data):
         complete_batch_inputs(batch_inputs, cli_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
-        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, container_outdir)
+        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, container_outdir, cli_stdout)
         blue_batches.append(blue_batch)
 
     return blue_batches
@@ -86,13 +87,14 @@ def _create_blue_batch_inputs(batch_inputs):
     return blue_batch_inputs
 
 
-def create_blue_batch(command, batch, cli_outputs, container_outdir):
+def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=None):
     """
     Defines a dictionary containing a blue batch
     :param command: The command of the blue data, given as list of strings
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
     :param container_outdir: The directory in the docker container, where the blue agent is executed.
+    :param cli_stdout: The path where the stdout file should be created. If None it is not added to the blue batch
     :return: A dictionary containing the blue data
     """
     blue_batch_inputs = _create_blue_batch_inputs(batch['inputs'])
@@ -106,6 +108,9 @@ def create_blue_batch(command, batch, cli_outputs, container_outdir):
         'inputs': blue_batch_inputs,
         'outputs': blue_batch_outputs
     }
+
+    if cli_stdout is not None:
+        blue_data['cli']['stdout'] = cli_stdout
 
     return blue_data
 
@@ -221,10 +226,13 @@ class OutputType:
                (self._is_optional == other.is_optional())
 
     def is_file(self):
-        return self.output_category == InputType.InputCategory.File
+        return self.output_category == OutputType.OutputCategory.File
 
     def is_directory(self):
-        return self.output_category == InputType.InputCategory.Directory
+        return self.output_category == OutputType.OutputCategory.Directory
+
+    def is_stdout(self):
+        return self.output_category == OutputType.OutputCategory.stdout
 
     def is_optional(self):
         return self._is_optional
