@@ -24,7 +24,7 @@ def exception_format(secret_values=None):
     return [_lstrip_quarter(l.replace('"', '').replace("'", '').rstrip()) for l in exc_text.split('\n') if l]
 
 
-def brief_exception_text(exception, secret_values):
+def brief_exception_text(exception, secret_values=None):
     """
     Returns the Exception class and the message of the exception as string.
 
