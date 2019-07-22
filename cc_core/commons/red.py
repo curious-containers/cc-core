@@ -129,6 +129,7 @@ def _create_cli_job_pairs(red_data, ignore_outputs):
     """
     Creates one list for all input cli_job pairs and one for all output cli_job pairs given in red data and returns them
     as tuple. If ignore_outputs is True, the output cli_job pair list is empty.
+
     :param red_data: The red data to get cli job pairs from
     :param ignore_outputs: Whether to ignore outputs or not
     :return: A tuple(input_cli_job_pairs, output_cli_job_pairs) with:
@@ -141,7 +142,7 @@ def _create_cli_job_pairs(red_data, ignore_outputs):
     if batches is None:
         batches = [{
             'inputs': red_data['inputs'],
-            'outputs': red_data['outputs']
+            'outputs': red_data.get('outputs')
         }]
 
     input_cli_job_pairs = []
@@ -168,7 +169,9 @@ def _create_cli_job_pairs(red_data, ignore_outputs):
         cli_outputs = red_data['cli']['outputs']
 
         for batch in batches:
-            job_outputs = batch['outputs']
+            job_outputs = batch.get('outputs')
+            if job_outputs is None:
+                continue
             output_keys = set.union(set(batch['outputs'].keys()), set(cli_outputs.keys()))
 
             for output_key in output_keys:
