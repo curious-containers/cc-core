@@ -18,7 +18,7 @@ import uuid
 from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference, RedSpecificationError
 from cc_core.commons.input_references import resolve_input_references
 
-DEFAULT_CONTAINER_OUTDIR = '/outputs'
+DEFAULT_CONTAINER_OUTDIR = '/tmp/outputs'
 BLUE_INPUT_CLASSES = {'File', 'Directory'}
 
 

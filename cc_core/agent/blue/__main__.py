@@ -255,21 +255,19 @@ def _create_stderr_file(command_stderr, cli_stderr, outdir):
 
 def _check_outdir(outdir):
     """
-    Checks whether the given output directory is empty and writable
+    Checks whether the given output directory is empty and writable. If the directory does not exist, it is created.
 
-    :param outdir: The directory to check
+    :param outdir: The path to the outdir to check
+    :type outdir: str
+
     :raise ExecutionError: If the given outdir is not present or not writable
+    :raise PermissionError: If the directory exists, but is not writable
+    :raise FileExistsError: If the directory already exists and is not empty
     """
     if outdir is None:
         raise ExecutionError('Invalid BLUE file. "outdir" is required.')
 
-    if not os.path.isdir(outdir):
-        raise ExecutionError('The given outdir "{}" is not present in the local filesystem'.format(outdir))
-
-    if not is_directory_writable(outdir):
-        raise ExecutionError(
-            'The given outdir "{}" is not writable by the current user "{}"'.format(outdir, os.getuid())
-        )
+    ensure_directory(outdir)
 
 
 def is_directory_writable(d):
@@ -289,8 +287,11 @@ def is_directory_writable(d):
 def ensure_directory(d):
     """
     Ensures that directory d exists, is empty and is writable
+
     :param d: The directory that you want to make sure is either created or exists already.
-    :raise PermissionError: If
+    :type d: str
+    :raise PermissionError: If the directory exists, but is not writable
+    :raise FileExistsError: If the directory already exists and is not empty
     """
     if os.path.exists(d):
         if os.listdir(d):
