@@ -26,6 +26,7 @@ def convert_red_to_blue(red_data):
     """
     Converts the given red data into a list of blue data dictionary. The blue data is always given as list and each list
     entry represents one batch in the red data.
+
     :param red_data: The red data to convert
     :return: A list of blue data dictionaries
     """
@@ -56,6 +57,7 @@ def convert_red_to_blue(red_data):
 def _is_blue_input_value(input_value):
     """
     Returns whether the given input value defines a connector.
+
     :param input_value: The input value as list or value, that may contain a connector
     :return: True, if input value contains a connector definition, otherwise false
     """
@@ -76,6 +78,7 @@ def _is_blue_input_value(input_value):
 def _create_blue_batch_inputs(batch_inputs):
     """
     Filters the given inputs and returns only batch inputs, that contain a connector definition
+
     :param batch_inputs: The batch inputs of a red file
     :return: A dictionary containing all keys of batch_inputs, which contain a connector definition
     """
@@ -89,6 +92,7 @@ def _create_blue_batch_inputs(batch_inputs):
 def create_blue_batch(command, batch, cli_outputs):
     """
     Defines a dictionary containing a blue batch
+
     :param command: The command of the blue data, given as list of strings
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
@@ -177,6 +181,7 @@ class InputType:
 def generate_command(base_command, cli_arguments, batch):
     """
     Creates a command from the cli description and a given batch.
+
     :param base_command: The base command to use
     :param cli_arguments: The arguments of the described tool
     :param batch: The batch to execute
@@ -207,6 +212,7 @@ INPUT_CATEGORY_REPRESENTATION_MAPPER = {
 def _get_boolean_array_argument_list(cli_argument, batch_value):
     """
     Creates a list of strings representing an execution argument for boolean arrays. Like ['true', 'False']
+
     :param cli_argument: The cli argument. (Should be an boolean array)
     :param batch_value: The batch value corresponding to the cli argument. Should contain any number of booleans.
     :return: A list of strings representing
@@ -253,6 +259,7 @@ def _create_argument_list(cli_argument, batch_value):
 def _argument_list_to_execution_argument(argument_list, cli_argument, batch_value):
     """
     Returns a list of strings representing the execution argument for the given cli argument.
+
     :param argument_list: The list of argument without prefix
     :param cli_argument: The cli argument whose prefix might be added.
     :param batch_value: The batch value corresponding to the cli argument
@@ -300,6 +307,7 @@ def _argument_list_to_execution_argument(argument_list, cli_argument, batch_valu
 def create_execution_argument(cli_argument, batch_value):
     """
     Creates a list of strings representing an execution argument. Like ['--outdir=', '/path/to/file']
+
     :param cli_argument: The cli argument
     :param batch_value: The batch value corresponding to the cli argument. Can be None
     :return: A list of strings, that can be used to extend the command. Returns an empty list if (cli_argument is
@@ -332,6 +340,7 @@ class CliArgumentPosition:
     def __init__(self, argument_position_type, binding_position):
         """
         Creates a new CliArgumentPosition.
+
         :param argument_position_type: The position type of this argument position
         """
         self.argument_position_type = argument_position_type
@@ -341,6 +350,7 @@ class CliArgumentPosition:
     def new_positional_argument(binding_position):
         """
         Creates a new positional argument position.
+
         :param binding_position: The input position of the argument
         :return: A new CliArgumentPosition with position_type Positional
         """
@@ -350,6 +360,7 @@ class CliArgumentPosition:
     def new_named_argument():
         """
         Creates a new named argument position.
+
         :return: A new CliArgumentPosition with position_type Named.
         """
         return CliArgumentPosition(CliArgumentPosition.CliArgumentPositionType.Named, 0)
@@ -382,6 +393,7 @@ class CliArgument:
     def __init__(self, input_key, argument_position, input_type, prefix, separate, item_separator):
         """
         Creates a new CliArgument.
+
         :param input_key: The input key of the cli argument
         :param argument_position: The type of the cli argument (Positional, Named)
         :param input_type: The type of the input key
@@ -445,6 +457,7 @@ class CliArgument:
         """
         Creates a new CliArgument depending of the information given in the cli input description.
         inputBinding keys = 'prefix' 'separate' 'position' 'itemSeparator'
+
         :param input_key: The input key of the cli input description
         :param cli_input_description: red_data['cli']['inputs'][input_key]
         :return: A new CliArgument
@@ -467,6 +480,7 @@ class CliArgument:
 def get_cli_arguments(cli_inputs):
     """
     Returns a sorted list of cli arguments.
+
     :param cli_inputs: The cli inputs description
     :return: A list of CliArguments
     """
@@ -479,6 +493,7 @@ def get_cli_arguments(cli_inputs):
 def produce_base_command(cwl_base_command):
     """
     Returns a list of strings describing the base command
+
     :param cwl_base_command: The cwl base command as written in the red file.
     :return: A stripped list of strings representing the base command
     """
@@ -495,6 +510,7 @@ def produce_base_command(cwl_base_command):
 def complete_input_references_in_outputs(cli_outputs, inputs_to_reference):
     """
     Takes the cli outputs and inputs to reference and returns the cli outputs, but with resolved input references
+
     :param cli_outputs: The cli outputs to resolve input references for
     :param inputs_to_reference: The inputs to reference
     """
@@ -517,6 +533,7 @@ def complete_batch_inputs(batch_inputs, cli_inputs):
     """
     Completes the input attributes of the input files/directories, by adding the attributes:
     path, basename, dirname, nameroot, nameext
+
     :param batch_inputs: a dictionary containing job input information
     :param cli_inputs: a dictionary that contains the cli description
     """
@@ -545,6 +562,7 @@ def complete_batch_inputs(batch_inputs, cli_inputs):
 def default_inputs_dirname():
     """
     Returns the default dirname for an input file.
+
     :return: The default dirname for an input file.
     """
     return os.path.join('/tmp/red/inputs', str(uuid.uuid4()))
@@ -554,6 +572,7 @@ def complete_file_input_values(input_key, input_value):
     """
     Completes the information inside a given file input value. Will alter the given input_value.
     Creates the following keys (if not already present): path, basename, dirname, nameroot, nameext
+
     :param input_key: An input key as string
     :param input_value: An input value with class 'File'
     """
@@ -584,6 +603,7 @@ def complete_directory_input_values(input_key, input_value):
     """
     Completes the information inside a given directory input value. Will alter the given input_value.
     Creates the following keys (if not already present): path, basename
+
     :param input_key: An input key as string
     :param input_value: An input value with class 'Directory'
     """
@@ -603,6 +623,7 @@ def extract_batches(red_data):
     """
     Extracts a list of batches from the given red data.
     The resulting batches always contain an inputs and an outputs key
+
     :param red_data: The red data to extract batches from
     :return: A list of Batches
     """
@@ -629,6 +650,7 @@ def extract_batches(red_data):
 def remove_null_values(dictionary):
     """
     Removed values that are None
+
     :param dictionary: The dictionary in which to remove None values
     """
     keys = list(dictionary.keys())
