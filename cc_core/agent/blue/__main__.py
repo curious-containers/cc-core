@@ -71,7 +71,6 @@ def run(args):
         'state': 'succeeded'
     }
 
-
     connector_manager = ConnectorManager()
     try:
         blue_location = args.blue_file
