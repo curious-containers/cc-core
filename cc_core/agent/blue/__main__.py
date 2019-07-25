@@ -71,6 +71,7 @@ def run(args):
         'state': 'succeeded'
     }
 
+
     connector_manager = ConnectorManager()
     try:
         blue_location = args.blue_file
@@ -84,6 +85,7 @@ def run(args):
         if output_mode == OutputMode.Directory:
             # it is assumed, that the outdir given in blue_data is present in the local filesystem
             outdir = blue_data.get('outdir')
+
             _check_outdir(outdir)
         else:
             outdir = tempfile.mkdtemp()
@@ -116,7 +118,12 @@ def run(args):
         result['inputs'] = connector_manager.inputs_to_dict()
 
         # execute command
-        execution_result = execute(command, work_dir=outdir)
+        try:
+            execution_result = execute(command, work_dir=outdir)
+        except PermissionError as e:
+            raise PermissionError(
+                'Could not execute command "{}" in directory "{}". Error:\n{}'.format(command, outdir, str(e))
+            )
         if not execution_result.successful():
             result['process'] = execution_result.to_dict()
             raise ExecutionError('Execution of command "{}" failed with the following message:\n{}'
@@ -255,17 +262,22 @@ def _create_stderr_file(command_stderr, cli_stderr, outdir):
 
 def _check_outdir(outdir):
     """
-    Checks whether the given output directory is empty and writable. If the directory does not exist, it is created.
+    Checks whether the given output directory is empty and writable. If the directory does not exist or is not empty an
+    ExecutionError is raised.
 
     :param outdir: The path to the outdir to check
     :type outdir: str
 
-    :raise ExecutionError: If the given outdir is not present or not writable
+    :raise ExecutionError: If the given outdir is not present or not writable or if the directory does not exists or is
+                           not empty
     :raise PermissionError: If the directory exists, but is not writable
     :raise FileExistsError: If the directory already exists and is not empty
     """
     if outdir is None:
         raise ExecutionError('Invalid BLUE file. "outdir" is required.')
+
+    if not os.path.isdir(outdir):
+        raise ExecutionError('The given outdir "{}" does not exists'.format(outdir))
 
     ensure_directory(outdir)
 
@@ -834,6 +846,7 @@ def _resolve_glob_pattern(glob_pattern, working_dir, connector_type=None):
     :param working_dir: The working dir from where to access output files
     :param connector_type: The connector class to search for
     :return: the resolved glob_pattern as list of strings
+    :rtype: List[str]
     """
     glob_pattern = os.path.join(working_dir, glob_pattern)
     glob_result = glob.glob(glob_pattern)
@@ -979,16 +992,19 @@ class CliOutputRunner:
             'glob': self._glob_pattern,
         }
 
-        path = _resolve_glob_pattern(self._glob_pattern, outdir, self._output_class.connector_type)
+        paths = _resolve_glob_pattern(self._glob_pattern, outdir, self._output_class.connector_type)
 
-        if len(path) == 1:
-            path = path[0]
+        if len(paths) == 0:
+            dict_representation['path'] = None
+        elif len(paths) == 1:
+            path = paths[0]
 
             if self._output_class.is_file_like():
                 dict_representation['checksum'] = calculate_file_checksum(path)
                 dict_representation['size'] = os.path.getsize(path)
+                dict_representation['path'] = path
         else:
-            dict_representation['paths'] = path
+            dict_representation['path'] = paths
 
         return dict_representation
 
@@ -1430,6 +1446,7 @@ def _exec(command, work_dir):
 def execute(command, work_dir=None):
     """
     Executes a given commandline command and returns a dictionary with keys: 'returnCode', 'stdOut', 'stdErr'
+
     :param command: The command to execute as list of strings.
     :param work_dir: The working directory for the executed command
     :return: An ExecutionResult

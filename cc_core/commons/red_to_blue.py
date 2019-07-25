@@ -18,7 +18,7 @@ import uuid
 from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference, RedSpecificationError
 from cc_core.commons.input_references import resolve_input_references
 
-DEFAULT_CONTAINER_OUTDIR = '/tmp/outputs'
+CONTAINER_OUTDIR = '/cc/outputs'
 BLUE_INPUT_CLASSES = {'File', 'Directory'}
 
 
@@ -43,14 +43,12 @@ def convert_red_to_blue(red_data):
     cli_arguments = get_cli_arguments(cli_inputs)
     base_command = produce_base_command(cli_description.get('baseCommand'))
 
-    container_outdir = red_data.get('outdir', DEFAULT_CONTAINER_OUTDIR)
-
     for batch in batches:
         batch_inputs = batch['inputs']
         complete_batch_inputs(batch_inputs, cli_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
-        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, container_outdir, cli_stdout, cli_stderr)
+        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, CONTAINER_OUTDIR, cli_stdout, cli_stderr)
         blue_batches.append(blue_batch)
 
     return blue_batches
