@@ -50,7 +50,7 @@ def convert_red_to_blue(red_data):
         complete_batch_inputs(batch_inputs, cli_inputs)
         resolved_cli_outputs = complete_input_references_in_outputs(cli_outputs, batch_inputs)
         command = generate_command(base_command, cli_arguments, batch)
-        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, CONTAINER_OUTDIR, cli_stdout, cli_stderr)
+        blue_batch = create_blue_batch(command, batch, resolved_cli_outputs, cli_stdout, cli_stderr)
         blue_batches.append(blue_batch)
 
     return blue_batches
@@ -91,14 +91,13 @@ def _create_blue_batch_inputs(batch_inputs):
     return blue_batch_inputs
 
 
-def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=None, cli_stderr=None):
+def create_blue_batch(command, batch, cli_outputs, cli_stdout=None, cli_stderr=None):
     """
     Defines a dictionary containing a blue batch
 
     :param command: The command of the blue data, given as list of strings
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
-    :param container_outdir: The directory in the docker container, where the blue agent is executed.
     :param cli_stdout: The path where the stdout file should be created. If None cli.stdout is not added to the blue
     batch
     :param cli_stderr: The path where the stderr file should be created. If None cli.stderr it is not added to the blue
@@ -109,7 +108,6 @@ def create_blue_batch(command, batch, cli_outputs, container_outdir, cli_stdout=
     blue_batch_outputs = batch['outputs']
     blue_data = {
         'command': command,
-        'outdir': container_outdir,
         'cli': {
             'outputs': cli_outputs
         },
@@ -415,7 +413,7 @@ def _argument_list_to_execution_argument(argument_list, cli_argument, batch_valu
 
 def create_execution_argument(cli_argument, batch_value):
     """
-    Creates a list of strings representing an execution argument. Like ['--outdir=', '/path/to/file']
+    Creates a list of strings representing an execution argument. Like ['--mydir=', '/path/to/file']
 
     :param cli_argument: The cli argument
     :param batch_value: The batch value corresponding to the cli argument. Can be None
