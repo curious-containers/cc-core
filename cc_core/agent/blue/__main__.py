@@ -121,8 +121,8 @@ def run(args):
                                  .format(' '.join(command), execution_result.get_std_err()))
 
         # write stderr/stdout file, if specified
-        _create_stdout_file(execution_result.std_out, cli_stdout)
-        _create_stderr_file(execution_result.std_err, cli_stderr)
+        _create_text_file(execution_result.std_out, cli_stdout)
+        _create_text_file(execution_result.std_err, cli_stderr)
 
         # check output files/directories
         connector_manager.check_outputs()
@@ -152,6 +152,7 @@ def run(args):
 def get_blue_data(blue_location):
     """
     If blue_file is an URL fetches this URL and loads the json content, otherwise tries to load the file as local file.
+
     :param blue_location: An URL or local file path as string
     :return: A tuple containing the content of the given file or url and a fetch mode.
     """
@@ -194,6 +195,7 @@ def _is_file_scheme_remote(file_scheme):
 def _post_result(url, result):
     """
     Posts the given result dictionary to the given url
+
     :param url: The url to post the result to
     :param result: The result to post
     """
@@ -221,39 +223,26 @@ def _validate_command(command):
                                  '"{}" is not a string'.format(command, s))
 
 
-def _create_stdout_file(command_stdout, cli_stdout):
+def _create_text_file(lines, path):
     """
-    Creates a file with the name given by cli_stdout and content given by command_stdout. The file is located in the
-    current working directory. This function is meant for creating the stdout file after a command execution has been
-    successful.
+    Creates a file with the given path and fills it with lines. The file is located in the current working directory.
+    This function is meant for creating the stdout/stderr file after a command execution has been successful.
 
-    :param command_stdout: The content of the file to create
-    :param cli_stdout: The name of the file to create. If cli_stdout is None, this function does nothing
+    :param lines: The content of the file to create
+    :type lines: List[str]
+    :param path: The path of the file to create. If path is None, this function does nothing
+    :type path: str
     """
-    if cli_stdout is not None:
-        with open(os.path.abspath(cli_stdout), 'w') as stdout_file:
-            for line in command_stdout:
-                stdout_file.write(line)
-
-
-def _create_stderr_file(command_stderr, cli_stderr):
-    """
-    Creates a file with the name given by cli_stderr and content given by command_stderr. The file is located in the
-    current working directory. This function is meant for creating the stderr file after a command execution has been
-    successful.
-
-    :param command_stderr: The content of the file to create
-    :param cli_stderr: The name of the file to create. If cli_stderr is None, this function does nothing
-    """
-    if cli_stderr is not None:
-        with open(os.path.abspath(cli_stderr), 'w') as stderr_file:
-            for line in command_stderr:
-                stderr_file.write(line)
+    if path:
+        with open(os.path.abspath(path), 'w') as f:
+            for line in lines:
+                f.write(line + '\n')
 
 
 def is_directory_writable(d):
     """
     Returns whether the given directory is writable or not. Assumes, that it is present in the local filesystem.
+
     :param d: The directory to check, whether it is writable
     :return: True, if the given directory is writable, otherwise False
     """
@@ -289,6 +278,7 @@ def ensure_directory(d):
 def resolve_connector_cli_version(connector_command, connector_cli_version_cache):
     """
     Returns the cli-version of the given connector.
+
     :param connector_command: The connector command to resolve the cli-version for.
     :param connector_cli_version_cache: Cache for connector cli version
     :return: The cli version string of the given connector
@@ -317,10 +307,11 @@ def resolve_connector_cli_version(connector_command, connector_cli_version_cache
 def execute_connector(connector_command, top_level_argument, access=None, path=None, listing=None):
     """
     Executes the given connector command with
+
     :param connector_command: The connector command to execute
     :param top_level_argument: The top level argument of the connector
     :param access: An access dictionary, if given the connector is executed with a temporary file as argument, that
-    contains the access information
+                   contains the access information
     :param path: The path where to receive the file/directory to or which file/directory to send
     :param listing: An optional listing, that is given to the connector as temporary file
     :return: A dictionary with keys 'returnCode', 'stdOut', 'stdErr'
@@ -429,6 +420,7 @@ class OutputConnectorType(enum.Enum):
     def get_list():
         """
         Returns a list containing all variants as string
+
         :rtype: List[str]
         """
         result = []
@@ -501,6 +493,7 @@ class OutputConnectorClass:
     def is_file_like(self):
         """
         Returns True if this OutputConnectorClass stands for a File, stdout or stderr. Otherwise returns False
+
         :return: Whether this OutputConnectorClass represents a file
         """
         return self.connector_type in FILE_LIKE_OUTPUT_TYPES
@@ -509,6 +502,7 @@ class OutputConnectorClass:
 def calculate_file_checksum(path):
     """
     Calculates the sha1 checksum of a given file. The checksum is formatted in the following way: 'sha1$<checksum>'
+
     :param path: The path to the file, whose checksum should be calculated.
     :return: The sha1 checksum of the given file as string
     """
@@ -526,10 +520,10 @@ def get_listing_information(path, listing):
 
     :param path: The path where the directory is present in the local filesystem
     :param listing: The listing to get information about. Every file/directory in listing should contain a basename,
-    which has to be present in the filesystem.
+                    which has to be present in the filesystem.
     :type listing: list[dict]
     :return: A dictionary containing ['class', 'basename', 'checksum', 'size'] for every file in the given listing and
-    ['class', 'basename'] (and optional 'listing') for every directory.
+             ['class', 'basename'] (and optional 'listing') for every directory.
     """
     listing_information = []
 
@@ -609,6 +603,7 @@ class InputConnectorRunner:
     def to_dict(self):
         """
         Returns a dictionary representing this input file or directory
+
         :return: A dictionary containing information about this input file or directory
         """
         dict_representation = {
@@ -630,7 +625,7 @@ class InputConnectorRunner:
 
     def is_mounting(self):
         """
-         :return: Returns whether this runner is mounting or not.
+        :return: Returns whether this runner is mounting or not.
         """
         return self._mount
 
@@ -638,6 +633,7 @@ class InputConnectorRunner:
         """
         In case of input_class == 'Directory' creates path.
         In case of input_class == 'File' creates os.path.dirname(path).
+
         :raise ConnectorError: If the directory could not be created or if the path already exist.
         """
         path_to_create = self._path if self._input_class.is_directory() else os.path.dirname(self._path)
@@ -655,6 +651,7 @@ class InputConnectorRunner:
     def _receive_directory_content_check(self):
         """
         Checks if the given directory exists and if listing is set, if the listing is fulfilled.
+
         :raise ConnectorError: If the directory content is not as expected.
         """
         if not os.path.isdir(self._path):
@@ -697,12 +694,14 @@ class InputConnectorRunner:
         """
         Validates if the given file is present in the filesystem and checks for size and checksum, if given in the
         file_description.
+
         :param file_description: A dictionary describing a file given in a listing.
-        necessary keys: ['class', 'basename']
-        optional keys: ['size', 'checksum']
+                                 necessary keys: ['class', 'basename']
+                                 optional keys: ['size', 'checksum']
         :param path: The path to the file, where it should be present in the local filesystem
+
         :return: None, if the file is present and checksum and size given in the file_description match the real file,
-        otherwise a string describing the mismatch.
+                 otherwise a string describing the mismatch.
         """
         if not os.path.isfile(path):
             return 'listing contains "{}" but this file could not be found on disk.'.format(path)
@@ -727,8 +726,9 @@ class InputConnectorRunner:
         """
         Checks if the given file exists. If a checksum is given checks if this checksum matches. If a size is given
         checks if this size matches the file size.
+
         :raise ConnectorError: If the given file does not exist, if the given hash does not match or if the given file
-        size does not match.
+                               size does not match.
         """
         if not os.path.isfile(self._path):
             raise ConnectorError('Content check for input file "{}" failed. Path "{}" does not exist.'
@@ -778,6 +778,7 @@ class InputConnectorRunner:
     def try_umount(self):
         """
         Executes umount, if connector is mounting and has mounted, otherwise does nothing.
+
         :raise ConnectorError: If the Connector fails to umount the directory
         """
         if self._has_mounted:
@@ -1327,6 +1328,7 @@ def create_output_connector_runner(output_key,
 def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None, cli_stdout=None, cli_stderr=None):
     """
     Creates a CliOutputRunner.
+
     :param cli_output_key: The output key of the corresponding cli output
     :param cli_output_value: The output value given in the blue file of the corresponding cli output
     :param output_value: The job output value for this output key. Can be None
@@ -1371,6 +1373,7 @@ class ExecutionResult:
     def __init__(self, std_out, std_err, return_code):
         """
         Initializes a new ExecutionResult
+
         :param std_out: The std_err of the execution as list of strings
         :type std_out: list[str]
         :param std_err: The std_out of the execution as list of strings
@@ -1453,6 +1456,7 @@ class ConnectorManager:
     def import_input_connectors(self, inputs):
         """
         Creates InputConnectorRunner for every key in inputs (or more Runners for File/Directory lists).
+
         :param inputs: The inputs to create Runner for
         """
         for input_key, input_value in inputs.items():
@@ -1480,6 +1484,7 @@ class ConnectorManager:
         """
         Creates OutputConnectorRunner for every key in outputs.
         In Addition creates a CliOutputRunner for every key in cli_outputs.
+
         :param outputs: The outputs to create runner for.
         :param cli_outputs: The output cli description.
         :param output_mode: The output mode for this execution
@@ -1519,6 +1524,7 @@ class ConnectorManager:
     def prepare_directories(self):
         """
         Tries to create directories needed to execute the connectors.
+
         :raise ConnectorError: If the needed directory could not be created, or if a received file does already exists
         """
         for runner in self._input_runners:
@@ -1578,6 +1584,7 @@ class ConnectorManager:
     def inputs_to_dict(self):
         """
         Translates the imported input connectors into a dictionary.
+
         :return: A dictionary containing status information about all imported input connectors
         """
         inputs_dict = {}
@@ -1612,6 +1619,7 @@ class ConnectorManager:
     def umount_connectors(self):
         """
         Tries to execute umount for every connector.
+
         :return: The errors that occurred during execution
         """
         errors = []
