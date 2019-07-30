@@ -81,14 +81,6 @@ def run(args):
 
         blue_data = get_blue_data(blue_location)
 
-        if output_mode == OutputMode.Directory:
-            # it is assumed, that the outdir given in blue_data is present in the local filesystem
-            outdir = blue_data.get('outdir')
-
-            _check_outdir(outdir)
-        else:
-            outdir = tempfile.mkdtemp()
-
         if output_mode == OutputMode.Connectors and 'outputs' not in blue_data:
             raise ExecutionError('--outputs/-o argument is set but no outputs section is defined in BLUE file.')
 
@@ -118,10 +110,10 @@ def run(args):
 
         # execute command
         try:
-            execution_result = execute(command, work_dir=outdir)
+            execution_result = execute(command)
         except PermissionError as e:
             raise PermissionError(
-                'Could not execute command "{}" in directory "{}". Error:\n{}'.format(command, outdir, str(e))
+                'Could not execute command "{}" in directory "{}". Error:\n{}'.format(command, os.getcwd(), str(e))
             )
         if not execution_result.successful():
             result['process'] = execution_result.to_dict()
@@ -129,16 +121,16 @@ def run(args):
                                  .format(' '.join(command), execution_result.get_std_err()))
 
         # write stderr/stdout file, if specified
-        _create_stdout_file(execution_result.std_out, cli_stdout, outdir)
-        _create_stderr_file(execution_result.std_err, cli_stderr, outdir)
+        _create_stdout_file(execution_result.std_out, cli_stdout)
+        _create_stderr_file(execution_result.std_err, cli_stderr)
 
         # check output files/directories
-        connector_manager.check_outputs(outdir)
-        result['outputs'] = connector_manager.outputs_to_dict(outdir)
+        connector_manager.check_outputs()
+        result['outputs'] = connector_manager.outputs_to_dict()
 
         # send files and directories
         if output_mode == OutputMode.Connectors:
-            connector_manager.send_connectors(outdir)
+            connector_manager.send_connectors()
 
     except Exception as e:
         print_exception(e)
@@ -229,56 +221,34 @@ def _validate_command(command):
                                  '"{}" is not a string'.format(command, s))
 
 
-def _create_stdout_file(command_stdout, cli_stdout, outdir):
+def _create_stdout_file(command_stdout, cli_stdout):
     """
-    Creates a file with the name given by cli_stdout and content given by command_stdout. The file is located in outdir.
-    This function is meant for creating the stdout file after a command execution has been successful.
+    Creates a file with the name given by cli_stdout and content given by command_stdout. The file is located in the
+    current working directory. This function is meant for creating the stdout file after a command execution has been
+    successful.
+
     :param command_stdout: The content of the file to create
     :param cli_stdout: The name of the file to create. If cli_stdout is None, this function does nothing
-    :param outdir: The directory in which the file should be created
     """
     if cli_stdout is not None:
-        path = os.path.join(outdir, cli_stdout)
-        with open(path, 'w') as stdout_file:
+        with open(os.path.abspath(cli_stdout), 'w') as stdout_file:
             for line in command_stdout:
                 stdout_file.write(line)
 
 
-def _create_stderr_file(command_stderr, cli_stderr, outdir):
+def _create_stderr_file(command_stderr, cli_stderr):
     """
-    Creates a file with the name given by cli_stderr and content given by command_stderr. The file is located in outdir.
-    This function is meant for creating the stderr file after a command execution has been successful.
+    Creates a file with the name given by cli_stderr and content given by command_stderr. The file is located in the
+    current working directory. This function is meant for creating the stderr file after a command execution has been
+    successful.
+
     :param command_stderr: The content of the file to create
     :param cli_stderr: The name of the file to create. If cli_stderr is None, this function does nothing
-    :param outdir: The directory in which the file should be created
     """
     if cli_stderr is not None:
-        path = os.path.join(outdir, cli_stderr)
-        with open(path, 'w') as stderr_file:
+        with open(os.path.abspath(cli_stderr), 'w') as stderr_file:
             for line in command_stderr:
                 stderr_file.write(line)
-
-
-def _check_outdir(outdir):
-    """
-    Checks whether the given output directory is empty and writable. If the directory does not exist or is not empty an
-    ExecutionError is raised.
-
-    :param outdir: The path to the outdir to check
-    :type outdir: str
-
-    :raise ExecutionError: If the given outdir is not present or not writable or if the directory does not exists or is
-                           not empty
-    :raise PermissionError: If the directory exists, but is not writable
-    :raise FileExistsError: If the directory already exists and is not empty
-    """
-    if outdir is None:
-        raise ExecutionError('Invalid BLUE file. "outdir" is required.')
-
-    if not os.path.isdir(outdir):
-        raise ExecutionError('The given outdir "{}" does not exists'.format(outdir))
-
-    ensure_directory(outdir)
 
 
 def is_directory_writable(d):
@@ -838,17 +808,16 @@ class InputConnectorRunner:
         raise NotImplementedError()
 
 
-def _resolve_glob_pattern(glob_pattern, working_dir, connector_type=None):
+def _resolve_glob_pattern(glob_pattern, connector_type=None):
     """
     Tries to resolve the given glob_pattern.
+
     :param glob_pattern: The glob pattern to resolve
-    :param working_dir: The working dir from where to access output files
     :param connector_type: The connector class to search for
     :return: the resolved glob_pattern as list of strings
     :rtype: List[str]
     """
-    glob_pattern = os.path.join(working_dir, glob_pattern)
-    glob_result = glob.glob(glob_pattern)
+    glob_result = glob.glob(os.path.abspath(glob_pattern))
     if connector_type == OutputConnectorType.File:
         glob_result = [f for f in glob_result if os.path.isfile(f)]
     elif connector_type == OutputConnectorType.Directory:
@@ -856,25 +825,28 @@ def _resolve_glob_pattern(glob_pattern, working_dir, connector_type=None):
     return glob_result
 
 
-def _resolve_glob_pattern_and_throw(glob_pattern, output_key, working_dir, connector_type=None):
+def _resolve_glob_pattern_and_throw(glob_pattern, output_key, connector_type=None):
     """
     Tries to resolve the given glob_pattern. Raises an error, if the pattern could not be resolved or is ambiguous
+
     :param glob_pattern: The glob pattern to resolve
     :param output_key: The corresponding output key for Exception text
-    :param working_dir: The working dir from where to access output files
     :param connector_type: The connector class to search for
     :return: The resolved path as string
     :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous
     """
-    paths = _resolve_glob_pattern(glob_pattern, working_dir, connector_type)
+    paths = _resolve_glob_pattern(glob_pattern, connector_type)
     if len(paths) == 1:
         return paths[0]
     elif len(paths) == 0:
-        raise ConnectorError('Could not resolve glob "{}" for output key "{}". File/Directory not found.'
-                             .format(glob_pattern, output_key))
+        raise ConnectorError(
+            'Could not resolve glob "{}" for output key "{}". File/Directory not found.'
+            .format(glob_pattern, output_key)
+        )
     else:
-        raise ConnectorError('Could not resolve glob "{}" for output key "{}". Glob is ambiguous.'
-                             .format(glob_pattern, output_key))
+        raise ConnectorError(
+            'Could not resolve glob "{}" for output key "{}". Glob is ambiguous.'.format(glob_pattern, output_key)
+        )
 
 
 class OutputConnectorRunner:
@@ -924,17 +896,16 @@ class OutputConnectorRunner:
         elif self._output_class.is_file_like():
             self.send_file_validate()
 
-    def try_send(self, working_dir):
+    def try_send(self):
         """
         Executes send_file or send_dir depending on input_class.
-        :param working_dir: The working dir from where to access output files
+
         :raise ConnectorError: If the given glob_pattern could not be resolved or is ambiguous.
                                Or if the executed connector fails.
         """
         path = _resolve_glob_pattern_and_throw(
             self._glob_pattern,
             self._output_key,
-            working_dir,
             self._output_class.connector_type
         )
 
@@ -964,6 +935,7 @@ class CliOutputRunner:
     def __init__(self, output_key, glob_pattern, output_class, checksum=None, size=None):
         """
         Creates a new CliOutputRunner
+
         :param output_key: The corresponding output key
         :param glob_pattern: The glob pattern to match against output files
         :param output_class: The class of the output
@@ -980,10 +952,10 @@ class CliOutputRunner:
     def get_output_key(self):
         return self._output_key
 
-    def to_dict(self, outdir):
+    def to_dict(self):
         """
         Returns a dictionary representing this output file
-        :param outdir: The directory in which the output files should be searched
+
         :return: A dictionary containing information about this output file
         """
         dict_representation = {
@@ -991,7 +963,7 @@ class CliOutputRunner:
             'glob': self._glob_pattern,
         }
 
-        paths = _resolve_glob_pattern(self._glob_pattern, outdir, self._output_class.connector_type)
+        paths = _resolve_glob_pattern(self._glob_pattern, self._output_class.connector_type)
 
         if len(paths) == 0:
             dict_representation['path'] = None
@@ -1007,15 +979,14 @@ class CliOutputRunner:
 
         return dict_representation
 
-    def check_output(self, working_dir):
+    def check_output(self):
         """
         Checks if the corresponding output is present relative to the given working directory.
-        :param working_dir: The Directory from where to look for the file/directory.
+
         :raise ConnectorError: If the corresponding file/directory is not present on disk
         """
         glob_result = _resolve_glob_pattern(
             self._glob_pattern,
-            working_dir,
             self._output_class.connector_type
         )
 
@@ -1583,17 +1554,17 @@ class ConnectorManager:
         for runner in not_mounting_runners:
             runner.receive()
 
-    def send_connectors(self, working_dir):
+    def send_connectors(self):
         """
         Tries to executes send for all output connectors.
         If a send runner fails, will try to send the other runners and fails afterwards.
-        :param working_dir: The working dir where command is executed
+
         :raise ConnectorError: If one ore more OutputRunners fail to send.
         """
         errors = []
         for runner in self._output_runners:
             try:
-                runner.try_send(working_dir)
+                runner.try_send()
             except ConnectorError as e:
                 errors.append(e)
 
@@ -1616,27 +1587,27 @@ class ConnectorManager:
 
         return inputs_dict
 
-    def outputs_to_dict(self, outdir):
+    def outputs_to_dict(self):
         """
         Translates the imported output connectors into a dictionary.
-        :param outdir: The output directory where the glob_patterns of the connectors are evaluated
+
         :return: A dictionary containing status information about all imported output connectors
         """
         outputs_dict = {}
 
         for output_runner in self._cli_output_runners:
-            outputs_dict[output_runner.get_output_key()] = output_runner.to_dict(outdir)
+            outputs_dict[output_runner.get_output_key()] = output_runner.to_dict()
 
         return outputs_dict
 
-    def check_outputs(self, working_dir):
+    def check_outputs(self):
         """
         Checks if all output files/directories are present relative to the given working directory
-        :param working_dir: The working directory from where to expect the output files/directories
+
         :raise ConnectorError: If an output file/directory could not be found
         """
         for runner in self._cli_output_runners:
-            runner.check_output(working_dir)
+            runner.check_output()
 
     def umount_connectors(self):
         """
