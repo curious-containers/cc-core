@@ -1,3 +1,6 @@
+from typing import List, Union
+
+
 class InsufficientGPUError(Exception):
     pass
 
@@ -8,7 +11,7 @@ class GPUDevice:
     """
     def __init__(self, device_id, vram):
         """
-        :param vram: The vram of this GPU in bytes
+        :param vram: The vram of this GPU in mega bytes
         """
         self.device_id = device_id
         self.vram = vram
@@ -23,7 +26,7 @@ class GPURequirement:
     """
     def __init__(self, min_vram=None):
         """
-        :param min_vram: The minimal vram needed for this device in bytes
+        :param min_vram: The minimal vram needed for this device in mega bytes
                          If None, no vram limitation is used.
         """
         self.min_vram = min_vram
@@ -50,6 +53,7 @@ class GPURequirement:
 def get_cuda_devices():
     """
     Imports pycuda at runtime and reads GPU information.
+
     :return: A list of available cuda GPUs.
     """
 
@@ -72,6 +76,7 @@ def get_cuda_devices():
 def no_devices():
     """
     Returns an empty list
+
     :return: []
     """
     return []
@@ -89,6 +94,7 @@ def get_devices(engine):
     Returns GPU device information.
 
     :param engine: The used docker engine.
+    :type engine: str
     :return: A list of available devices
     """
 
@@ -103,7 +109,9 @@ def search_device(requirement, devices):
     Returns a sufficient device or None
 
     :param requirement: The requirement to fulfill
+    :type requirement: GPURequirement
     :param devices: The list of available devices
+    :type devices: List[GPUDevice]
     :return: A device from the list
     """
 
@@ -119,7 +127,9 @@ def match_gpus(available_devices, requirements):
     If there aren't sufficient GPUs a InsufficientGPUException is thrown.
 
     :param available_devices: A list of GPUDevices
+    :type available_devices: List[GPUDevice]
     :param requirements: A list of GPURequirements
+    :type requirements: List[GPURequirement]
 
     :return: A list of sufficient devices
     """
@@ -150,7 +160,9 @@ def get_gpu_requirements(gpus_reqs):
     Extracts the GPU from a dictionary requirements as list of GPURequirements.
 
     :param gpus_reqs: A dictionary {'count': <count>} or a list [{min_vram: <min_vram>}, {min_vram: <min_vram>}, ...]
+    :type gpus_reqs: Union[List[dict], dict, None]
     :return: A list of GPURequirements
+    :rtype: List[GPURequirement]
     """
     requirements = []
 
@@ -178,7 +190,5 @@ def set_nvidia_environment_variables(environment, gpu_ids):
     """
 
     if gpu_ids:
-        nvidia_visible_devices = ""
-        for gpu_id in gpu_ids:
-            nvidia_visible_devices += "{},".format(gpu_id)
+        nvidia_visible_devices = ','.join(gpu_ids)
         environment["NVIDIA_VISIBLE_DEVICES"] = nvidia_visible_devices
