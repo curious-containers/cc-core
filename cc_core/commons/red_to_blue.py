@@ -19,6 +19,8 @@ from cc_core.commons.exceptions import JobSpecificationError, InvalidInputRefere
 from cc_core.commons.input_references import resolve_input_references
 
 CONTAINER_OUTDIR = '/cc/outputs'
+CONTAINER_AGENT_PATH = '/cc/blue_agent.py'
+CONTAINER_BLUE_FILE_PATH = '/cc/blue_file.json'
 BLUE_INPUT_CLASSES = {'File', 'Directory'}
 
 
