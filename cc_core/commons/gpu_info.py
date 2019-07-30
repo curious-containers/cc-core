@@ -190,5 +190,5 @@ def set_nvidia_environment_variables(environment, gpu_ids):
     """
 
     if gpu_ids:
-        nvidia_visible_devices = ','.join(gpu_ids)
+        nvidia_visible_devices = ','.join(map(str, gpu_ids))
         environment["NVIDIA_VISIBLE_DEVICES"] = nvidia_visible_devices
