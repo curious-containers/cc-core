@@ -124,7 +124,7 @@ def search_device(requirement, devices):
 def match_gpus(available_devices, requirements):
     """
     Determines sufficient GPUs for the given requirements and returns a list of GPUDevices.
-    If there aren't sufficient GPUs a InsufficientGPUException is thrown.
+    If there aren't sufficient GPUs a InsufficientGPUError is thrown.
 
     :param available_devices: A list of GPUDevices
     :type available_devices: List[GPUDevice]
@@ -132,6 +132,8 @@ def match_gpus(available_devices, requirements):
     :type requirements: List[GPURequirement]
 
     :return: A list of sufficient devices
+
+    :raise InsufficientGPUError: If no devices could be found or insufficient GPUs were found
     """
 
     if not requirements:

@@ -38,7 +38,13 @@ def engine_validation(red_data, engine_type, supported, optional=False):
     try:
         jsonschema.validate(settings, schema)
     except ValidationError as e:
-        raise EngineError('{}-engine "{}" does not comply with jsonschema: {}'.format(engine_type, engine, e.context))
+        where = '/'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
+        raise EngineError(
+            '{}-engine "{}" specification in REDFILE does not comply with jsonschema:\n'
+            '\tkey in engine settings: {}\n'
+            '\treason: {}'
+            .format(engine_type, engine, where, e.message)
+        )
 
 
 def engine_to_runtime(engine):
