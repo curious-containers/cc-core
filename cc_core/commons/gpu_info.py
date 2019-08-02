@@ -132,6 +132,7 @@ def match_gpus(available_devices, requirements):
     :type requirements: List[GPURequirement]
 
     :return: A list of sufficient devices
+    :rtype: list[GPUDevice]
 
     :raise InsufficientGPUError: If no devices could be found or insufficient GPUs were found
     """
