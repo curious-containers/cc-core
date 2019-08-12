@@ -2,6 +2,8 @@ import os
 import stat
 import sys
 import json
+import tarfile
+
 import requests
 import textwrap
 import shutil
@@ -116,3 +118,29 @@ def _local(location, var_name):
             return f.read()
     except:
         raise AgentError('File "{}" for argument "{}" could not be loaded from file system'.format(location, var_name))
+
+
+def create_directory_tarinfo(directory_name, owner_name, owner_id=1000):
+    """
+    Creates a tarfile.TarInfo object, that represents a directory with the given directory name.
+    The owner of the file directory has read, write, execute privileges for the created directory TarInfo object.
+
+    :param directory_name: The name of the directory represented by the created TarInfo
+    :type directory_name: str
+    :param owner_name: The name of the owner of the directory
+    :type owner_name: str
+    :param owner_id: The id of the owner of the directory
+    :type owner_id: int
+    :return: A TarInfo object representing a directory with the given name
+    :rtype: tarfile.TarInfo
+    """
+    directory_tarinfo = tarfile.TarInfo(directory_name)
+
+    directory_tarinfo.type = tarfile.DIRTYPE
+    directory_tarinfo.uid = owner_id
+    directory_tarinfo.gid = owner_id
+    directory_tarinfo.uname = owner_name
+    directory_tarinfo.gname = owner_name
+    directory_tarinfo.mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+
+    return directory_tarinfo

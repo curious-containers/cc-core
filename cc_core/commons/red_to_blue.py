@@ -18,7 +18,7 @@ import uuid
 from cc_core.commons.exceptions import JobSpecificationError, InvalidInputReference, RedSpecificationError
 from cc_core.commons.input_references import resolve_input_references
 
-CONTAINER_OUTDIR = '/cc/outputs'
+CONTAINER_OUTPUT_DIR = '/cc/outputs'
 CONTAINER_INPUT_DIR = '/cc/inputs'
 CONTAINER_AGENT_PATH = '/cc/blue_agent.py'
 CONTAINER_BLUE_FILE_PATH = '/cc/blue_file.json'
