@@ -19,6 +19,7 @@ from cc_core.commons.exceptions import JobSpecificationError, InvalidInputRefere
 from cc_core.commons.input_references import resolve_input_references
 
 CONTAINER_OUTDIR = '/cc/outputs'
+CONTAINER_INPUT_DIR = '/cc/inputs'
 CONTAINER_AGENT_PATH = '/cc/blue_agent.py'
 CONTAINER_BLUE_FILE_PATH = '/cc/blue_file.json'
 BLUE_INPUT_CLASSES = {'File', 'Directory'}
@@ -674,7 +675,7 @@ def default_inputs_dirname():
 
     :return: The default dirname for an input file.
     """
-    return os.path.join('/tmp/red/inputs', str(uuid.uuid4()))
+    return os.path.join(CONTAINER_INPUT_DIR, str(uuid.uuid4()))
 
 
 def complete_file_input_values(input_key, input_value):
