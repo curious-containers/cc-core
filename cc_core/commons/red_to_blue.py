@@ -100,9 +100,9 @@ def create_blue_batch(command, batch, cli_outputs, cli_stdout=None, cli_stderr=N
     :param batch: The Job data of the blue data
     :param cli_outputs: The outputs section of cli description
     :param cli_stdout: The path where the stdout file should be created. If None cli.stdout is not added to the blue
-    batch
+                       batch
     :param cli_stderr: The path where the stderr file should be created. If None cli.stderr it is not added to the blue
-    batch
+                       batch
     :return: A dictionary containing the blue data
     """
     blue_batch_inputs = _create_blue_batch_inputs(batch['inputs'])
@@ -136,8 +136,9 @@ def _outputs_contain_output_type(blue_batch_outputs, output_type):
     """
     Returns whether the given blue batch outputs contain an output with the given output type.
     This function is used to determine, if this batch output contain stdout or stderr specifications.
+
     :param blue_batch_outputs: The blue batch outputs to search in. The keys are the output keys of the converted red
-    file and the values are the output values corresponding to this key.
+                               file and the values are the output values corresponding to this key.
     :type blue_batch_outputs: dict
     :param output_type: The OutputType to search given as string
     :type output_type: str
@@ -419,9 +420,9 @@ def create_execution_argument(cli_argument, batch_value):
     :param cli_argument: The cli argument
     :param batch_value: The batch value corresponding to the cli argument. Can be None
     :return: A list of strings, that can be used to extend the command. Returns an empty list if (cli_argument is
-    optional and batch_value is None) or (cli argument is array and len(batch_value) is 0)
+             optional and batch_value is None) or (cli argument is array and len(batch_value) is 0)
     :raise JobSpecificationError: If cli argument is mandatory, but batch value is None
-    If Cli Description defines an array, but job does not define a list
+                                  If Cli Description defines an array, but job does not define a list
     """
     # handle optional arguments
     if batch_value is None:
