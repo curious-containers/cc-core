@@ -1,4 +1,7 @@
-from typing import List, Union
+from typing import List
+
+
+NVIDIA_GPU_VENDOR = 'nvidia'
 
 
 class InsufficientGPUError(Exception):
@@ -9,27 +12,32 @@ class GPUDevice:
     """
     Represents a GPU Device
     """
-    def __init__(self, device_id, vram):
+    def __init__(self, device_id, vram, vendor):
         """
         :param vram: The vram of this GPU in mega bytes
         """
         self.device_id = device_id
         self.vram = vram
+        self.vendor = vendor
 
     def __repr__(self):
-        return 'GPUDevice(device_id="{}" vram="{}")'.format(self.device_id, self.vram)
+        return 'GPUDevice(device_id="{}" vram="{}" vendor="{}")'.format(self.device_id, self.vram, self.vendor)
 
 
 class GPURequirement:
     """
     Represents a GPU Requirement
     """
-    def __init__(self, min_vram=None):
+    def __init__(self, min_vram=None, vendor=None):
         """
         :param min_vram: The minimal vram needed for this device in mega bytes
                          If None, no vram limitation is used.
+        :type min_vram: int
+        :param vendor: The vendor of this gpu
+        :type vendor: str
         """
         self.min_vram = min_vram
+        self.vendor = vendor
 
     def is_sufficient(self, device):
         """
@@ -44,10 +52,13 @@ class GPURequirement:
         if (self.min_vram is not None) and (device.vram < self.min_vram):
             sufficient = False
 
+        if (self.vendor is not None) and (self.vendor != device.vendor):
+            sufficient = False
+
         return sufficient
 
     def __repr__(self):
-        return 'GPURequirement(min_vram="{}")'.format(self.min_vram)
+        return 'GPURequirement(min_vram="{}" vendor="{}")'.format(self.min_vram, self.vendor)
 
 
 def get_cuda_devices():
@@ -66,7 +77,7 @@ def get_cuda_devices():
         for device_id in range(cuda.Device.count()):
             vram = cuda.Device(device_id).total_memory()
 
-            devices.append(GPUDevice(device_id, vram))
+            devices.append(GPUDevice(device_id, vram, NVIDIA_GPU_VENDOR))
     except ImportError:
         raise InsufficientGPUError('No Nvidia-GPUs could be found, because "pycuda" could not be imported.')
 
@@ -163,25 +174,24 @@ def get_gpu_requirements(gpus_reqs):
     Extracts the GPU from a dictionary requirements as list of GPURequirements.
 
     :param gpus_reqs: A dictionary {'count': <count>} or a list [{min_vram: <min_vram>}, {min_vram: <min_vram>}, ...]
-    :type gpus_reqs: Union[List[dict], dict, None]
+    :type gpus_reqs: dict or None
     :return: A list of GPURequirements
     :rtype: List[GPURequirement]
     """
     requirements = []
 
     if gpus_reqs:
-        if type(gpus_reqs) is dict:
-            count = gpus_reqs.get('count')
-            if count:
-                for i in range(count):
-                    requirements.append(GPURequirement())
-        elif type(gpus_reqs) is list:
-            for gpu_req in gpus_reqs:
-                requirements.append(GPURequirement(min_vram=gpu_req['minVram']))
-        return requirements
-    else:
-        # If no requirements are supplied
-        return []
+        vendor = gpus_reqs['vendor']
+        count = gpus_reqs.get('count')
+        devices = gpus_reqs.get('devices')
+        if devices:
+            for device in devices:
+                requirements.append(GPURequirement(min_vram=device['minVram'], vendor=vendor))
+        elif count:
+            for i in range(count):
+                requirements.append(GPURequirement(vendor=vendor))
+
+    return requirements
 
 
 def set_nvidia_environment_variables(environment, gpu_ids):

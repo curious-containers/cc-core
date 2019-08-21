@@ -3,26 +3,39 @@ from cc_core.commons.schema_transform import transform
 
 
 MIN_RAM_LIMIT = 256
+SUPPORTED_GPU_VENDORS = ['nvidia']
 
 
 _gpus_schema = {
-    'oneOf': [{
-        'type': 'array',
-        'items': {
+    'oneOf': [
+        {
             'type': 'object',
             'properties': {
-                'minVram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
+                'vendor': {'enum': SUPPORTED_GPU_VENDORS},
+                'count': {'type': 'integer'},
             },
-            'additionalProperties': False
-        }
-    }, {
-        'type': 'object',
-        'properties': {
-            'count': {'type': 'integer'}
+            'additionalProperties': False,
+            'required': ['vendor', 'count']
         },
-        'additionalProperties': False,
-        'required': ['count']
-    }]
+        {
+            'type': 'object',
+            'properties': {
+                'vendor': {'enum': SUPPORTED_GPU_VENDORS},
+                'devices': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'minVram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
+                        },
+                        'additionalProperties': False
+                    }
+                }
+            },
+            'additionalProperties': False,
+            'required': ['vendor', 'devices']
+        }
+    ]
 }
 
 
@@ -50,6 +63,7 @@ _docker_schema = {
     'properties': {
         'version': {'type': 'string'},
         'image': _image_schema,
+        'gpus': _gpus_schema,
         'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
     },
     'additionalProperties': False,
@@ -57,24 +71,9 @@ _docker_schema = {
 }
 
 
-_nvidia_docker_schema = {
-    'type': 'object',
-    'properties': {
-        'version': {'type': 'string'},
-        'image': _image_schema,
-        'gpus': _gpus_schema,
-        'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
-    },
-    'additionalProperties': False,
-    'required': ['image', 'gpus']
-}
-
-
 docker_schema = transform(_docker_schema)
-nvidia_docker_schema = transform(_nvidia_docker_schema)
 
 
 container_engines = {
     'docker': docker_schema,
-    'nvidia-docker': nvidia_docker_schema
 }

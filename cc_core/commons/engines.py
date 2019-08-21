@@ -28,6 +28,10 @@ def engine_validation(red_data, engine_type, supported, optional=False):
     engine = red_data[engine_type]['engine']
     settings = red_data[engine_type]['settings']
 
+    # special case to note that nvidia-docker is not supported anymore
+    if engine_type == 'container' and engine == 'nvidia-docker':
+        raise EngineError('The nvidia-docker engine is not longer supported. Use the "docker" engine instead.')
+
     if engine not in supported:
         raise EngineError('{}-engine "{}" not supported'.format(engine_type, engine))
 
