@@ -186,7 +186,7 @@ def get_gpu_requirements(gpus_reqs):
         devices = gpus_reqs.get('devices')
         if devices:
             for device in devices:
-                requirements.append(GPURequirement(min_vram=device['minVram'], vendor=vendor))
+                requirements.append(GPURequirement(min_vram=device['vramMin'], vendor=vendor))
         elif count:
             for i in range(count):
                 requirements.append(GPURequirement(vendor=vendor))
