@@ -1165,7 +1165,7 @@ class OutputConnectorRunner01(OutputConnectorRunner):
 
 CONNECTOR_CLI_VERSION_INPUT_RUNNER_MAPPING = {
     '0.1': InputConnectorRunner01,
-    # '1': InputConnectorRunner01
+    '1': InputConnectorRunner01  # cli version 1 is equal to 0.1
 }
 
 
@@ -1247,7 +1247,7 @@ def create_input_connector_runner(input_key, input_value, input_index, assert_cl
 
 CONNECTOR_CLI_VERSION_OUTPUT_RUNNER_MAPPING = {
     '0.1': OutputConnectorRunner01,
-    # '1': OutputConnectorRunner01
+    '1': OutputConnectorRunner01  # cli version 1 is equal to 0.1
 }
 
 
