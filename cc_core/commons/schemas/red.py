@@ -85,6 +85,14 @@ _outputs_schema = {
                     'additionalProperties': False,
                     'required': ['class', 'connector']
                 }, {
+                    'type': 'object',
+                    'properties': {
+                        'class': {'enum': ['Directory']},
+                        'connector': _connector_schema
+                    },
+                    'additionalProperties': False,
+                    'required': ['class', 'connector']
+                }, {
                     'type': 'null'
                 }
             ]

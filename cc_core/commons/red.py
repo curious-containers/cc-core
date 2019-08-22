@@ -110,6 +110,7 @@ class CliJobPair:
     def check_directory_listing(self):
         """
         Validates a possible directory listing
+
         :raise RedValidationError: If listing does not match given job data
         """
         if self.is_input:
@@ -117,12 +118,21 @@ class CliJobPair:
         else:
             cli_type = OutputType.from_string(self.cli_description['type'])
 
-        if cli_type.is_directory() and self.job_value is not None:
-            try:
-                _red_listing_validation(self.job_value.get('listing'))
-            except RedValidationError as e:
-                raise RedValidationError('Error while checking listing for {} key "{}":\n{}'
-                                         .format(self._get_input_output(), self.key, str(e)))
+        # handle job value always as array
+        if cli_type.is_array():
+            job_values = self.job_value
+        else:
+            job_values = [self.job_value]
+
+        for job_value in job_values:
+            if cli_type.is_directory() and job_value is not None:
+                try:
+                    _red_listing_validation(job_value.get('listing'))
+                except RedValidationError as e:
+                    raise RedValidationError(
+                        'Error while checking listing for {} key "{}":\n{}'
+                        .format(self._get_input_output(), self.key, str(e))
+                    )
 
 
 def _create_cli_job_pairs(red_data, ignore_outputs):
@@ -270,6 +280,7 @@ CWL_OUTPUT_TYPE_TO_PYTHON_TYPE = {
 def _check_input_type(input_value, cli_description_type):
     """
     Checks whether the type of the given input value matches the type of the given cli description.
+
     :param input_value: The input value whose type to check
     :param cli_description_type: The cwl type description of the input key
     :raise RedSpecificationError: If actual input type does not match type of cli description

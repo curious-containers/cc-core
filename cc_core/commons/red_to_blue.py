@@ -265,6 +265,10 @@ class OutputType:
         return (self.output_category == other.output_category) and \
                (self._is_optional == other.is_optional())
 
+    # noinspection PyMethodMayBeStatic
+    def is_array(self):
+        return False
+
     def is_file(self):
         return self.output_category == OutputType.OutputCategory.File
 

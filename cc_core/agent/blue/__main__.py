@@ -974,7 +974,8 @@ class CliOutputRunner:
             if self._output_class.is_file_like():
                 dict_representation['checksum'] = calculate_file_checksum(path)
                 dict_representation['size'] = os.path.getsize(path)
-                dict_representation['path'] = path
+
+            dict_representation['path'] = path
         else:
             dict_representation['path'] = paths
 
