@@ -50,7 +50,7 @@ def create_container_with_gpus(client, image, command, available_runtimes, gpus=
             # try creation with device request
             container = _create_with_nvidia_container_toolkit(client, image, command, gpus, kwargs)
     else:
-        container = client.containers.create(image, command, **kwargs)
+        container = client.containers.create(image, command, environment=environment, **kwargs)
     return container
 
 
