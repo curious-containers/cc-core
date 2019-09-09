@@ -1,9 +1,16 @@
+import io
+import json
+import tarfile
+
 import docker
 # noinspection PyProtectedMember
 from docker.models.containers import Container, _create_container_args
 from docker.models.images import Image
 
 from cc_core.commons.engines import NVIDIA_DOCKER_RUNTIME
+from cc_core.commons.files import create_directory_tarinfo
+from cc_core.commons.red_to_blue import CONTAINER_AGENT_PATH, CONTAINER_BLUE_FILE_PATH, CONTAINER_OUTPUT_DIR, \
+    CONTAINER_INPUT_DIR
 
 GPU_CAPABILITIES = [['gpu'], ['nvidia'], ['compute'], ['compat32'], ['graphics'], ['utility'], ['video'], ['display']]
 
@@ -147,3 +154,64 @@ def _get_nvidia_visible_devices_from_gpus(gpus):
         return ','.join([str(gpu_id) for gpu_id in gpus])
 
     raise TypeError('gpus should be the string "all" an int or a list, but found "{}"'.format(gpus))
+
+
+def create_batch_archive(blue_data):
+    """
+    Creates a tar archive that can be put into a cc_core container to execute the blue agent.
+
+    This archive contains the blue agent, a blue file, the outputs-directory and the inputs-directory.
+    The blue file is filled with the given blue data.
+    The outputs-directory is an empty directory, with name 'outputs'
+    The inputs-directory is an empty directory, with name 'inputs'
+    The tar archive and the blue file are always in memory and never stored on the local filesystem.
+
+    The resulting archive is:
+    /cc
+    |--/blue_agent.py
+    |--/blue_file.json
+    |--/outputs/
+    |--/inputs/
+
+    :param blue_data: The data to put into the blue file of the returned archive
+    :type blue_data: dict
+    :return: A tar archive containing the blue agent, a blue file, and input/output directories
+    :rtype: io.BytesIO or bytes
+    """
+    data_file = io.BytesIO()
+    tar_file = tarfile.open(mode='w', fileobj=data_file)
+
+    # add blue agent
+    tar_file.add(get_blue_agent_host_path(), arcname=CONTAINER_AGENT_PATH, recursive=False)
+
+    # add blue file
+    blue_batch_content = json.dumps(blue_data).encode('utf-8')
+    # see https://bugs.python.org/issue22208 for more information
+    blue_batch_tarinfo = tarfile.TarInfo(CONTAINER_BLUE_FILE_PATH)
+    blue_batch_tarinfo.size = len(blue_batch_content)
+    tar_file.addfile(blue_batch_tarinfo, io.BytesIO(blue_batch_content))
+
+    # add outputs directory
+    output_directory_tarinfo = create_directory_tarinfo(CONTAINER_OUTPUT_DIR, owner_name='cc')
+    tar_file.addfile(output_directory_tarinfo)
+
+    # add inputs_directory
+    input_directory_tarinfo = create_directory_tarinfo(CONTAINER_INPUT_DIR, owner_name='cc')
+    tar_file.addfile(input_directory_tarinfo)
+
+    # close file
+    tar_file.close()
+    data_file.seek(0)
+
+    return data_file
+
+
+def get_blue_agent_host_path():
+    """
+    Returns the path of the blue agent in the host machine.
+
+    :return: The path to the blue agent
+    :rtype: str
+    """
+    import cc_core.agent.blue.__main__ as blue_main
+    return blue_main.__file__
