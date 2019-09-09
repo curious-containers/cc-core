@@ -1,9 +1,14 @@
 from copy import deepcopy
 
 
+def _type_null():
+    return {'type': 'null'}
+
+
 def transform(schema):
     """
     Transform a jsonschema by recursively adding optional doc keys and allowing null for optional keys
+
     :param schema: jsonschema dict, will not be transformed inplace
     :return: transformed jsonschema dict
     """
@@ -43,14 +48,16 @@ def _transform(schema):
                 for key, subschema in properties.items():
                     if key not in required:
                         if 'oneOf' in subschema:
-                            subschema['oneOf'].append({'type': 'null'})
+                            if _type_null() not in subschema['oneOf']:
+                                subschema['oneOf'].append(_type_null())
 
                         elif 'type' in subschema or 'enum' in subschema:
+                            one_of = [subschema]
+                            if _type_null() != subschema:
+                                one_of.append(_type_null())
+
                             properties[key] = {
-                                'oneOf': [
-                                    subschema,
-                                    {'type': 'null'}
-                                ]
+                                'oneOf': one_of
                             }
 
                 # recursion

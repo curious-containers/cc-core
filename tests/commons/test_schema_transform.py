@@ -238,3 +238,45 @@ def test_transform_4():
     }
 
     jsonschema.validate(data, transformed_schema)
+
+
+def test_null_values():
+    source_schema = {
+        'type': 'object',
+        'properties': {
+            'key1': {'type': 'string'},
+            'key2': {
+                'oneOf': [
+                    {'type': 'object'},
+                    {'type': 'null'}
+                ]
+            }
+        },
+        'additionalProperties': False,
+        'required': ['key1']
+    }
+
+    transformed_schema = transform(source_schema)
+
+    target_schema = {
+        'type': 'object',
+        'properties': {
+            'key1': {'type': 'string'},
+            'key2': {
+                'oneOf': [
+                    {'type': 'object'},
+                    {'type': 'null'}
+                ]
+            },
+            'doc': {
+                'oneOf': [
+                    {'type': 'string'},
+                    {'type': 'null'}
+                ]
+            }
+        },
+        'additionalProperties': False,
+        'required': ['key1']
+    }
+
+    assert transformed_schema == target_schema
