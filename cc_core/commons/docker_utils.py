@@ -215,3 +215,18 @@ def get_blue_agent_host_path():
     """
     import cc_core.agent.blue.__main__ as blue_main
     return blue_main.__file__
+
+
+def image_to_str(image):
+    """
+    Converts a docker image into a readable string using the first tag if available otherwise the id.
+
+    :param image: The image to convert to string
+    :type image: Image
+    :return: A string representation of the given image
+    :rtype: str
+    """
+    tags = image.tags
+    if tags:
+        return tags[0]
+    return str(image.id)
