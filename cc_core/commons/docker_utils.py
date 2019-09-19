@@ -6,6 +6,7 @@ from typing import List
 import docker
 from cc_core.commons.gpu_info import GPUDevice, NVIDIA_GPU_VENDOR
 from docker.errors import DockerException
+from requests.exceptions import ConnectionError
 # noinspection PyProtectedMember
 from docker.models.containers import Container, _create_container_args
 from docker.models.images import Image
@@ -44,24 +45,32 @@ def create_container_with_gpus(client, image, command, available_runtimes, gpus=
     :param environment: The environment of this docker container
     :type environment: dict
     :param kwargs: The same arguments as in docker.DockerClient.containers.create(kwargs)
+
     :return: A newly created docker container
     :rtype: Container
-    """
-    if gpus:
-        if environment is None:
-            environment = {}
-        environment['NVIDIA_VISIBLE_DEVICES'] = _get_nvidia_visible_devices_from_gpus(gpus)
-        kwargs['environment'] = environment
 
-        if NVIDIA_DOCKER_RUNTIME in available_runtimes:
-            kwargs['runtime'] = NVIDIA_DOCKER_RUNTIME
-            container = client.containers.create(image, command, **kwargs)
+    :raise DockerException: If the connection to the docker daemon is broken
+    """
+    try:
+        if gpus:
+            if environment is None:
+                environment = {}
+            environment['NVIDIA_VISIBLE_DEVICES'] = _get_nvidia_visible_devices_from_gpus(gpus)
+            kwargs['environment'] = environment
+
+            if NVIDIA_DOCKER_RUNTIME in available_runtimes:
+                kwargs['runtime'] = NVIDIA_DOCKER_RUNTIME
+                container = client.containers.create(image, command, **kwargs)
+            else:
+                # if nvidia runtime is not installed on this docker daemon, but gpus are required:
+                # try creation with device request
+                container = _create_with_nvidia_container_toolkit(client, image, command, gpus, kwargs)
         else:
-            # if nvidia runtime is not installed on this docker daemon, but gpus are required:
-            # try creation with device request
-            container = _create_with_nvidia_container_toolkit(client, image, command, gpus, kwargs)
-    else:
-        container = client.containers.create(image, command, environment=environment, **kwargs)
+            container = client.containers.create(image, command, environment=environment, **kwargs)
+    except ConnectionError as e:
+        raise DockerException(
+            'Could not create docker container. Failed with the following ConnectionError:\n{}'.format(str(e))
+        )
     return container
 
 
