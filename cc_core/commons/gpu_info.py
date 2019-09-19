@@ -23,6 +23,13 @@ class GPUDevice:
     def __repr__(self):
         return 'GPUDevice(device_id="{}" vram="{}" vendor="{}")'.format(self.device_id, self.vram, self.vendor)
 
+    def to_dict(self):
+        return {
+            'id': self.device_id,
+            'vram': self.vram,
+            'vendor': self.vendor
+        }
+
 
 class GPURequirement:
     """

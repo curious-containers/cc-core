@@ -1,8 +1,11 @@
 import io
 import json
 import tarfile
+from typing import List
 
 import docker
+from cc_core.commons.gpu_info import GPUDevice, NVIDIA_GPU_VENDOR
+from docker.errors import DockerException
 # noinspection PyProtectedMember
 from docker.models.containers import Container, _create_container_args
 from docker.models.images import Image
@@ -13,6 +16,7 @@ from cc_core.commons.red_to_blue import CONTAINER_AGENT_PATH, CONTAINER_BLUE_FIL
     CONTAINER_INPUT_DIR
 
 GPU_CAPABILITIES = [['gpu'], ['nvidia'], ['compute'], ['compat32'], ['graphics'], ['utility'], ['video'], ['display']]
+GPU_QUERY_IMAGE = 'nvidia/cuda:8.0-runtime'
 
 
 def create_container_with_gpus(client, image, command, available_runtimes, gpus=None, environment=None, **kwargs):
@@ -230,3 +234,67 @@ def image_to_str(image):
     if tags:
         return tags[0]
     return str(image.id)
+
+
+def detect_nvidia_docker_gpus(client, runtimes):
+    """
+    Returns a list of GPUDevices, which are available for the given docker client.
+
+    This function starts a nvidia docker container and executes nvidia-smi in order to retrieve information about
+    the gpus, that are available to the docker client.
+
+    :param client: The docker client to use for gpu detection
+    :type client: docker.DockerClient
+    :param runtimes: The available runtimes for this docker client
+    :type runtimes: List[str]
+
+    :raise DockerException: If the stdout of the query could not be parsed or if the container execution failed
+
+    :return: A list of GPUDevices
+    :rtype: List[GPUDevice]
+    """
+    client.images.pull(GPU_QUERY_IMAGE)
+
+    # this creates an csv output that contains gpu indices and their total memory in mega bytes
+    command = [
+        'nvidia-smi',
+        '--query-gpu=index,memory.total',
+        '--format=csv,noheader,nounits'
+    ]
+
+    try:
+        container = create_container_with_gpus(
+            client,
+            GPU_QUERY_IMAGE,
+            command=command,
+            available_runtimes=runtimes,
+            gpus='all'
+        )  # type: Container
+        container.start()
+        container.wait()
+        stdout = container.logs(stdout=True, stderr=False, stream=False)
+        container.remove()
+    except DockerException as e:
+        raise DockerException(
+            'Could not query gpus. Make sure the nvidia-runtime or nvidia-container-toolkit is configured on '
+            'the docker host. Container failed with following message:\n{}'.format(str(e))
+        )
+
+    gpus = []
+    for gpu_line in stdout.decode('utf-8').splitlines():
+        try:
+            index_text, memory_text = gpu_line.split(sep=',')  # type: str
+
+            index = int(index_text.strip())
+            memory = int(memory_text.strip())
+
+            gpu = GPUDevice(index, memory, NVIDIA_GPU_VENDOR)
+            gpus.append(gpu)
+
+        except ValueError as e:
+            raise DockerException(
+                'Could not parse gpu query output:\n{}\nFailed with the following message:\n{}'
+                .format(stdout, str(e))
+            )
+
+    return gpus
