@@ -10,6 +10,7 @@ description = "CC-Core is part of the Curious Containers project. It provides co
 
 [tool.poetry.dependencies]
 python = "^3.5"
+docker = "^4.0"
 requests = "^2.18"
 "ruamel.yaml" = "^0.15"
 jsonschema = "^3.0"
