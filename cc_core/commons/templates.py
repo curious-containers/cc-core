@@ -18,6 +18,9 @@ class TemplateKey:
         self.key = key
         self.protected = protected
 
+    def __str__(self):
+        return self.key
+
 
 def get_dict_sub_key_string(key, key_string):
     if key_string is None:
