@@ -5,7 +5,6 @@ import jsonschema
 from jsonschema.exceptions import ValidationError
 
 from cc_core.commons.red_to_blue import InputType, OutputType
-from cc_core.commons.schemas.cwl import cwl_job_listing_schema
 from cc_core.version import RED_VERSION
 from cc_core.commons.schemas.red import red_schema
 from cc_core.commons.exceptions import ArgumentError, RedValidationError, CWLSpecificationError
@@ -22,24 +21,24 @@ SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_ARGS = ['access']
 SEND_RECEIVE_DIRECTORY_VALIDATE_SPEC_KWARGS = []
 
 
-def _red_listing_validation(listing):
-    """
-    Raises an RedValidationError, if the given listing does not comply with cwl_job_listing_schema.
-    If listing is None or an empty list, no exception is thrown.
-
-    :param listing: The listing to validate
-    :raise RedValidationError: If the given listing does not comply with cwl_job_listing_schema
-    """
-
-    if listing:
-        try:
-            jsonschema.validate(listing, cwl_job_listing_schema)
-        except ValidationError as e:
-            where = '.'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
-            raise RedValidationError(
-                'listing does not comply with jsonschema:\n\tkey: {}\n\treason: {}'
-                .format(where, e.message)
-            )
+# def _red_listing_validation(listing):
+#     """
+#     Raises an RedValidationError, if the given listing does not comply with cwl_job_listing_schema.
+#     If listing is None or an empty list, no exception is thrown.
+#
+#     :param listing: The listing to validate
+#     :raise RedValidationError: If the given listing does not comply with cwl_job_listing_schema
+#     """
+#
+#     if listing:
+#         try:
+#             jsonschema.validate(listing, cwl_job_listing_schema)
+#         except ValidationError as e:
+#             where = '.'.join([str(s) for s in e.absolute_path]) if e.absolute_path else '/'
+#             raise RedValidationError(
+#                 'listing does not comply with jsonschema:\n\tkey: {}\n\treason: {}'
+#                 .format(where, e.message)
+#             )
 
 
 def red_get_mount_connectors_from_inputs(inputs):
@@ -124,15 +123,15 @@ class CliJobPair:
         else:
             job_values = [self.job_value]
 
-        for job_value in job_values:
-            if cli_type.is_directory() and job_value is not None:
-                try:
-                    _red_listing_validation(job_value.get('listing'))
-                except RedValidationError as e:
-                    raise RedValidationError(
-                        'Error while checking listing for {} key "{}":\n{}'
-                        .format(self._get_input_output(), self.key, str(e))
-                    )
+        # for job_value in job_values:
+        #     if cli_type.is_directory() and job_value is not None:
+        #         try:
+        #             _red_listing_validation(job_value.get('listing'))
+        #         except RedValidationError as e:
+        #             raise RedValidationError(
+        #                 'Error while checking listing for {} key "{}":\n{}'
+        #                 .format(self._get_input_output(), self.key, str(e))
+        #             )
 
 
 def _create_cli_job_pairs(red_data, ignore_outputs):

@@ -1,77 +1,70 @@
-from cc_core.commons.schemas.common import _auth_schema
-from cc_core.commons.schema_transform import transform
-
-
-MIN_RAM_LIMIT = 256
-SUPPORTED_GPU_VENDORS = ['nvidia']
-
-
-_gpus_schema = {
-    'oneOf': [
-        {
-            'type': 'object',
-            'properties': {
-                'vendor': {'enum': SUPPORTED_GPU_VENDORS},
-                'count': {'type': 'integer'},
-            },
-            'additionalProperties': False,
-            'required': ['vendor', 'count']
-        },
-        {
-            'type': 'object',
-            'properties': {
-                'vendor': {'enum': SUPPORTED_GPU_VENDORS},
-                'devices': {
-                    'type': 'array',
-                    'items': {
-                        'type': 'object',
-                        'properties': {
-                            'vramMin': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
-                        },
-                        'additionalProperties': False
-                    }
-                }
-            },
-            'additionalProperties': False,
-            'required': ['vendor', 'devices']
-        }
-    ]
-}
-
-
-_image_schema = {
-    'type': 'object',
-    'properties': {
-        'url': {'type': 'string'},
-        'auth': _auth_schema,
-        'source': {
-            'type': 'object',
-            'properties': {
-                'url': {'type': 'string'}
-            },
-            'additionalProperties': False,
-            'required': ['url']
-        }
-    },
-    'additionalProperties': False,
-    'required': ['url']
-}
+from cc_core.commons.schemas.auth import auth_schema
 
 
 docker_schema = {
+    'definitions': {
+        'auth': auth_schema,
+        'image': {
+            'type': 'object',
+            'properties': {
+                'url': {'type': 'string'},
+                'auth': {'$ref': '#/definitions/auth'},
+                'source': {
+                    'type': 'object',
+                    'properties': {
+                        'url': {'type': 'string'}
+                    },
+                    'additionalProperties': False,
+                    'required': ['url']
+                }
+            },
+            'additionalProperties': False,
+            'required': ['url']
+        },
+        'vendors': {'enum': ['nvidia']},
+        'ram': {'type': 'integer', 'minimum': 256},
+        'gpus': {
+            'oneOf': [
+                {
+                    'type': 'object',
+                    'properties': {
+                        'vendor': {'$ref': '#/definitions/vendors'},
+                        'count': {'type': 'integer'},
+                    },
+                    'additionalProperties': False,
+                    'required': ['vendor', 'count']
+                },
+                {
+                    'type': 'object',
+                    'properties': {
+                        'vendor': {'$ref': '#/definitions/vendors'},
+                        'devices': {
+                            'type': 'array',
+                            'items': {
+                                'type': 'object',
+                                'properties': {
+                                    'vramMin': {'$ref': '#/definitions/ram'}
+                                },
+                                'additionalProperties': False
+                            }
+                        }
+                    },
+                    'additionalProperties': False,
+                    'required': ['vendor', 'devices']
+                }
+            ]
+        }
+    },
     'type': 'object',
     'properties': {
         'version': {'type': 'string'},
-        'image': _image_schema,
-        'gpus': _gpus_schema,
-        'ram': {'type': 'integer', 'minimum': MIN_RAM_LIMIT}
+        'image': {'$ref': '#/definitions/image'},
+        'gpus': {'$ref': '#/definitions/gpus'},
+        'ram': {'$ref': '#/definitions/ram'}
     },
     'additionalProperties': False,
     'required': ['image']
 }
-
-
-#docker_schema = transform(_docker_schema)
 
 
 container_engines = {

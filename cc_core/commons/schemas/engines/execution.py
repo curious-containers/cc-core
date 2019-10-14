@@ -1,5 +1,4 @@
-from cc_core.commons.schemas.common import _auth_schema
-from cc_core.commons.schema_transform import transform
+from cc_core.commons.schemas.auth import auth_schema
 
 ccfaice_schema = {
     'type': 'object',
@@ -8,13 +7,16 @@ ccfaice_schema = {
 }
 
 ccagency_schema = {
+    'definitions': {
+        'auth': auth_schema
+    },
     'type': 'object',
     'properties': {
         'access': {
             'type': 'object',
             'properties': {
                 'url': {'type': 'string'},
-                'auth': _auth_schema
+                'auth': {'$ref': '#/definitions/auth'}
             },
             'additionalProperties': False,
             'required': ['url']
@@ -26,9 +28,6 @@ ccagency_schema = {
     },
     'additionalProperties': False
 }
-
-#ccfaice_schema = transform(_ccfaice_schema)
-#ccagency_schema = transform(_ccagency_schema)
 
 execution_engines = {
     'ccfaice': ccfaice_schema,
