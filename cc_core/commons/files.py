@@ -3,11 +3,7 @@ import stat
 import sys
 import json
 import tarfile
-
-import requests
 import textwrap
-import shutil
-from urllib.parse import urlparse
 
 from ruamel.yaml import YAML, YAMLError
 
@@ -36,15 +32,11 @@ def load_and_read(location, var_name):
 
 
 def load(location, var_name):
-    scheme = urlparse(location).scheme
-    if scheme == 'path':
-        return _local(location[5:], var_name)
-    if scheme == '':
-        return _local(location, var_name)
-    if scheme == 'http' or scheme == 'https':
-        return _http(location, var_name)
-
-    raise AgentError('Argument "{}" has unknown url scheme'.format(location))
+    try:
+        with open(os.path.expanduser(location)) as f:
+            return f.read()
+    except:
+        raise AgentError('File "{}" for argument "{}" could not be loaded from file system'.format(location, var_name))
 
 
 def read(raw_data, var_name):
@@ -101,23 +93,6 @@ def wrapped_print(blocks, error=False):
     else:
         for block in blocks:
             print(textwrap.fill(block))
-
-
-def _http(location, var_name):
-    try:
-        r = requests.get(location)
-        r.raise_for_status()
-    except:
-        raise AgentError('file for argument "{}" could not be loaded via http'.format(var_name))
-    return r.text
-
-
-def _local(location, var_name):
-    try:
-        with open(os.path.expanduser(location)) as f:
-            return f.read()
-    except:
-        raise AgentError('File "{}" for argument "{}" could not be loaded from file system'.format(location, var_name))
 
 
 def create_directory_tarinfo(directory_name, owner_name, owner_id=1000):
