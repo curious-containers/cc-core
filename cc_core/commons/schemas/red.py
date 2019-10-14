@@ -24,7 +24,7 @@ red_schema = {
             'properties': {
                 'class': {'enum': ['Directory']},
                 'basename': {'type': 'string'},
-                'listing': {'$ref': '#/definitions/listingDirectory'}
+                'listing': {'$ref': '#/definitions/listing'}
             },
             'additionalProperties': False,
             'required': ['class', 'basename']
@@ -128,7 +128,7 @@ red_schema = {
         'type': 'object',
         'properties': {
             'redVersion': {'type': 'string'},
-            'cli': {'$ref': '#/definitions/cwl'},
+            'cli': {'$ref': '#/definitions/cli'},
             'inputs': {'$ref': '#/definitions/inputs'},
             'outputs': {'$ref': '#/definitions/outputs'},
             'container': {'$ref': '#/definitions/engine'},
