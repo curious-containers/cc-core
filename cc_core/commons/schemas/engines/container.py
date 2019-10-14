@@ -58,7 +58,7 @@ _image_schema = {
 }
 
 
-_docker_schema = {
+docker_schema = {
     'type': 'object',
     'properties': {
         'version': {'type': 'string'},
@@ -71,7 +71,7 @@ _docker_schema = {
 }
 
 
-docker_schema = transform(_docker_schema)
+#docker_schema = transform(_docker_schema)
 
 
 container_engines = {

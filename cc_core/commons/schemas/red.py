@@ -1,5 +1,5 @@
 from cc_core.commons.schemas.common import PATTERN_KEY
-from cc_core.commons.schemas.cwl import _cwl_schema
+from cc_core.commons.schemas.cwl import cwl_schema
 from cc_core.commons.schema_transform import transform
 
 _connector_schema = {
@@ -7,7 +7,8 @@ _connector_schema = {
     'properties': {
         'command': {'type': 'string'},
         'access': {'type': 'object'},
-        'mount': {'type': 'boolean'}
+        'mount': {'type': 'boolean'},
+        'doc': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['command', 'access']
@@ -21,7 +22,8 @@ _input_file_schema = {
         'basename': {'type': 'string'},
         'dirname': {'type': 'string'},
         'checksum': {'type': 'string'},
-        'size': {'type': 'integer'}
+        'size': {'type': 'integer'},
+        'doc': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['class', 'connector']
@@ -33,7 +35,8 @@ _input_directory_schema = {
         'class': {'enum': ['Directory']},
         'connector': _connector_schema,
         'basename': {'type': 'string'},
-        'listing': {'type': 'array'}
+        'listing': {'type': 'array'},
+        'doc': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['class', 'connector']
@@ -80,7 +83,8 @@ _outputs_schema = {
                         'class': {'enum': ['File', 'stdout', 'stderr']},
                         'checksum': {'type': 'string'},
                         'size': {'type': 'integer'},
-                        'connector': _connector_schema
+                        'connector': _connector_schema,
+                        'doc': {'type': 'string'}
                     },
                     'additionalProperties': False,
                     'required': ['class', 'connector']
@@ -88,12 +92,11 @@ _outputs_schema = {
                     'type': 'object',
                     'properties': {
                         'class': {'enum': ['Directory']},
-                        'connector': _connector_schema
+                        'connector': _connector_schema,
+                        'doc': {'type': 'string'}
                     },
                     'additionalProperties': False,
                     'required': ['class', 'connector']
-                }, {
-                    'type': 'null'
                 }
             ]
         }
@@ -105,7 +108,8 @@ _engine_schema = {
     'type': 'object',
     'properties': {
         'engine': {'type': 'string'},
-        'settings': {'type': 'object'}
+        'settings': {'type': 'object'},
+        'doc': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['engine', 'settings']
@@ -113,16 +117,17 @@ _engine_schema = {
 
 
 # Reproducible Experiment Description (RED)
-_red_schema = {
+red_schema = {
     'oneOf': [{
         'type': 'object',
         'properties': {
             'redVersion': {'type': 'string'},
-            'cli': _cwl_schema,
+            'cli': cwl_schema,
             'inputs': _inputs_schema,
             'outputs': _outputs_schema,
             'container': _engine_schema,
-            'execution': _engine_schema
+            'execution': _engine_schema,
+            'doc': {'type': 'string'}
         },
         'additionalProperties': False,
         'required': ['redVersion', 'cli', 'inputs', 'container']
@@ -130,25 +135,27 @@ _red_schema = {
         'type': 'object',
         'properties': {
             'redVersion': {'type': 'string'},
-            'cli': _cwl_schema,
+            'cli': cwl_schema,
             'batches': {
                 'type': 'array',
                 'items': {
                     'type': 'object',
                     'properties': {
                         'inputs': _inputs_schema,
-                        'outputs': _outputs_schema
+                        'outputs': _outputs_schema,
+                        'doc': {'type': 'string'}
                     },
                     'additionalProperties': False,
                     'required': ['inputs']
                 }
             },
             'container': _engine_schema,
-            'execution': _engine_schema
+            'execution': _engine_schema,
+            'doc': {'type': 'string'}
         },
         'additionalProperties': False,
         'required': ['redVersion', 'cli', 'batches', 'container']
     }]
 }
 
-red_schema = transform(_red_schema)
+#red_schema = transform(_red_schema)

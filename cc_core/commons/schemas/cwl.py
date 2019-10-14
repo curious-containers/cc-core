@@ -13,7 +13,7 @@ CWL_OUTPUT_TYPES = ['File', 'Directory']
 CWL_OUTPUT_TYPES += ['{}?'.format(t) for t in CWL_OUTPUT_TYPES[:]]
 
 
-_cwl_schema = {
+cwl_schema = {
     'type': 'object',
     'properties': {
         'cwlVersion': {'type': ['string', 'number']},
@@ -26,20 +26,6 @@ _cwl_schema = {
                     'items': {'type': 'string'}
                 }
             ]
-        },
-        'requirements': {
-            'type': 'object',
-            'properties': {
-                'DockerRequirement': {
-                    'type': 'object',
-                    'properties': {
-                        'dockerPull': {'type': 'string'}
-                    },
-                    'additionalProperties': False,
-                    'required': ['dockerPull']
-                }
-            },
-            'additionalProperties': False
         },
         'inputs': {
             'type': 'object',
@@ -57,7 +43,8 @@ _cwl_schema = {
                                 'itemSeparator': {'type': 'string'}
                             },
                             'additionalProperties': False,
-                        }
+                        },
+                        'doc': {'type': 'string'}
                     },
                     'additionalProperties': False,
                     'required': ['type', 'inputBinding']
@@ -79,7 +66,8 @@ _cwl_schema = {
                                 },
                                 'additionalProperties': False,
                                 'required': ['glob']
-                            }
+                            },
+                            'doc': {'type': 'string'}
                         },
                         'additionalProperties': False,
                         'required': ['type', 'outputBinding']
@@ -95,7 +83,8 @@ _cwl_schema = {
             }
         },
         'stdout': {'type': 'string'},
-        'stderr': {'type': 'string'}
+        'stderr': {'type': 'string'},
+        'doc': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['cwlVersion', 'class', 'baseCommand', 'inputs', 'outputs']
@@ -126,12 +115,12 @@ _listing_sub_directory_schema = {
 
 # WARNING: Do not embed this schema into another schema,
 # because this breaks the '$ref' in listing_sub_directory_schema
-_cwl_job_listing_schema = {
+cwl_job_listing_schema = {
     'type': 'array',
     'items': {
         'oneOf': [_listing_sub_file_schema, _listing_sub_directory_schema]
     }
 }
 
-cwl_job_listing_schema = transform(_cwl_job_listing_schema)
-cwl_schema = transform(_cwl_schema)
+#cwl_job_listing_schema = transform(_cwl_job_listing_schema)
+#cwl_schema = transform(_cwl_schema)

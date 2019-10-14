@@ -1,13 +1,13 @@
 from cc_core.commons.schemas.common import _auth_schema
 from cc_core.commons.schema_transform import transform
 
-_ccfaice_schema = {
+ccfaice_schema = {
     'type': 'object',
     'properties': {},
     'additionalProperties': False
 }
 
-_ccagency_schema = {
+ccagency_schema = {
     'type': 'object',
     'properties': {
         'access': {
@@ -27,8 +27,8 @@ _ccagency_schema = {
     'additionalProperties': False
 }
 
-ccfaice_schema = transform(_ccfaice_schema)
-ccagency_schema = transform(_ccagency_schema)
+#ccfaice_schema = transform(_ccfaice_schema)
+#ccagency_schema = transform(_ccagency_schema)
 
 execution_engines = {
     'ccfaice': ccfaice_schema,
