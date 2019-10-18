@@ -1147,7 +1147,7 @@ class OutputConnectorRunner01(OutputConnectorRunner):
                                              listing=self._listing)
 
         if not execution_result.successful():
-            raise ConnectorError('Connector failed to validate send file for output key "{}".\n'
+            raise ConnectorError('Connector failed to validate send directory for output key "{}".\n'
                                  'Failed with the following message:\n{}'
                                  .format(self._output_key, execution_result.get_std_err()))
 
