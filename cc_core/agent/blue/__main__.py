@@ -549,6 +549,64 @@ def get_listing_information(path, listing):
     return listing_information
 
 
+def directory_listing_content_check(directory_path, listing):
+    """
+    Checks if a given listing is present under the given directory path.
+
+    :param directory_path: The path to the base directory
+    :param listing: The listing to check
+    :return: None if no errors could be found, otherwise a string describing the error
+    """
+    for sub in listing:
+        path = os.path.join(directory_path, sub['basename'])
+        if sub['class'] == 'File':
+            file_check_result = _directory_listing_file_check(sub, path)
+            if file_check_result is not None:
+                return file_check_result
+        elif sub['class'] == 'Directory':
+            if not os.path.isdir(path):
+                return 'listing contains "{}" but this directory could not be found on disk'.format(path)
+            listing = sub.get('listing')
+            if listing:
+                res = directory_listing_content_check(path, listing)
+                if res is not None:
+                    return res
+    return None
+
+
+def _directory_listing_file_check(file_description, path):
+    """
+    Validates if the given file is present in the filesystem and checks for size and checksum, if given in the
+    file_description.
+
+    :param file_description: A dictionary describing a file given in a listing.
+                             necessary keys: ['class', 'basename']
+                             optional keys: ['size', 'checksum']
+    :param path: The path to the file, where it should be present in the local filesystem
+
+    :return: None, if the file is present and checksum and size given in the file_description match the real file,
+             otherwise a string describing the mismatch.
+    """
+    if not os.path.isfile(path):
+        return 'listing contains "{}" but this file could not be found on disk.'.format(path)
+
+    checksum = file_description.get('checksum')
+    if checksum is not None:
+        file_checksum = calculate_file_checksum(path)
+        if checksum != file_checksum:
+            return 'checksum of file "{}" does not match the checksum given in listing.' \
+                   '\n\tgiven checksum: "{}"\n\tfile checksum : "{}"'.format(path, checksum, file_checksum)
+
+    size = file_description.get('size')
+    if size is not None:
+        file_size = os.path.getsize(path)
+        if size != file_size:
+            return 'file size of "{}" does not match the file size given in listing.' \
+                   '\n\tgiven size: {}\n\tfile size : {}'.format(path, size, file_size)
+
+    return None
+
+
 class InputConnectorRunner:
     """
     A ConnectorRunner can be used to execute the different functions of a Connector.
@@ -659,68 +717,10 @@ class InputConnectorRunner:
                                  .format(self.format_input_key(), self._path))
 
         if self._listing:
-            listing_check_result = InputConnectorRunner.directory_listing_content_check(self._path, self._listing)
+            listing_check_result = directory_listing_content_check(self._path, self._listing)
             if listing_check_result is not None:
                 raise ConnectorError('Content check for input key "{}" failed. Listing is not fulfilled:\n{}'
                                      .format(self.format_input_key(), listing_check_result))
-
-    @staticmethod
-    def directory_listing_content_check(directory_path, listing):
-        """
-        Checks if a given listing is present under the given directory path.
-
-        :param directory_path: The path to the base directory
-        :param listing: The listing to check
-        :return: None if no errors could be found, otherwise a string describing the error
-        """
-        for sub in listing:
-            path = os.path.join(directory_path, sub['basename'])
-            if sub['class'] == 'File':
-                file_check_result = InputConnectorRunner._directory_listing_file_check(sub, path)
-                if file_check_result is not None:
-                    return file_check_result
-            elif sub['class'] == 'Directory':
-                if not os.path.isdir(path):
-                    return 'listing contains "{}" but this directory could not be found on disk'.format(path)
-                listing = sub.get('listing')
-                if listing:
-                    res = InputConnectorRunner.directory_listing_content_check(path, listing)
-                    if res is not None:
-                        return res
-        return None
-
-    @staticmethod
-    def _directory_listing_file_check(file_description, path):
-        """
-        Validates if the given file is present in the filesystem and checks for size and checksum, if given in the
-        file_description.
-
-        :param file_description: A dictionary describing a file given in a listing.
-                                 necessary keys: ['class', 'basename']
-                                 optional keys: ['size', 'checksum']
-        :param path: The path to the file, where it should be present in the local filesystem
-
-        :return: None, if the file is present and checksum and size given in the file_description match the real file,
-                 otherwise a string describing the mismatch.
-        """
-        if not os.path.isfile(path):
-            return 'listing contains "{}" but this file could not be found on disk.'.format(path)
-
-        checksum = file_description.get('checksum')
-        if checksum is not None:
-            file_checksum = calculate_file_checksum(path)
-            if checksum != file_checksum:
-                return 'checksum of file "{}" does not match the checksum given in listing.' \
-                       '\n\tgiven checksum: "{}"\n\tfile checksum : "{}"'.format(path, checksum, file_checksum)
-
-        size = file_description.get('size')
-        if size is not None:
-            file_size = os.path.getsize(path)
-            if size != file_size:
-                return 'file size of "{}" does not match the file size given in listing.' \
-                       '\n\tgiven size: {}\n\tfile size : {}'.format(path, size, file_size)
-
-        return None
 
     def _receive_file_content_check(self):
         """
@@ -933,7 +933,7 @@ class CliOutputRunner:
     This CliOutputRunner is used to check if an cli output key is fulfilled and move the corresponding file into the
     outputs directory if needed.
     """
-    def __init__(self, output_key, glob_pattern, output_class, checksum=None, size=None):
+    def __init__(self, output_key, glob_pattern, output_class, checksum=None, size=None, listing=None):
         """
         Creates a new CliOutputRunner
 
@@ -949,6 +949,7 @@ class CliOutputRunner:
         self._output_class = output_class
         self._checksum = checksum
         self._size = size
+        self._listing = listing
 
     def get_output_key(self):
         return self._output_key
@@ -983,7 +984,7 @@ class CliOutputRunner:
 
     def check_output(self):
         """
-        Checks if the corresponding output is present relative to the given working directory.
+        Checks if the corresponding output is present in the working directory.
 
         :raise ConnectorError: If the corresponding file/directory is not present on disk
         """
@@ -1031,6 +1032,14 @@ class CliOutputRunner:
                     raise ConnectorError(
                         'The given file size for output key "{}" does not match.\n\tgiven size: {}'
                         '\n\tfile size : {}'.format(self._output_key, self._size, file_size)
+                    )
+
+            if self._listing:
+                listing_content_check = directory_listing_content_check(path, self._listing)
+                if listing_content_check:
+                    raise ConnectorError(
+                        'Listing validation for output key "{}" failed:\n{}'
+                        .format(self._output_key, listing_content_check)
                     )
 
 
@@ -1363,11 +1372,13 @@ def create_cli_output_runner(cli_output_key, cli_output_value, output_value=None
     if output_value is None:
         checksum = None
         size = None
+        listing = None
     else:
         checksum = output_value.get('checksum')
         size = output_value.get('size')
+        listing = output_value.get('listing')
 
-    return CliOutputRunner(cli_output_key, glob_pattern, output_class, checksum, size)
+    return CliOutputRunner(cli_output_key, glob_pattern, output_class, checksum, size, listing)
 
 
 class ExecutionResult:
