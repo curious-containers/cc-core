@@ -1,6 +1,5 @@
-CC-Core is part of the Curious Containers project. It provides common
-functionality for other parts of Curious Containers and implements agents to
-run data-driven experiments defined in RED or CWL format.
+CC-Core is part of the Curious Containers project.
+It contains shared code of the CC-FAICE and CC-Agency packages.
 
 Copyright 2018 Christoph Jansen, Bruno Schilling
 
@@ -29,8 +28,8 @@ deep.TEACHING, grant number 01IS17056 and project deep.HEALTH, grant number
 
 
 Web:
-  - https://cbmi.htw-berlin.de/
   - https://www.curious-containers.cc/
+  - https://cbmi.htw-berlin.de/
   - https://github.com/curious-containers/cc-core
 
 E-Mail:

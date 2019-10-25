@@ -6,7 +6,7 @@ license = "AGPL-3.0"
 readme = "README.md"
 repository = "https://github.com/curious-containers/cc-core"
 homepage = "https://www.curious-containers.cc/"
-description = "CC-Core is part of the Curious Containers project. It provides common functionality for other parts of Curious Containers and implements agents to run data-driven experiments defined in RED or CWL format."
+description = "CC-Core is part of the Curious Containers project. It contains shared code of the CC-FAICE and CC-Agency packages."
 
 [tool.poetry.dependencies]
 python = "^3.5"
