@@ -1,6 +1,6 @@
 # CC-Core
 
-CC-Core is part of the Curious Containers project. It provides common functionality for other parts of Curious Containers and implements agents to run data-driven experiments defined in RED or CWL format.
+This repository is **deprecated**. The code has been moved to https://github.com/curious-containers/curious-containers/.
 
 For more information please refer to the Curious Containers [documentation](https://www.curious-containers.cc/).
 
